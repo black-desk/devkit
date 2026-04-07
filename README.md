@@ -4,63 +4,14 @@ SPDX-FileCopyrightText: 2025 Chen Linxuan <me@black-desk.cn>
 SPDX-License-Identifier: MIT
 -->
 
-<!-- TODO: Update project name -->
-
-# Template
+# DevKit
 
 [![checks][badge-shields-io-checks]][actions]
-[![commit activity][badge-shields-io-commit-activity]][commits]
-[![contributors][badge-shields-io-contributors]][contributors]
-[![release date][badge-shields-io-release-date]][releases]
-![commits since release][badge-shields-io-commits-since-release]
-[![codecov][badge-shields-io-codecov]][codecov]
-
-<!-- TODO: Update project links -->
 
 [badge-shields-io-checks]:
-  https://img.shields.io/github/check-runs/black-desk/template/master
+  https://img.shields.io/github/check-runs/black-desk/devkit/master
 
-<!-- TODO: Update project links -->
-
-[actions]: https://github.com/black-desk/template/actions
-
-<!-- TODO: Update project links -->
-
-[badge-shields-io-commit-activity]:
-  https://img.shields.io/github/commit-activity/w/black-desk/template/master
-
-<!-- TODO: Update project links -->
-
-[commits]: https://github.com/black-desk/template/commits/master
-
-<!-- TODO: Update project links -->
-
-[badge-shields-io-contributors]:
-  https://img.shields.io/github/contributors/black-desk/template
-
-<!-- TODO: Update project links -->
-
-[contributors]: https://github.com/black-desk/template/graphs/contributors
-
-<!-- TODO: Update project links -->
-
-[badge-shields-io-release-date]:
-  https://img.shields.io/github/release-date/black-desk/template
-
-<!-- TODO: Update project links -->
-
-[releases]: https://github.com/black-desk/template/releases
-
-<!-- TODO: Update project links -->
-
-[badge-shields-io-commits-since-release]:
-  https://img.shields.io/github/commits-since/black-desk/template/latest
-
-<!-- TODO: Update project links -->
-
-[badge-shields-io-codecov]:
-  https://codecov.io/github/black-desk/template/graph/badge.svg?token=6TSVGQ4L9X
-[codecov]: https://codecov.io/github/black-desk/template
+[actions]: https://github.com/black-desk/devkit/actions
 
 en | [zh_CN](README.zh_CN.md)
 
@@ -69,27 +20,36 @@ en | [zh_CN](README.zh_CN.md)
 > This English README is translated from the Chinese version using LLM and may
 > contain errors.
 
-<!-- TODO: Add project description -->
+My personal conda recipe repository. These are packages that have pending
+conda-forge PRs, have been patched for my own use, or similar things.
 
-My personal project template
+Built packages are published to my
+[prefix.dev channel](https://prefix.dev/channels/black-desk).
 
 ## Usage
 
-<!-- TODO: Add project usage instructions -->
+Add the channel:
 
-1. Use gh to create a repository from the template:
+```bash
+# conda
+conda config --add channels https://prefix.dev/black-desk
 
-   ```bash
-   gh repo create --public --template black-desk/template
-   ```
+# mamba / micromamba
+mamba config prepend channels https://prefix.dev/black-desk
+```
 
-2. Edit project files, fill in content, and remove all `TODO` comments.
+Or install a package directly:
 
-3. Run the check script to ensure all `TODO` comments have been removed:
+```bash
+conda install --channel https://prefix.dev/black-desk <package-name>
 
-   ```bash
-   ./scripts/ls-todo.sh
-   ```
+mamba install --channel https://prefix.dev/black-desk <package-name>
+```
+
+## Supported Platforms
+
+- `linux-64`
+- `osx-arm64`
 
 ## License
 
