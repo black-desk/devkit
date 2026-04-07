@@ -5,9 +5,6 @@
 [submodule ".format"]
 	path = .format
 	url = https://github.com/black-desk/.format
-[submodule ".prompts"]
-	path = .prompts
-	url = https://github.com/black-desk/.prompts
 [submodule "aerc-feedstock"]
 	path = third_party/aerc
 	url = https://github.com/black-desk/aerc-feedstock.git
