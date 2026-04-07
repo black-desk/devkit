@@ -17,3 +17,7 @@
 	path = third_party/conda-forge-pinning
 	url = https://github.com/conda-forge/conda-forge-pinning-feedstock.git
 	branch = main
+[submodule "git"]
+	path = third_party/git
+	url = https://github.com/black-desk/git-feedstock
+	branch = recipe
