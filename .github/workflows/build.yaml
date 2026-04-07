@@ -17,7 +17,7 @@ jobs:
     outputs:
       recipes: ${{ steps.set.outputs.recipes }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - id: set
@@ -44,7 +44,7 @@ jobs:
           - target-platform: osx-arm64
             os: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           submodules: recursive
       - name: Build conda package
