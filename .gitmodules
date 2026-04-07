@@ -17,3 +17,7 @@
 	path = third_party/conda-forge-pinning
 	url = https://github.com/conda-forge/conda-forge-pinning-feedstock.git
 	branch = main
+[submodule "git-subtree"]
+	path = third_party/git-subtree
+	url = https://github.com/black-desk/staged-recipes
+	branch = git-subtree
