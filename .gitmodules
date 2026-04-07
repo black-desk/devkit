@@ -8,3 +8,15 @@
 [submodule ".prompts"]
 	path = .prompts
 	url = https://github.com/black-desk/.prompts
+[submodule "aerc-feedstock"]
+	path = third_party/aerc
+	url = https://github.com/black-desk/aerc-feedstock.git
+	branch = osx_arm64
+[submodule "korgalore_staged-recipes"]
+	path = third_party/korgalore
+	url = https://github.com/black-desk/staged-recipes.git
+	branch = korgalore
+[submodule "conda-forge-pinning-feedstock"]
+	path = third_party/conda-forge-pinning
+	url = https://github.com/conda-forge/conda-forge-pinning-feedstock.git
+	branch = main
