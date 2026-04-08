@@ -25,7 +25,3 @@
 	path = third_party/git-contacts
 	url = https://github.com/black-desk/staged-recipes
 	branch = git-contacts
-[submodule "cloc_staged-recipes"]
-	path = third_party/cloc
-	url = https://github.com/black-desk/staged-recipes
-	branch = cloc
