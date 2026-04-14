@@ -48,7 +48,7 @@ jobs:
         with:
           submodules: recursive
       - name: Build conda package
-        uses: prefix-dev/rattler-build-action@v0.2.36
+        uses: prefix-dev/rattler-build-action@v0.2.37
         with:
           recipe-path: recipes/${{ matrix.recipe }}/recipe.yaml
           artifact-name: ${{ matrix.recipe }}-${{ matrix.target-platform }}
@@ -69,7 +69,7 @@ jobs:
         with:
           path: output
       - name: Setup rattler-build
-        uses: prefix-dev/rattler-build-action@v0.2.36
+        uses: prefix-dev/rattler-build-action@v0.2.37
         with:
           setup-only: true
       - name: Upload packages
