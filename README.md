@@ -59,9 +59,10 @@ The current seed contains 22 archives, principally GCC/G++ 14.4.0, binutils
 headers, gnuconfig, and their metadata dependencies. Exact URLs, sizes, and
 SHA-256 hashes are recorded in `seed-packages.tsv`.
 
-Everything outside bootstrap proper is still design work: there are not yet
-normal-tool recipes, an affected-build scheduler, macOS builds, or a release
-promotion process.
+Everything outside bootstrap proper is still incomplete: there are not yet
+normal-tool recipes, macOS builds, or a release promotion process. The Linux
+pull-request workflow now has an initial affected-build scheduler for the
+current bootstrap recipes.
 
 ## Design goals
 
@@ -84,7 +85,7 @@ promotion process.
 .format/                 Shared formatting configuration submodule
 
 .github/workflows/
-  checks.yml            Generic, formatting, and dependency-graph checks
+  checks.yml            Generic, formatting, graph, and affected-build checks
 .github/dependabot.yaml Dependency-update policy used by repository checks
 
 bootstrap-order.json    Ordered bootstrap recipe membership
@@ -103,7 +104,8 @@ variants/
 
 scripts/
   bootstrap.sh          Reset build outputs, fetch, build, index, and verify
-  dependency-graph/     Audit-only rendered recipe graph prototype
+  dependency-graph/     Rendered recipe graph and affected-closure calculator
+  publish-result.sh     Upload generated result archives to prefix.dev
   fetch-seed.sh         Download and verify the fixed seed
   check-seed.sh         Check offline solvability of the seed channel
   check-result.sh       Check the result-only build-tool interface
@@ -188,20 +190,22 @@ produce cycles between GCC, binutils, and Make. They are therefore handled as a
 bootstrap generation supernode rather than fed directly to the ordinary
 topological scheduler. Outside bootstrap, SCCs should be rejected.
 
-## Dependency graph prototype
+## Dependency graph tooling
 
-The rendered-recipe graph prototype lives in `scripts/dependency-graph/`. It is
-audit-only: it does not bump build numbers, dispatch CI jobs, or publish
-packages.
+The rendered-recipe graph tooling lives in `scripts/dependency-graph/`. It does
+not bump build numbers or publish packages. Pull-request CI uses its `affected`
+report as the source of build scheduling input.
 
-The prototype invokes each recipe with
+The renderer invokes each recipe with
 `rattler-build --render-only --with-solve`, using the final Linux generation's
-variant and local result channel. It maps rendered package outputs—not recipe
-directory names—to graph nodes, adds direct build, host, run, and
-constrained-run edges, records dependencies that resolve outside the local
-graph, and rejects SCCs outside the explicit bootstrap generation. Selecting any
-bootstrap output expands the generation to its complete membership and schedules
-those outputs according to `bootstrap-order.json`.
+variant and either the local result channel (for audit commands after a local
+bootstrap) or the published Linux baseline channels (for pull-request
+scheduling). It maps rendered package outputs—not recipe directory names—to
+graph nodes, adds direct build, host, run, and constrained-run edges, records
+dependencies that resolve outside the local graph, and rejects SCCs outside the
+explicit bootstrap generation. Selecting any bootstrap output expands the
+generation to its complete membership and schedules those outputs according to
+`bootstrap-order.json`.
 
 After a successful bootstrap:
 
@@ -221,11 +225,11 @@ The intended migration is incremental:
 
 1. Preserve the verified Linux bootstrap, its flat recipe layout, and its
    explicit `bootstrap-order.json` stage ordering.
-2. Extend the audit-only recipe rendering and dependency-graph prototype into a
-   reviewed source of scheduling input.
+2. Harden the recipe renderer and dependency graph as ordinary packages are
+   added.
 3. Introduce canonical `go`, `rustup`, `rust-toolchain-lock`, `python`, and `uv`
    toolchain packages with build-local caches and exact version inputs.
-4. Add ordinary tool recipes and affected-build CI on top of the rendered graph.
+4. Add ordinary tool recipes on top of the rendered graph and affected-build CI.
 5. Add `osx-arm64`; its platform and compiler strategy is still to be designed.
 6. Add candidate and stable release channels, manifests, and promotion checks.
 
@@ -363,8 +367,13 @@ actually alters a downstream artifact.
 The initial scheduler design deliberately does not compare old and new package
 payloads to decide whether publication can be skipped. A changed build input may
 produce the same bytes, but proving that equivalence safely requires a
-normalized logical comparison and is deferred. No affected-build scheduler is
-implemented yet.
+normalized logical comparison and is deferred.
+
+The current Linux scheduler validates the selected closure by rebuilding it in
+pull requests and uploads the generated archives after the change reaches
+`main`. It does not rewrite recipe build numbers; an unchanged filename is an
+immutable publication error rather than an overwrite. Release manifests and
+candidate-channel promotion remain future work.
 
 The initial rules are conservative:
 
@@ -376,17 +385,17 @@ The initial rules are conservative:
 - A shared C library change rebuilds its reverse runtime/build dependency
   closure.
 - A leaf tool source change rebuilds that tool.
-- Every package selected for rebuilding receives a build-number bump and is
-  published.
+- Every package submitted for publication has a deliberate version or build
+  number change and passes through release promotion.
 
 The reverse dependency graph is derived from rendered recipe dependencies and
 published package metadata. It is not maintained separately.
 
 ### Calculating the affected rebuild set
 
-The affected-build scheduler will use the same flat recipe namespace as the
-repository. It will compute affected builds per target platform and construct a
-directed graph before scheduling:
+The affected-build scheduler uses the same flat recipe namespace as the
+repository. It computes affected Linux builds and constructs a directed graph
+before scheduling:
 
 1. Discover every `recipes/*/recipe.yaml`.
 2. Load the explicit bootstrap membership manifest and set those recipes aside
@@ -408,16 +417,30 @@ configuration, platform definitions, or workflow files select every package
 whose render includes them. Refinement to individual outputs can be added only
 when the mapping is explicit and auditable.
 
-The scheduler will then traverse reverse dependency edges from those roots.
-Every direct and transitive build-time, runtime, and constraint consumer will be
-selected. The selected set will be topologically scheduled with providers before
-consumers, and each selected output will receive a build-number bump.
+The scheduler traverses reverse dependency edges from those roots. Every direct
+and transitive build-time, runtime, and constraint consumer will be selected.
+The selected set will be topologically scheduled with providers before
+consumers.
 
 Bootstrap changes are handled before this ordinary graph. A change to the seed
 manifest, bootstrap membership, bootstrap stage ordering, or a bootstrap recipe
 reruns the complete bootstrap generation. On success, the generation's public
 interfaces are used as changed roots in the ordinary reverse-dependency graph.
 Bootstrap cycles are permitted only inside that explicit generation supernode.
+
+The pull-request path classifier is deliberately explicit. Changes under
+`recipes/` select that recipe. Changes to `bootstrap-order.json`, `variants/`,
+`seed-packages.tsv`, the bootstrap/check scripts, or the locked Pixi build
+environment select every recipe. Other workflow and documentation changes do not
+build packages. Recipe deletion or rename is not supported yet and must be
+rejected rather than silently treated as a no-op.
+
+There is also a known rendering limitation: the graph is rendered against the
+published baseline before any package from the pull request is built. A single
+pull request that introduces both a new local dependency and its first consumer
+can therefore fail to solve until the renderer gains an unpublished-local-output
+mode. Adding such a provider in a preceding pull request is the current
+incremental workflow.
 
 For example, a `go` change selects every package with a direct or transitive
 build edge to `go`. A `python` runtime change selects Python tools through
@@ -531,9 +554,21 @@ tests:
 pixi run graph-test
 ```
 
-It deliberately does not run the bootstrap in CI. The verified bootstrap result
-is currently produced locally and uploaded manually until release publishing is
-designed.
+On pull requests, the workflow also derives changed recipe directories from the
+PR diff, asks the rendered graph for their conservative reverse closure, and
+builds that closure. Bootstrap recipe changes and changes to global bootstrap
+inputs run the complete seed → dirty → result → self-host fixed point before
+building selected ordinary consumers. Ordinary recipe changes build sequentially
+through the same `output/<recipe>/` source-cache layout used by bootstrap,
+publish into the generated local `channels/result` overlay, and resolve
+unchanged baseline packages from the public `https://prefix.dev/black-desk`
+channel and conda-forge. Other repository changes skip package builds.
+
+Pull requests validate the affected closure but do not publish it. After the
+pull request is merged to `main`, the same affected-build job runs against the
+push diff and uploads the generated archives in `channels/result` to
+`https://prefix.dev/black-desk`. The workflow uses the repository's
+`PREFIX_API_KEY` secret; immutable package publication remains intentional.
 
 ## Package roles in the current bootstrap
 
@@ -585,9 +620,11 @@ or pass an equivalent GCC `-B` prefix.
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
-- Integrate the rendered-recipe graph into affected-build CI scheduling.
-- Extend the graph prototype with platform-specific rendering and reviewed
-  output/version selection.
+- Reject recipe deletion and rename explicitly and design their release
+  semantics.
+- Extend graph rendering to handle mutually new local dependencies, multiple
+  platforms, and reviewed output/version selection.
+- Add publishable version/build-number validation and release promotion.
 - Add release manifests and promotion scripts.
 - Decide whether `tzdata` remains an imported data-only exception or becomes a
   local package.

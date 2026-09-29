@@ -7,6 +7,8 @@ context:
 # `gcc` and `gxx` are stable compiler-interface names supplied by the previous
 # stage. For the dirty build they resolve from the seed; for the result build
 # they resolve from aliases in the dirty channel.
+# Keeping the complete compiler installation in one carrier lets the interface
+# aliases select a single, internally consistent generation.
 package:
   name: gcc-toolchain
   version: ${{ version }}
