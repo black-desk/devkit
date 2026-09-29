@@ -61,8 +61,8 @@ SHA-256 hashes are recorded in `seed-packages.tsv`.
 
 Everything outside bootstrap proper is still incomplete: there are not yet
 normal-tool recipes, macOS builds, or a release promotion process. The Linux
-pull-request workflow now has an initial affected-build scheduler for the
-current bootstrap recipes.
+package workflow now has an initial affected-build scheduler for the current
+bootstrap recipes.
 
 ## Design goals
 
@@ -105,6 +105,7 @@ variants/
 
 scripts/
   bootstrap.sh          Reset build outputs, fetch, build, index, and verify
+  affected-build.sh     Build the recipes affected by a pull request or push
   dependency-graph/     Rendered recipe graph and affected-closure calculator
   publish-result.sh     Upload generated result archives to prefix.dev
   fetch-seed.sh         Download and verify the fixed seed
@@ -389,8 +390,9 @@ The initial rules are conservative:
 - Every package submitted for publication has a deliberate version or build
   number change and passes through release promotion.
 
-The reverse dependency graph is derived from rendered recipe dependencies and
-published package metadata. It is not maintained separately.
+The reverse dependency graph is derived from the repository's rendered recipe
+metadata. Published channels solve and overlay unchanged packages; they are not
+a second hand-maintained graph source.
 
 ### Calculating the affected rebuild set
 
@@ -413,10 +415,10 @@ before scheduling:
 7. Reject strongly connected components outside the explicit bootstrap set.
 
 The initial rebuild roots are the package outputs changed by a commit. A change
-under a recipe directory initially selects all outputs of that recipe. Shared
-configuration, platform definitions, or workflow files select every package
-whose render includes them. Refinement to individual outputs can be added only
-when the mapping is explicit and auditable.
+under a recipe directory initially selects all outputs of that recipe. Changes
+to explicit global bootstrap inputs select every recipe; workflow and
+documentation changes do not schedule package builds. Refinement to individual
+outputs can be added only when the mapping is explicit and auditable.
 
 The scheduler traverses reverse dependency edges from those roots. Every direct
 and transitive build-time, runtime, and constraint consumer will be selected.
@@ -546,8 +548,8 @@ remote channel.
 ### GitHub Actions
 
 Repository checks live in `.github/workflows/checks.yml`. That workflow runs on
-pushes to `main`, pull requests, a weekly schedule, and manual dispatch. It
-runs the shared generic checks (cleanliness, dependency-update coverage, REUSE
+pushes to `main`, pull requests, a weekly schedule, and manual dispatch. It runs
+the shared generic checks (cleanliness, dependency-update coverage, REUSE
 metadata, secret scanning, and PR commit linting), formatting checks backed by
 `.format`, and the dependency-graph unit tests:
 
@@ -563,17 +565,21 @@ dirty → result → self-host fixed point before building selected ordinary
 consumers. Ordinary recipe changes build sequentially through the same
 `output/<recipe>/` source-cache layout used by bootstrap, publish into the
 generated local `channels/result` overlay, and resolve unchanged baseline
-packages from the public `https://prefix.dev/black-desk` channel and conda-forge.
-Other repository changes skip package builds.
+packages from the public `https://prefix.dev/black-desk` channel and
+conda-forge. Other repository changes skip package builds.
 
 Pull requests validate the affected closure but do not publish it. After the
 pull request is merged to `main`, the package workflow runs against the push
 diff, builds the affected closure, and uploads the generated archives in
 `channels/result` to `https://prefix.dev/black-desk`. Publication uses
-prefix.dev trusted publishing through GitHub Actions OIDC, so `packages.yml`
-is the workflow that must be configured as a trusted publisher. The repository
-does not store or use a `PREFIX_API_KEY` secret. Immutable package publication
+prefix.dev trusted publishing through GitHub Actions OIDC, so `packages.yml` is
+the workflow that must be configured as a trusted publisher. The repository does
+not store or use a `PREFIX_API_KEY` secret. Immutable package publication
 remains intentional.
+
+The package workflow is deliberately independent of the repository-check
+workflow. Publication is gated by the affected-build result and pull request
+review, not by formatting or generic repository checks.
 
 ## Package roles in the current bootstrap
 
