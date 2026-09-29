@@ -1,0 +1,122 @@
+name: Packages
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+jobs:
+  affected-packages:
+    name: Affected package builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          pixi-version: latest
+          cache: true
+          run-install: true
+
+      - name: Build affected packages
+        env:
+          DEVKIT_CHANNEL: https://prefix.dev/black-desk
+          BASE_SHA: >-
+            ${{
+              github.event_name == 'pull_request'
+              && github.event.pull_request.base.sha
+              || github.event.before
+            }}
+        run: pixi run bash scripts/affected-build.sh "$BASE_SHA"
+
+      - name: Archive built packages
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p channels/result
+          tar --create --gzip --file result-packages.tar.gz \
+            --directory channels result
+
+      - name: Upload built packages
+        if: >-
+          github.event_name == 'push' &&
+          github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: result-packages
+          path: result-packages.tar.gz
+          retention-days: 1
+          if-no-files-found: error
+
+  publish-packages:
+    name: Publish affected packages
+    needs:
+      - affected-packages
+    if: >-
+      github.event_name == 'push' &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@v0.10.2
+        with:
+          pixi-version: latest
+          cache: true
+          run-install: true
+
+      - name: Download built packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: result-packages
+          path: .
+
+      - name: Extract built packages
+        run: |
+          mkdir -p channels
+          tar --extract --gzip --file result-packages.tar.gz \
+            --directory channels
+
+      - name: Publish affected packages
+        env:
+          PREFIX_CHANNEL: black-desk
+        run: pixi run publish-result
+
+  pass:
+    name: pass
+    if: always()
+    needs:
+      - affected-packages
+      - publish-packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
