@@ -12,8 +12,11 @@ curl = "*"
 coreutils = "*"
 cpio = "*"
 rpm-tools = "*"
+uv = ">=0.12.20,<0.13"
 
 [tasks]
 bootstrap = "bash scripts/bootstrap.sh"
 check-seed = "bash scripts/check-seed.sh"
 check-result = "bash scripts/check-result.sh"
+graph-audit = "bash scripts/dependency-graph/graph audit"
+graph-test = "bash scripts/dependency-graph/test"

@@ -100,6 +100,7 @@ variants/
 
 scripts/
   bootstrap.sh          Reset build outputs, fetch, build, index, and verify
+  dependency-graph/     Audit-only rendered recipe graph prototype
   fetch-seed.sh         Download and verify the fixed seed
   check-seed.sh         Check offline solvability of the seed channel
   check-result.sh       Check the result-only build-tool interface
@@ -152,6 +153,7 @@ platforms/
   osx-arm64/
 
 scripts/
+  dependency-graph/     Rendered dependency graph tooling
 
 releases/
   manifests/
@@ -171,14 +173,41 @@ form the edges; a complete resolved closure is not expanded into direct edges.
 Bootstrap membership is explicit rather than inferred from a directory. It is
 represented by `bootstrap-order.json`, a top-level JSON array of recipe
 directory names. `scripts/bootstrap.sh` executes that order in each stage; the
-future affected-build scheduler will read the same array as the bootstrap
-generation membership. Stage-specific variants and channel boundaries remain
-part of `scripts/bootstrap.sh`.
+dependency-graph prototype reads the same array as the bootstrap generation
+membership. Stage-specific variants and channel boundaries remain part of the
+bootstrap and graph entry points rather than the recipe namespace.
 
 The bootstrap recipes are special. Collapsing their staged package names can
 produce cycles between GCC, binutils, and Make. They are therefore handled as a
 bootstrap generation supernode rather than fed directly to the ordinary
 topological scheduler. Outside bootstrap, SCCs should be rejected.
+
+## Dependency graph prototype
+
+The rendered-recipe graph prototype lives in
+`scripts/dependency-graph/`. It is audit-only: it does not bump build numbers,
+dispatch CI jobs, or publish packages.
+
+The prototype invokes each recipe with `rattler-build --render-only
+--with-solve`, using the final Linux generation's variant and local result
+channel. It maps rendered package outputs—not recipe directory names—to graph
+nodes, adds direct build, host, run, and constrained-run edges, records
+dependencies that resolve outside the local graph, and rejects SCCs outside the
+explicit bootstrap generation. Selecting any bootstrap output expands the
+generation to its complete membership and schedules those outputs according to
+`bootstrap-order.json`.
+
+After a successful bootstrap:
+
+```bash
+pixi run graph-audit
+pixi run bash scripts/dependency-graph/graph affected recipes/gcc-toolchain
+```
+
+Both graph commands accept `--json` for machine-readable reports. The tool's
+Python environment is managed separately by `uv` through
+`scripts/dependency-graph/pyproject.toml` and `uv.lock`; Pixi supplies `uv`
+itself. The current prototype has no third-party Python runtime dependencies.
 
 ## Migration plan
 
@@ -186,8 +215,8 @@ The intended migration is incremental:
 
 1. Preserve the verified Linux bootstrap, its flat recipe layout, and its
    explicit `bootstrap-order.json` stage ordering.
-2. Add recipe rendering and dependency-graph extraction, initially for audit
-   output only, before using it to schedule builds.
+2. Extend the audit-only recipe rendering and dependency-graph prototype into
+   a reviewed source of scheduling input.
 3. Introduce canonical `go`, `rustup`, `rust-toolchain-lock`, `python`, and
    `uv` toolchain packages with build-local caches and exact version inputs.
 4. Add ordinary tool recipes and affected-build CI on top of the rendered graph.
@@ -548,9 +577,9 @@ It must also put the intended assembler and linker ahead of host tools in
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
-- Consume `bootstrap-order.json` in the affected-build scheduler.
-- Implement rendered-recipe dependency extraction and affected rebuild
-  scheduling.
+- Integrate the rendered-recipe graph into affected-build CI scheduling.
+- Extend the graph prototype with platform-specific rendering and reviewed
+   output/version selection.
 - Add release manifests and promotion scripts.
 - Decide whether `tzdata` remains an imported data-only exception or becomes a
   local package.

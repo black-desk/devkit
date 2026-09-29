@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TOOL_ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+export UV_PYTHON_DOWNLOADS=never
+export UV_NO_CONFIG=1
+
+cd "$TOOL_ROOT"
+exec uv run --project "$TOOL_ROOT" \
+  python -m unittest discover -s tests -v
