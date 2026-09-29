@@ -85,7 +85,8 @@ current bootstrap recipes.
 .format/                 Shared formatting configuration submodule
 
 .github/workflows/
-  checks.yml            Generic, formatting, graph, and affected-build checks
+  checks.yml            Generic, formatting, and dependency-graph checks
+  packages.yml          Affected package builds and prefix.dev publication
 .github/dependabot.yaml Dependency-update policy used by repository checks
 
 bootstrap-order.json    Ordered bootstrap recipe membership
@@ -544,31 +545,35 @@ remote channel.
 
 ### GitHub Actions
 
-The current workflow runs on pushes to `main`, pull requests, a weekly schedule,
-and manual dispatch. It runs the shared generic checks (cleanliness,
-dependency-update coverage, REUSE metadata, secret scanning, and PR commit
-linting), formatting checks backed by `.format`, and the dependency-graph unit
-tests:
+Repository checks live in `.github/workflows/checks.yml`. That workflow runs on
+pushes to `main`, pull requests, a weekly schedule, and manual dispatch. It
+runs the shared generic checks (cleanliness, dependency-update coverage, REUSE
+metadata, secret scanning, and PR commit linting), formatting checks backed by
+`.format`, and the dependency-graph unit tests:
 
 ```text
 pixi run graph-test
 ```
 
-On pull requests, the workflow also derives changed recipe directories from the
-PR diff, asks the rendered graph for their conservative reverse closure, and
-builds that closure. Bootstrap recipe changes and changes to global bootstrap
-inputs run the complete seed → dirty → result → self-host fixed point before
-building selected ordinary consumers. Ordinary recipe changes build sequentially
-through the same `output/<recipe>/` source-cache layout used by bootstrap,
-publish into the generated local `channels/result` overlay, and resolve
-unchanged baseline packages from the public `https://prefix.dev/black-desk`
-channel and conda-forge. Other repository changes skip package builds.
+Package builds live in `.github/workflows/packages.yml`. On pull requests, that
+workflow derives changed recipe directories from the PR diff, asks the rendered
+graph for their conservative reverse closure, and builds that closure. Bootstrap
+recipe changes and changes to global bootstrap inputs run the complete seed →
+dirty → result → self-host fixed point before building selected ordinary
+consumers. Ordinary recipe changes build sequentially through the same
+`output/<recipe>/` source-cache layout used by bootstrap, publish into the
+generated local `channels/result` overlay, and resolve unchanged baseline
+packages from the public `https://prefix.dev/black-desk` channel and conda-forge.
+Other repository changes skip package builds.
 
 Pull requests validate the affected closure but do not publish it. After the
-pull request is merged to `main`, the same affected-build job runs against the
-push diff and uploads the generated archives in `channels/result` to
-`https://prefix.dev/black-desk`. The workflow uses the repository's
-`PREFIX_API_KEY` secret; immutable package publication remains intentional.
+pull request is merged to `main`, the package workflow runs against the push
+diff, builds the affected closure, and uploads the generated archives in
+`channels/result` to `https://prefix.dev/black-desk`. Publication uses
+prefix.dev trusted publishing through GitHub Actions OIDC, so `packages.yml`
+is the workflow that must be configured as a trusted publisher. The repository
+does not store or use a `PREFIX_API_KEY` secret. Immutable package publication
+remains intentional.
 
 ## Package roles in the current bootstrap
 

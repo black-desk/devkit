@@ -1,4 +1,4 @@
-name: Continuous Integration
+name: Checks
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: checks-${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
@@ -52,52 +52,6 @@ jobs:
       - name: Run dependency graph tests
         run: pixi run graph-test
 
-  affected-packages:
-    name: Affected package builds
-    needs:
-      - generic
-      - format
-      - checks
-    if: >-
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
-    runs-on: ubuntu-24.04
-    timeout-minutes: 360
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Set up Pixi
-        uses: prefix-dev/setup-pixi@v0.10.2
-        with:
-          pixi-version: latest
-          cache: true
-          run-install: true
-
-      - name: Build affected packages
-        env:
-          DEVKIT_CHANNEL: https://prefix.dev/black-desk
-          BASE_SHA: >-
-            ${{
-              github.event_name == 'pull_request'
-              && github.event.pull_request.base.sha
-              || github.event.before
-            }}
-        run: pixi run bash scripts/affected-build.sh "$BASE_SHA"
-
-      - name: Publish affected packages
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main'
-        env:
-          PREFIX_CHANNEL: black-desk
-          PREFIX_API_KEY: ${{ secrets.PREFIX_API_KEY }}
-        run: pixi run publish-result
-
   pass:
     name: pass
     if: always()
@@ -105,7 +59,6 @@ jobs:
       - generic
       - format
       - checks
-      - affected-packages
     runs-on: ubuntu-latest
 
     steps:
