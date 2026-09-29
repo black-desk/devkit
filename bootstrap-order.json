@@ -1,8 +1,1 @@
-[
-  "sysroot",
-  "gcc-toolchain",
-  "gcc-aliases",
-  "binutils",
-  "gnuconfig",
-  "make"
-]
+["sysroot", "gcc-toolchain", "gcc-aliases", "binutils", "gnuconfig", "make"]

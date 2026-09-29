@@ -1,10 +1,12 @@
-name: Checks
+name: Continuous Integration
 
 on:
   push:
     branches:
       - main
   pull_request:
+  schedule:
+    - cron: "0 0 * * 0" # Every Sunday at midnight UTC
   workflow_dispatch:
 
 concurrency:
@@ -15,6 +17,22 @@ permissions:
   contents: read
 
 jobs:
+  generic:
+    name: Generic checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run shared repository checks
+        uses: black-desk/workflows/generic@master
+
+  format:
+    name: Format checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check source formatting
+        uses: black-desk/workflows/format@master
+
   checks:
     name: Dependency graph tests
     runs-on: ubuntu-24.04
@@ -33,3 +51,18 @@ jobs:
 
       - name: Run dependency graph tests
         run: pixi run graph-test
+
+  pass:
+    name: pass
+    if: always()
+    needs:
+      - generic
+      - format
+      - checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}

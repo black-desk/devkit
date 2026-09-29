@@ -54,7 +54,9 @@ def strongly_connected_components(graph: DependencyGraph) -> list[list[str]]:
 
 
 def non_bootstrap_cycles(graph: DependencyGraph) -> list[list[str]]:
-    self_loops = {edge.provider for edge in graph.edges if edge.provider == edge.consumer}
+    self_loops = {
+        edge.provider for edge in graph.edges if edge.provider == edge.consumer
+    }
     return [
         component
         for component in strongly_connected_components(graph)
@@ -110,7 +112,9 @@ def selected_schedule(
 ) -> list[str]:
     """Topologically schedule selected outputs with bootstrap as one node."""
 
-    bootstrap_names = {name for name, node in graph.nodes.items() if node.output.bootstrap}
+    bootstrap_names = {
+        name for name, node in graph.nodes.items() if node.output.bootstrap
+    }
     selected_bootstrap = selected & bootstrap_names
     if selected_bootstrap:
         selected |= bootstrap_names
@@ -145,7 +149,9 @@ def selected_schedule(
                 ready.append(consumer)
 
     if len(ordered_supernodes) != len(supernodes):
-        raise ValueError("selected graph contains a cycle outside the bootstrap generation")
+        raise ValueError(
+            "selected graph contains a cycle outside the bootstrap generation"
+        )
 
     bootstrap_outputs_by_recipe_name: dict[str, list[str]] = {}
     for name in bootstrap_names:

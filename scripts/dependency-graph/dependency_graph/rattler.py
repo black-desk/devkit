@@ -7,7 +7,14 @@ import tempfile
 from pathlib import Path
 from typing import Any
 
-from .models import DEPENDENCY_KINDS, DependencyEdge, DependencyGraph, GraphNode, RenderOptions, RenderedOutput
+from .models import (
+    DEPENDENCY_KINDS,
+    DependencyEdge,
+    DependencyGraph,
+    GraphNode,
+    RenderOptions,
+    RenderedOutput,
+)
 
 
 class RenderError(RuntimeError):
@@ -65,7 +72,11 @@ def load_bootstrap_order(root: str | Path) -> list[str]:
     except (OSError, json.JSONDecodeError) as exc:
         raise RenderError(f"cannot load {path}: {exc}") from exc
 
-    if not isinstance(value, list) or not value or not all(isinstance(item, str) and item for item in value):
+    if (
+        not isinstance(value, list)
+        or not value
+        or not all(isinstance(item, str) and item for item in value)
+    ):
         raise RenderError(f"{path} must be a non-empty JSON array of recipe names")
     if len(value) != len(set(value)):
         raise RenderError(f"{path} contains duplicate recipe names")
@@ -154,7 +165,9 @@ def _render_one(
         render_output_root,
     ]
     if recipe.parent.name in options.variant_recipes:
-        command.extend(("--variant-config", str(Path(options.variant_config).resolve())))
+        command.extend(
+            ("--variant-config", str(Path(options.variant_config).resolve()))
+        )
     for channel in options.channels:
         command.extend(("--channel", channel))
 
@@ -182,7 +195,9 @@ def render_outputs(options: RenderOptions) -> tuple[list[RenderedOutput], list[P
 
     # Rattler-Build always adds its output directory as an implicit channel.
     # Keep that channel empty so graph rendering sees only the explicit inputs.
-    with tempfile.TemporaryDirectory(prefix="devkit-graph-render-") as render_output_root:
+    with tempfile.TemporaryDirectory(
+        prefix="devkit-graph-render-"
+    ) as render_output_root:
         for recipe in recipes:
             payloads = _render_one(recipe, options, render_output_root)
             for payload in payloads:
@@ -201,14 +216,18 @@ def render_outputs(options: RenderOptions) -> tuple[list[RenderedOutput], list[P
                         build_string=str(build.get("string", "")),
                         recipe=str(recipe.parent.relative_to(Path(options.root))),
                         target_platform=str(
-                            configuration.get("target_platform", options.target_platform)
+                            configuration.get(
+                                "target_platform", options.target_platform
+                            )
                         ),
                         bootstrap=recipe.parent.name in bootstrap,
                         requirements=_requirements(payload),
                     )
                 )
 
-    outputs.sort(key=lambda item: (item.recipe, item.name, item.version, item.build_string))
+    outputs.sort(
+        key=lambda item: (item.recipe, item.name, item.version, item.build_string)
+    )
     return outputs, recipes
 
 
@@ -234,7 +253,9 @@ def build_graph(outputs: list[RenderedOutput]) -> DependencyGraph:
                     continue
                 provider = by_name.get(provider_name)
                 if provider is None:
-                    node.external_dependencies.setdefault(provider_name, []).append(str(rendered_spec))
+                    node.external_dependencies.setdefault(provider_name, []).append(
+                        str(rendered_spec)
+                    )
                     continue
                 edge = DependencyEdge(
                     provider=provider_name,
@@ -251,5 +272,7 @@ def build_graph(outputs: list[RenderedOutput]) -> DependencyGraph:
         for specs in node.external_dependencies.values():
             specs[:] = sorted(set(specs))
 
-    edges.sort(key=lambda edge: (edge.provider, edge.consumer, edge.kind, edge.requirement))
+    edges.sort(
+        key=lambda edge: (edge.provider, edge.consumer, edge.kind, edge.requirement)
+    )
     return DependencyGraph(nodes=by_name, edges=edges)

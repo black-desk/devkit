@@ -1,0 +1,20 @@
+# SPDX-FileCopyrightText: 2026 Chen Linxuan <me@black_desk.cn>
+#
+# SPDX-License-Identifier: MIT
+
+version: 2
+updates:
+  - directory: /
+    package-ecosystem: github-actions
+    schedule:
+      interval: daily
+
+  - directory: /
+    package-ecosystem: gitsubmodule
+    schedule:
+      interval: daily
+
+  - directory: /scripts/dependency-graph
+    package-ecosystem: pip
+    schedule:
+      interval: daily

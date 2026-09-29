@@ -2,11 +2,22 @@ from __future__ import annotations
 
 import unittest
 
-from dependency_graph.graph import non_bootstrap_cycles, reverse_closure, selected_schedule
-from dependency_graph.models import DependencyEdge, DependencyGraph, GraphNode, RenderedOutput
+from dependency_graph.graph import (
+    non_bootstrap_cycles,
+    reverse_closure,
+    selected_schedule,
+)
+from dependency_graph.models import (
+    DependencyEdge,
+    DependencyGraph,
+    GraphNode,
+    RenderedOutput,
+)
 
 
-def output(name: str, recipe: str | None = None, bootstrap: bool = False) -> RenderedOutput:
+def output(
+    name: str, recipe: str | None = None, bootstrap: bool = False
+) -> RenderedOutput:
     return RenderedOutput(
         name=name,
         version="1.0",
@@ -29,10 +40,7 @@ class GraphTests(unittest.TestCase):
         )
 
     def test_rejects_non_bootstrap_cycle(self) -> None:
-        nodes = {
-            name: GraphNode(output(name, bootstrap=False))
-            for name in ("a", "b")
-        }
+        nodes = {name: GraphNode(output(name, bootstrap=False)) for name in ("a", "b")}
         graph = DependencyGraph(
             nodes=nodes,
             edges=[

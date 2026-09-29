@@ -9,8 +9,14 @@ from typing import Any
 
 from .graph import non_bootstrap_cycles, reverse_closure, selected_schedule
 from .models import DependencyEdge, DependencyGraph, RenderOptions, json_safe
-from .rattler import RenderError, build_graph, discover_recipes, load_bootstrap_order, package_name, render_outputs
-
+from .rattler import (
+    RenderError,
+    build_graph,
+    discover_recipes,
+    load_bootstrap_order,
+    package_name,
+    render_outputs,
+)
 
 DEFAULT_VARIANT_RECIPES = frozenset({"sysroot", "gcc-toolchain", "binutils", "make"})
 
@@ -23,7 +29,11 @@ def _options(args: argparse.Namespace) -> RenderOptions:
     root = Path(args.root).resolve()
     requested_channels = args.channel or ["channels/result"]
     channels = tuple(
-        str((root / channel).resolve() if not channel.startswith(("http://", "https://", "file://")) else channel)
+        str(
+            (root / channel).resolve()
+            if not channel.startswith(("http://", "https://", "file://"))
+            else channel
+        )
         for channel in requested_channels
     )
     return RenderOptions(
@@ -149,7 +159,8 @@ def _print_audit(graph: DependencyGraph, report: dict[str, Any]) -> None:
         consumers = node["consumers"]
         if consumers:
             rendered = ", ".join(
-                f"{consumer} ({'/'.join(kinds)})" for consumer, kinds in consumers.items()
+                f"{consumer} ({'/'.join(kinds)})"
+                for consumer, kinds in consumers.items()
             )
             print(f"      consumers: {rendered}")
     if report["non_bootstrap_cycles"]:
@@ -242,7 +253,9 @@ def build_parser() -> argparse.ArgumentParser:
     audit = subparsers.add_parser("audit", help="render and audit every recipe")
     _add_render_arguments(audit, root)
 
-    affected = subparsers.add_parser("affected", help="calculate a conservative rebuild closure")
+    affected = subparsers.add_parser(
+        "affected", help="calculate a conservative rebuild closure"
+    )
     _add_render_arguments(affected, root)
     affected.add_argument(
         "changed",

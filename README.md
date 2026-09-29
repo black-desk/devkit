@@ -69,8 +69,8 @@ promotion process.
 - Produce native toolchain interfaces that behave like distribution toolchains
   rather than conda-forge's hermetic compiler target.
 - Use canonical package names; do not introduce a private package-name prefix.
-- Treat external language toolchains as exact build inputs, not as packages
-  that every finished application must carry at runtime.
+- Treat external language toolchains as exact build inputs, not as packages that
+  every finished application must carry at runtime.
 - Derive package dependency graphs from rendered recipe metadata instead of
   maintaining a second graph by hand.
 - Rebuild conservatively. Output-equivalence pruning can be added later, but it
@@ -81,8 +81,11 @@ promotion process.
 ## Current layout
 
 ```text
+.format/                 Shared formatting configuration submodule
+
 .github/workflows/
-  checks.yml            Lightweight dependency-graph checks
+  checks.yml            Generic, formatting, and dependency-graph checks
+.github/dependabot.yaml Dependency-update policy used by repository checks
 
 bootstrap-order.json    Ordered bootstrap recipe membership
 
@@ -110,20 +113,23 @@ output/                 Generated per-recipe builds and source caches; not commi
 seed-packages.tsv       Fixed seed archive manifest
 pixi.toml               Locked bootstrap tool environment definition
 pixi.lock               Locked bootstrap tool versions
+
+The formatting entry points `.black.toml`, `.clang-format`, `.editorconfig`,
+and `.prettierrc` are repository symlinks into the `.format` submodule.
 ```
 
 `pixi.toml` and `pixi.lock` are repository files, not members of `scripts/`.
 `seed-packages.tsv` is the authoritative seed manifest and must be changed
-deliberately. Seed archives, package outputs, source caches, generated
-repodata, and local channel contents are deliberately ignored.
+deliberately. Seed archives, package outputs, source caches, generated repodata,
+and local channel contents are deliberately ignored.
 
 ## Recipe organization and graph boundaries
 
-The long-term organization remains a single recipe monorepo, but recipes are
-not divided into bootstrap, toolchain, and tool directories. Those categories
-are frequently ambiguous—`gcc` is both a bootstrap artifact and the public
-compiler interface, while `python` is both a language runtime and a build
-input—and they must not become inputs to build scheduling.
+The long-term organization remains a single recipe monorepo, but recipes are not
+divided into bootstrap, toolchain, and tool directories. Those categories are
+frequently ambiguous—`gcc` is both a bootstrap artifact and the public compiler
+interface, while `python` is both a language runtime and a build input—and they
+must not become inputs to build scheduling.
 
 The intended layout is:
 
@@ -162,13 +168,13 @@ releases/
 Recipe directories are navigation and source-layout names only. Package names
 remain canonical: the recipe in `recipes/go/` produces `go`, and the recipe in
 `recipes/python/` produces `python`. Bootstrap-only names such as
-`gcc-toolchain` exist to support staged self-hosting and compatibility with
-the imported seed; they are not a general naming convention.
+`gcc-toolchain` exist to support staged self-hosting and compatibility with the
+imported seed; they are not a general naming convention.
 
 For ordinary packages, the build graph is derived from rendered recipes. Each
 package output is a graph node, so a multi-output recipe contributes its actual
-output names rather than a directory name. Direct dependency specifications
-form the edges; a complete resolved closure is not expanded into direct edges.
+output names rather than a directory name. Direct dependency specifications form
+the edges; a complete resolved closure is not expanded into direct edges.
 
 Bootstrap membership is explicit rather than inferred from a directory. It is
 represented by `bootstrap-order.json`, a top-level JSON array of recipe
@@ -184,18 +190,18 @@ topological scheduler. Outside bootstrap, SCCs should be rejected.
 
 ## Dependency graph prototype
 
-The rendered-recipe graph prototype lives in
-`scripts/dependency-graph/`. It is audit-only: it does not bump build numbers,
-dispatch CI jobs, or publish packages.
+The rendered-recipe graph prototype lives in `scripts/dependency-graph/`. It is
+audit-only: it does not bump build numbers, dispatch CI jobs, or publish
+packages.
 
-The prototype invokes each recipe with `rattler-build --render-only
---with-solve`, using the final Linux generation's variant and local result
-channel. It maps rendered package outputs—not recipe directory names—to graph
-nodes, adds direct build, host, run, and constrained-run edges, records
-dependencies that resolve outside the local graph, and rejects SCCs outside the
-explicit bootstrap generation. Selecting any bootstrap output expands the
-generation to its complete membership and schedules those outputs according to
-`bootstrap-order.json`.
+The prototype invokes each recipe with
+`rattler-build --render-only --with-solve`, using the final Linux generation's
+variant and local result channel. It maps rendered package outputs—not recipe
+directory names—to graph nodes, adds direct build, host, run, and
+constrained-run edges, records dependencies that resolve outside the local
+graph, and rejects SCCs outside the explicit bootstrap generation. Selecting any
+bootstrap output expands the generation to its complete membership and schedules
+those outputs according to `bootstrap-order.json`.
 
 After a successful bootstrap:
 
@@ -215,10 +221,10 @@ The intended migration is incremental:
 
 1. Preserve the verified Linux bootstrap, its flat recipe layout, and its
    explicit `bootstrap-order.json` stage ordering.
-2. Extend the audit-only recipe rendering and dependency-graph prototype into
-   a reviewed source of scheduling input.
-3. Introduce canonical `go`, `rustup`, `rust-toolchain-lock`, `python`, and
-   `uv` toolchain packages with build-local caches and exact version inputs.
+2. Extend the audit-only recipe rendering and dependency-graph prototype into a
+   reviewed source of scheduling input.
+3. Introduce canonical `go`, `rustup`, `rust-toolchain-lock`, `python`, and `uv`
+   toolchain packages with build-local caches and exact version inputs.
 4. Add ordinary tool recipes and affected-build CI on top of the rendered graph.
 5. Add `osx-arm64`; its platform and compiler strategy is still to be designed.
 6. Add candidate and stable release channels, manifests, and promotion checks.
@@ -233,8 +239,8 @@ until a new bootstrap generation has completed the same verification.
 Linux continues with the local GCC/binutils/sysroot bootstrap:
 
 - GCC and binutils are self-hosted from the fixed seed.
-- The normal compiler interface integrates with the host distribution by
-  default and does not embed a sysroot.
+- The normal compiler interface integrates with the host distribution by default
+  and does not embed a sysroot.
 - Channel builds explicitly request the local sysroot, assembler, and linker.
 - The current build baseline is glibc 2.28 from Rocky Linux 8.10.
 
@@ -245,26 +251,26 @@ x86_64-pc-linux-gnu
 ```
 
 The `pc` vendor field intentionally avoids conda-forge's
-`x86_64-conda-linux-gnu` target namespace. It does not define a different
-x86_64 Linux/glibc ABI.
+`x86_64-conda-linux-gnu` target namespace. It does not define a different x86_64
+Linux/glibc ABI.
 
 ### macOS arm64
 
-`osx-arm64` support is planned, but the platform strategy is still pending.
-The compiler, SDK, and minimum host interface choices have not been fixed yet.
+`osx-arm64` support is planned, but the platform strategy is still pending. The
+compiler, SDK, and minimum host interface choices have not been fixed yet.
 
 ## Language toolchain policy
 
-The following policy is target design; none of these language-toolchain
-recipes exists in the current tree.
+The following policy is target design; none of these language-toolchain recipes
+exists in the current tree.
 
 External language toolchains are exact inputs to CI builds. Finished native
 tools do not depend on their compiler manager at runtime.
 
 ### Rust
 
-The channel packages `rustup` normally, but does not package generic `rustc`
-or `cargo` outputs as though they were the selected toolchain.
+The channel packages `rustup` normally, but does not package generic `rustc` or
+`cargo` outputs as though they were the selected toolchain.
 
 A separate `rust-toolchain-lock` package records the exact selected Rust
 toolchain. Rust-using recipes declare both packages as build dependencies and
@@ -320,8 +326,8 @@ directly from a pinned `python-build-standalone` release archive rather than
 through an indirect `uv python install` request.
 
 `uv` is a build-time dependency only. Python tool recipes create private
-environments below the package prefix and install from exact per-platform
-lock or constraints files:
+environments below the package prefix and install from exact per-platform lock
+or constraints files:
 
 ```bash
 export UV_CACHE_DIR="${SRC_DIR}/.uv-cache"
@@ -349,21 +355,21 @@ packages.
 
 ## Rebuild and release policy
 
-The near-term policy is intentionally simple because the channel is small:
-once an input enters the affected closure, rebuild it and all of its direct and
+The near-term policy is intentionally simple because the channel is small: once
+an input enters the affected closure, rebuild it and all of its direct and
 transitive consumers. We do not try to predict whether a dependency change
 actually alters a downstream artifact.
 
 The initial scheduler design deliberately does not compare old and new package
-payloads to decide whether publication can be skipped. A changed build input
-may produce the same bytes, but proving that equivalence safely requires a
+payloads to decide whether publication can be skipped. A changed build input may
+produce the same bytes, but proving that equivalence safely requires a
 normalized logical comparison and is deferred. No affected-build scheduler is
 implemented yet.
 
 The initial rules are conservative:
 
-- A bootstrap input change reruns the complete Linux bootstrap and then
-  rebuilds ordinary Linux packages affected by the new generation.
+- A bootstrap input change reruns the complete Linux bootstrap and then rebuilds
+  ordinary Linux packages affected by the new generation.
 - A Rust toolchain lock change rebuilds all Rust-using packages.
 - A Go toolchain change rebuilds all Go-using packages.
 - A Python runtime change rebuilds all Python tool packages.
@@ -403,9 +409,9 @@ whose render includes them. Refinement to individual outputs can be added only
 when the mapping is explicit and auditable.
 
 The scheduler will then traverse reverse dependency edges from those roots.
-Every direct and transitive build-time, runtime, and constraint consumer will
-be selected. The selected set will be topologically scheduled with providers
-before consumers, and each selected output will receive a build-number bump.
+Every direct and transitive build-time, runtime, and constraint consumer will be
+selected. The selected set will be topologically scheduled with providers before
+consumers, and each selected output will receive a build-number bump.
 
 Bootstrap changes are handled before this ordinary graph. A change to the seed
 manifest, bootstrap membership, bootstrap stage ordering, or a bootstrap recipe
@@ -415,9 +421,9 @@ Bootstrap cycles are permitted only inside that explicit generation supernode.
 
 For example, a `go` change selects every package with a direct or transitive
 build edge to `go`. A `python` runtime change selects Python tools through
-runtime edges and then selects their consumers through the merged reverse
-graph. A leaf change to `ripgrep` selects `ripgrep` alone unless another recipe
-depends on it.
+runtime edges and then selects their consumers through the merged reverse graph.
+A leaf change to `ripgrep` selects `ripgrep` alone unless another recipe depends
+on it.
 
 Reproducibility is a later design phase, not a prerequisite for the initial
 scheduler. If reliable logical reproducibility is achieved, result comparison
@@ -427,8 +433,8 @@ when the output or package interface differs. That approach may replace the
 present conservative propagation model rather than merely optimize it. Such a
 comparison must cover payload paths, hashes, permissions, symlink targets,
 runtime dependencies, constraints, and `run_exports`; archive-level SHA equality
-alone is insufficient. Until that mechanism exists, a changed dependency means
-a rebuild.
+alone is insufficient. Until that mechanism exists, a changed dependency means a
+rebuild.
 
 Release manifests should eventually record:
 
@@ -450,13 +456,12 @@ timestamps, embedded recipe timestamps, build-directory paths, and channel URLs
 can differ between builds. Prefix relocation and `info/paths.json` still make
 installed payload hashes useful for future logical comparisons.
 
-Any later output-equivalence mechanism must normalize those differences and
-must not rely on archive-level SHA equality alone.
+Any later output-equivalence mechanism must normalize those differences and must
+not rely on archive-level SHA equality alone.
 
 ## Bootstrap generation model
 
-The generated channels represent stages, not the eventual public release
-layout:
+The generated channels represent stages, not the eventual public release layout:
 
 ```text
 channels/seed     Fixed imported bootstrap input
@@ -486,8 +491,8 @@ pixi run bootstrap
 
 This is the canonical command. It removes generated dirty/result channels and
 compilation outputs while retaining seed archives and the per-recipe
-Rattler-Build `src_cache/` directories. A recipe's output directory is shared
-by all bootstrap stages, so later stages reuse its downloaded sources but still
+Rattler-Build `src_cache/` directories. A recipe's output directory is shared by
+all bootstrap stages, so later stages reuse its downloaded sources but still
 compile in a freshly cleaned build directory. Package-manager caches use their
 tool defaults. The bootstrap verifies and indexes the seed, builds and publishes
 the dirty and result stages, reruns the result-only fixed point, and executes
@@ -496,8 +501,8 @@ channels and variant configuration change between stages.
 
 The Pixi environment provides `rattler-build`, `rattler-index`, mamba, and the
 archive tools required by the scripts. The direct script is also available when
-that environment is already active, or when `RATTLER_BUILD` points to a
-suitable executable and the remaining tools are on `PATH`:
+that environment is already active, or when `RATTLER_BUILD` points to a suitable
+executable and the remaining tools are on `PATH`:
 
 ```bash
 ./scripts/bootstrap.sh
@@ -511,13 +516,16 @@ pixi run check-result
 ```
 
 Local channels passed to rattler-build should use an explicit `./` prefix, for
-example `./channels/result`. A bare relative path can be interpreted as a
-named remote channel.
+example `./channels/result`. A bare relative path can be interpreted as a named
+remote channel.
 
 ### GitHub Actions
 
-The current workflow runs only the dependency-graph unit tests on pushes to
-`main`, pull requests, and manual dispatch:
+The current workflow runs on pushes to `main`, pull requests, a weekly schedule,
+and manual dispatch. It runs the shared generic checks (cleanliness,
+dependency-update coverage, REUSE metadata, secret scanning, and PR commit
+linting), formatting checks backed by `.format`, and the dependency-graph unit
+tests:
 
 ```text
 pixi run graph-test
@@ -536,8 +544,8 @@ designed.
   same carrier recipe to operate against seed, dirty, and self-hosted channel
   stages.
 - `binutils` is one native output owning the assembler, linker, and binary
-  inspection tools. It deliberately does not reproduce conda-forge's
-  `ld_impl` / `binutils_impl` split.
+  inspection tools. It deliberately does not reproduce conda-forge's `ld_impl` /
+  `binutils_impl` split.
 - `make` is a native build tool, not a compiler runtime component.
 - `gnuconfig` is a noarch carrier for pinned `config.guess` and `config.sub`.
 - `sysroot_linux-64` is a build-time deployment baseline, not a default runtime
@@ -556,8 +564,8 @@ native glibc, kernel headers, `/usr/local`, and user-installed libraries.
 
 ### Explicit channel-build mode
 
-Recipes building channel packages explicitly select the local sysroot and
-tools. There is no `gcc-buildenv` wrapper package. A recipe sets flags such as:
+Recipes building channel packages explicitly select the local sysroot and tools.
+There is no `gcc-buildenv` wrapper package. A recipe sets flags such as:
 
 ```bash
 SYSROOT="${BUILD_PREFIX}/${sysroot_triplet}/sysroot"
@@ -568,8 +576,8 @@ export CPPFLAGS="--sysroot=${SYSROOT} -I${PREFIX}/include"
 export LDFLAGS="--sysroot=${SYSROOT} -L${PREFIX}/lib"
 ```
 
-It must also put the intended assembler and linker ahead of host tools in
-`PATH` or pass an equivalent GCC `-B` prefix.
+It must also put the intended assembler and linker ahead of host tools in `PATH`
+or pass an equivalent GCC `-B` prefix.
 
 `sysroot_linux-64` is therefore not a direct runtime dependency of
 `gcc-toolchain`, `gcc`, `gxx`, or `binutils`.
@@ -579,7 +587,7 @@ It must also put the intended assembler and linker ahead of host tools in
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
 - Integrate the rendered-recipe graph into affected-build CI scheduling.
 - Extend the graph prototype with platform-specific rendering and reviewed
-   output/version selection.
+  output/version selection.
 - Add release manifests and promotion scripts.
 - Decide whether `tzdata` remains an imported data-only exception or becomes a
   local package.
@@ -593,9 +601,9 @@ It must also put the intended assembler and linker ahead of host tools in
 ## Bootstrap-stage command reference
 
 The canonical workflow is `pixi run bootstrap`. The following commands are
-useful when intentionally reproducing one stage manually. They must preserve
-the same channel boundaries and publish/index each output before dependent
-recipes are solved.
+useful when intentionally reproducing one stage manually. They must preserve the
+same channel boundaries and publish/index each output before dependent recipes
+are solved.
 
 ### Dirty stage
 
@@ -738,5 +746,5 @@ rattler-build build \
 
 Publish and index each output immediately after it is built. Finally, rerun all
 result recipes with `channels/result` as the only dependency channel into fresh
-`./output/result-selfhost/` directories and publish those artifacts. This is
-the fixed-point verification performed by `pixi run bootstrap`.
+`./output/result-selfhost/` directories and publish those artifacts. This is the
+fixed-point verification performed by `pixi run bootstrap`.
