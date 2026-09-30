@@ -1,0 +1,55 @@
+schema_version: 1
+
+context:
+  version: "10.5.0"
+
+package:
+  name: fd
+  version: ${{ version }}
+
+source:
+  url: https://github.com/sharkdp/fd/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: e6d9e90730bf316101691e49d59cc02565278dc3779d33a77423801569484851
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - rustup ==1.29.1
+    - rust-toolchain-lock ==1.98.1
+
+tests:
+  - package_contents:
+      bin:
+        - fd
+      files:
+        - share/bash-completion/completions/fd
+        - share/fish/vendor_completions.d/fd.fish
+        - share/man/man1/fd.1
+        - share/zsh/site-functions/_fd
+
+  - script:
+      - test "$(fd --version)" = "fd ${{ version }}"
+      - test "$(fd -1 needle tests)" = "tests/needle.txt"
+      - test -s "${PREFIX}/share/man/man1/fd.1"
+      - test -s "${PREFIX}/share/bash-completion/completions/fd"
+      - test -s "${PREFIX}/share/fish/vendor_completions.d/fd.fish"
+      - test -s "${PREFIX}/share/zsh/site-functions/_fd"
+    files:
+      recipe:
+        - tests/
+
+about:
+  homepage: https://github.com/sharkdp/fd
+  license: MIT OR Apache-2.0
+  license_file:
+    - LICENSE-MIT
+    - LICENSE-APACHE
+  summary: A simple, fast, and user-friendly alternative to find
+  description: A filesystem search tool built with the devkit-selected Rust toolchain.
+  repository: https://github.com/sharkdp/fd
+  documentation: https://github.com/sharkdp/fd/blob/master/README.md
