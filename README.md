@@ -292,8 +292,8 @@ toolchain. Rust-using recipes declare both packages as build dependencies and
 install that exact toolchain into build-local state:
 
 ```bash
-export RUSTUP_HOME="${SRC_DIR}/.rustup-home"
-export CARGO_HOME="${SRC_DIR}/.cargo-home"
+export RUSTUP_HOME="${SRC_DIR}/.rustup"
+export CARGO_HOME="${SRC_DIR}/.cargo"
 export CARGO_TARGET_DIR="${SRC_DIR}/target"
 
 RUST_TOOLCHAIN="$(cat "${BUILD_PREFIX}/share/rust-toolchain/version")"

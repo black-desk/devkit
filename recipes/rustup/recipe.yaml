@@ -39,8 +39,8 @@ tests:
         - share/rustup/LICENSE-MIT
 
   - script:
-      - export RUSTUP_HOME="${PWD}/.rustup-home"
-      - export CARGO_HOME="${PWD}/.cargo-home"
+      - export RUSTUP_HOME="${PWD}/.rustup"
+      - export CARGO_HOME="${PWD}/.cargo"
       - export RUSTUP_TOOLCHAIN=""
       - test "$(readlink "${PREFIX}/bin/rustup")" = "../lib/rustup/${{ version }}/rustup-init"
       - rustup --version > rustup-version.txt
