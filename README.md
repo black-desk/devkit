@@ -152,6 +152,7 @@ The intended layout is:
 recipes/
   aerc/
   binutils/
+  fd/
   gcc-aliases/
   gcc-toolchain/
   git/
