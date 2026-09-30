@@ -7,7 +7,6 @@ set -euo pipefail
 
 ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 DEVKIT_CHANNEL="${DEVKIT_CHANNEL:-https://prefix.dev/black-desk}"
-CONDA_FORGE_CHANNEL="https://prefix.dev/conda-forge"
 PLAN_FILE="${PLAN_FILE:-$ROOT/.build-output/affected-plan.json}"
 CHANGED_FILES_FILE="$(mktemp)"
 CHANGED_RECIPES_FILE="$(mktemp)"
@@ -32,12 +31,31 @@ git -C "$ROOT" cat-file -e "$BASE_SHA^{commit}" || {
   exit 1
 }
 
-for tool in git jq rattler-build rattler-index; do
+for tool in git jq curl rattler-build rattler-index; do
   command -v "$tool" >/dev/null 2>&1 || {
     printf 'error: required tool not found: %s\n' "$tool" >&2
     exit 1
   }
 done
+
+verify_standalone_target_channel() {
+  local subdir relation
+
+  for subdir in linux-64 noarch; do
+    relation="$(
+      curl -fsSL "$DEVKIT_CHANNEL/$subdir/repodata.json" |
+        jq -r '.info.channel_relations // {} | (.base // "") + "|" + (.overrides // "")'
+    )"
+    [[ "$relation" == "|" ]] || {
+      printf 'error: %s/%s declares a CEP 42 channel relation: %s\n' \
+        "$DEVKIT_CHANNEL" "$subdir" "$relation" >&2
+      printf 'Clear the base and override channel relations in the prefix.dev settings.\n' >&2
+      return 1
+    }
+  done
+}
+
+verify_standalone_target_channel
 
 FULL_REBUILD=0
 git -C "$ROOT" diff --no-renames --name-only --diff-filter=ACDMRT \
@@ -112,13 +130,11 @@ if ((BOOTSTRAP_RECIPE_CHANGED)); then
     --root "$ROOT" \
     --channel "$ROOT/channels/result" \
     --channel "$DEVKIT_CHANNEL" \
-    --channel "$CONDA_FORGE_CHANNEL" \
     --json "${CHANGED_RECIPES[@]}" >"$PLAN_FILE"
 else
   bash "$ROOT/scripts/dependency-graph/graph" affected \
     --root "$ROOT" \
     --channel "$DEVKIT_CHANNEL" \
-    --channel "$CONDA_FORGE_CHANNEL" \
     --json "${CHANGED_RECIPES[@]}" >"$PLAN_FILE"
 fi
 
@@ -133,6 +149,7 @@ append_summary '## Affected package builds'
 append_summary ''
 append_summary "- Base: \`${BASE_SHA}\`"
 append_summary "- Head: \`${HEAD_SHA}\`"
+append_summary '- Target channel relations: none'
 append_summary "- Global bootstrap input change: $(
   if ((FULL_REBUILD)); then
     printf 'yes'
@@ -264,7 +281,7 @@ build_selected_ordinary_recipes() {
 
   for recipe in "${recipes[@]}"; do
     build_recipe "$recipe" \
-      "$ROOT/channels/result" "$DEVKIT_CHANNEL" "$CONDA_FORGE_CHANNEL"
+      "$ROOT/channels/result" "$DEVKIT_CHANNEL"
     BUILT_ORDINARY_RECIPES+=("$recipe")
   done
 }

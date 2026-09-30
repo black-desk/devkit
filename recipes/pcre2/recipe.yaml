@@ -1,0 +1,108 @@
+schema_version: 1
+
+context:
+  version: "10.49"
+
+package:
+  name: pcre2
+  version: ${{ version }}
+
+source:
+  url: https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${{ version }}/pcre2-${{ version }}.tar.gz
+  sha256: 929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae
+  patches:
+    - patches/pcre2-config-exact-paths.patch
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+    env:
+      PCRE2_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: x86_64-pc-linux-gnu
+
+requirements:
+  build:
+    - gcc ==16.2.0 meta_hb0f4dca_0
+    - binutils ==2.46.1 h8204064_0
+    - gnuconfig ==2025.07.09 h4616a5c_0
+    - make ==4.4.1 h8204064_0
+    - sysroot_linux-64 ==2.28 h8204064_0
+  run_exports:
+    strong:
+      - pcre2 >=10.49,<11
+
+tests:
+  - package_contents:
+      files:
+        - include/pcre2-${{ version }}/pcre2.h
+        - include/pcre2-${{ version }}/pcre2posix.h
+        - lib/libpcre2-8.so
+        - lib/libpcre2-8.so.0
+        - lib/libpcre2-8.so.0.16.1
+        - lib/libpcre2-8.a
+        - lib/libpcre2-posix.so
+        - lib/libpcre2-posix.so.3
+        - lib/libpcre2-posix.a
+        - lib/pkgconfig/libpcre2-8.pc
+        - lib/pkgconfig/libpcre2-posix.pc
+        - libexec/pcre2/bin/pcre2-config
+
+  - script:
+      - export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+      - test "$(command -v pkg-config)" = "${PREFIX}/bin/pkg-config"
+      - pc_path="$("${PREFIX}/bin/pkg-config" --path libpcre2-8)"
+      - cflags="$("${PREFIX}/bin/pkg-config" --cflags libpcre2-8)"
+      - cflags="${cflags% }"
+      - test "$cflags" = "-I$(dirname "$pc_path")/../../include/pcre2-${{ version }}"
+      - libs="$("${PREFIX}/bin/pkg-config" --libs libpcre2-8)"
+      - libs="${libs% }"
+      - test "$libs" = "$(dirname "$pc_path")/../../lib/libpcre2-8.so"
+      - >-
+        test "$("${PREFIX}/bin/pkg-config" --modversion libpcre2-8)" =
+        "${{ version }}"
+      - posix_libs="$("${PREFIX}/bin/pkg-config" --libs libpcre2-posix)"
+      - posix_libs="${posix_libs% }"
+      - test "$posix_libs" = "$(dirname "$pc_path")/../../lib/libpcre2-posix.so"
+      - test ! -e "${PREFIX}/include/pcre2.h"
+      - test ! -e "${PREFIX}/bin/pcre2-config"
+      - pcre2_config="${PREFIX}/libexec/pcre2/bin/pcre2-config"
+      - test "$("${pcre2_config}" --prefix)" = "${PREFIX}"
+      - test "$("${pcre2_config}" --exec-prefix)" = "${PREFIX}"
+      - test "$("${pcre2_config}" --version)" = "${{ version }}"
+      - test "$("${pcre2_config}" --cflags)" = "-I${PREFIX}/include/pcre2-${{ version }}"
+      - test "$("${pcre2_config}" --libs8)" = "${PREFIX}/lib/libpcre2-8.so"
+      - >-
+        test "$("${pcre2_config}" --cflags-posix)" = "-I${PREFIX}/include/pcre2-${{
+        version }} -DPCRE2POSIX_SHARED"
+      - >-
+        test "$("${pcre2_config}" --libs-posix)" =
+        "${PREFIX}/lib/libpcre2-posix.so ${PREFIX}/lib/libpcre2-8.so"
+      - >-
+        test "$("${pcre2_config}" --prefix=/opt/pcre2-override --prefix)" =
+        "/opt/pcre2-override"
+      - >-
+        test "$("${pcre2_config}" --exec-prefix=/opt/pcre2-override
+        --exec-prefix)" = "/opt/pcre2-override"
+      - >-
+        test "$("${pcre2_config}" --version --libs8)" =
+        "$(printf '%s\n%s' '${{ version }}' "${PREFIX}/lib/libpcre2-8.so")"
+      - usage="$("${pcre2_config}" 2>&1)" || true
+      - test -z "$("${pcre2_config}" --libs16 2>/dev/null)"
+      - test "$("${pcre2_config}" --libs16 2>&1)" = "$usage"
+      - test -z "$("${pcre2_config}" --libs32 2>/dev/null)"
+      - test "$("${pcre2_config}" --libs32 2>&1)" = "$usage"
+      - if "${pcre2_config}" --not-an-option >/dev/null; then exit 1; fi
+    requirements:
+      run:
+        - pkgconf ==3.0.7 hb0f4dca_0
+
+about:
+  homepage: https://github.com/PCRE2Project/pcre2
+  license: BSD-3-Clause WITH PCRE2-exception
+  license_file: LICENCE.md
+  summary: Perl-compatible regular expression library
+  description: The 8-bit PCRE2 regular expression interface used by Git and other devkit tools.
+  repository: https://github.com/PCRE2Project/pcre2
+  documentation: https://github.com/PCRE2Project/pcre2/blob/master/README

@@ -72,6 +72,10 @@ for the current bootstrap recipes and these ordinary packages.
 
 `difftastic` is also built from the locked Rust toolchain input.
 
+The first independent Git dependencies are packaged as ordinary C libraries with
+isolated headers: `zlib`, `pcre2`, and `expat`. The pinned Mozilla CA bundle is
+packaged separately as `ca-certificates` for later HTTPS support.
+
 ## Design goals
 
 - Keep the bootstrap fixed-point explicit and auditable.
@@ -103,8 +107,11 @@ recipes/
   gcc-toolchain/        Coarse single-package GCC/G++ carrier
   gcc-aliases/          gcc and gxx interface outputs
   binutils/             Native assembler, linker, and binary tools
+  ca-certificates/      Pinned Mozilla CA certificate bundle
+  expat/                Stream-oriented XML parser library
   make/                 GNU Make carrier
   gnuconfig/            Pinned config.guess and config.sub
+  pcre2/                Perl-compatible regular expression library
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
@@ -113,6 +120,7 @@ recipes/
   difftastic/            Syntax-aware structural diff tool
   pkgconf/               pkg-config-compatible metadata query tool
   rustup/                Official Rust toolchain manager binary repack
+  zlib/                  General-purpose compression library
 
 variants/
   dirty.yaml            Seed-compatible bootstrap variant
@@ -155,8 +163,10 @@ The intended layout is:
 ```text
 recipes/
   aerc/
-  difftastic/
   binutils/
+  ca-certificates/
+  difftastic/
+  expat/
   fd/
   gcc-aliases/
   gcc-toolchain/
@@ -168,6 +178,7 @@ recipes/
   neovim/
   notmuch/
   pkgconf/
+  pcre2/
   python/
   ripgrep/
   rust-toolchain-lock/
@@ -175,6 +186,7 @@ recipes/
   sysroot/
   typst/
   uv/
+  zlib/
 
 platforms/
   linux-64/
@@ -380,6 +392,92 @@ with uv. Consequently, a user's normal `uv tool list`, `uv tool upgrade`, or
 Python tool packages have a direct exact runtime dependency on `python` and are
 built separately for `linux-64` and `osx-arm64`; they are not `noarch: python`
 packages.
+
+## C library packaging policy
+
+Ordinary shared C libraries use canonical upstream package names but expose
+their public headers through a package- and version-specific include root. A
+library named `foo` at version `1.2.3` installs its headers below:
+
+```text
+${PREFIX}/include/foo-1.2.3/
+```
+
+It must not install public headers directly below `${PREFIX}/include`. That rule
+is intentional: a broad `-I${PREFIX}/include` must never make channel headers
+for an unrelated library visible while building against another package.
+Consumers use the exact root selected by the library's pkg-config entry:
+
+```bash
+CFLAGS="$(pkg-config --cflags foo)"
+```
+
+or an explicit equivalent:
+
+```bash
+-I${PREFIX}/include/foo-1.2.3
+```
+
+Recipes therefore do not add a generic `-I${PREFIX}/include` to `CPPFLAGS` or
+`CFLAGS`. When upstream's Makefile, CMake package, or pkg-config metadata
+assumes a shared include directory, the recipe overrides the install path or
+patches that metadata. In particular:
+
+- pkg-config `Cflags` must point at the version-specific include root.
+- pkg-config `Libs` and `Libs.private` must use exact library paths, such as
+  `${libdir}/libfoo.so`, rather than exposing `${libdir}` through a broad
+  `-L${libdir}` plus an unqualified `-lfoo`.
+- pkg-config `Requires` and `Requires.private` must preserve transitive public
+  header dependencies.
+- exported CMake include paths and imported-target interface directories must
+  use the same root; an upstream config that cannot be corrected is not
+  installed.
+- upstream `foo-config` helpers are corrected rather than deleted, but they are
+  package-private build metadata programs rather than user commands.
+- tests must compile and run a small consumer without adding the shared
+  `${PREFIX}/include` directory to the compiler command line.
+
+Package metadata tests use the channel-owned `pkgconf` package through its
+`pkg-config` compatibility name; they do not rely on a `pkg-config` executable
+from the build host or the Pixi orchestration environment.
+
+Corrected `foo-config` helpers install below:
+
+```text
+${PREFIX}/libexec/<package>/bin/
+```
+
+They must not install into `${PREFIX}/bin`. Corrections are made in upstream's
+generated-source template whenever practical—for example, an Autotools
+`foo-config.in`—so the upstream command-line interface and future options remain
+intact. The helper emits the version-specific include root and exact
+library-file paths, not a generic `-I${PREFIX}/include`, `-L${PREFIX}/lib`, or
+unqualified `-lfoo`.
+
+Downstream recipes do not put these helpers on the public `PATH`. A recipe that
+cannot use pkg-config refers to the helper directly—for example,
+`${PREFIX}/libexec/pcre2/bin/pcre2-config`—or prepends only that package's
+private helper directory inside its own build script. Activation scripts must
+not expose these directories globally.
+
+Shared objects and their unversioned development symlinks remain under the
+conventional `${PREFIX}/lib` layout with upstream SONAMEs. C library recipes
+also declare appropriate ABI `run_exports`, and downstream recipes use direct
+dependency specifications rather than expanding a solved closure into their
+metadata.
+
+Target-package rendering and builds use only the pull request's local
+`channels/result` overlay and `https://prefix.dev/black-desk`. Conda-forge is
+not a fallback for target dependencies. The hosted channel must not declare a
+CEP 42 base or override relation, because rattler-build discovers and follows
+those relations recursively; the affected-build script checks its repodata
+before rendering or building. The locked Pixi environment that runs the build
+scripts is a separate orchestration layer and may still use external tools until
+equivalent channel-owned build tooling exists.
+
+The compiler's internal headers and `sysroot_linux-64` are exceptions to this
+layout: they implement the compiler/sysroot interface rather than ordinary
+channel libraries.
 
 ## Rebuild and release policy
 
@@ -593,8 +691,8 @@ dirty → result → self-host fixed point before building selected ordinary
 consumers. Ordinary recipe changes build sequentially through the same
 `output/<recipe>/` source-cache layout used by bootstrap, publish into the
 generated local `channels/result` overlay, and resolve unchanged baseline
-packages from the public `https://prefix.dev/black-desk` channel and
-conda-forge. Other repository changes skip package builds.
+packages from the public `https://prefix.dev/black-desk` channel. Conda-forge is
+not a target-dependency fallback. Other repository changes skip package builds.
 
 Pull requests validate the affected closure but do not publish it. After the
 pull request is merged to `main`, the package workflow runs against the push
@@ -648,14 +746,19 @@ There is no `gcc-buildenv` wrapper package. A recipe sets flags such as:
 ```bash
 SYSROOT="${BUILD_PREFIX}/${sysroot_triplet}/sysroot"
 
-export CFLAGS="--sysroot=${SYSROOT} -I${PREFIX}/include"
-export CXXFLAGS="--sysroot=${SYSROOT} -I${PREFIX}/include"
-export CPPFLAGS="--sysroot=${SYSROOT} -I${PREFIX}/include"
-export LDFLAGS="--sysroot=${SYSROOT} -L${PREFIX}/lib"
+export CFLAGS="--sysroot=${SYSROOT}"
+export CXXFLAGS="--sysroot=${SYSROOT}"
+export CPPFLAGS="--sysroot=${SYSROOT}"
+export LDFLAGS="--sysroot=${SYSROOT}"
 ```
 
 It must also put the intended assembler and linker ahead of host tools in `PATH`
 or pass an equivalent GCC `-B` prefix.
+
+C library headers and linker inputs are then added only through package-specific
+pkg-config output or exact paths such as `${PREFIX}/include/<library>-<version>`
+and `${PREFIX}/lib/lib<library>.so`. The shared `${PREFIX}/include` and
+`${PREFIX}/lib` directories are not search interfaces for ordinary C libraries.
 
 `sysroot_linux-64` is therefore not a direct runtime dependency of
 `gcc-toolchain`, `gcc`, `gxx`, or `binutils`.
