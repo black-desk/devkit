@@ -1,0 +1,44 @@
+schema_version: 1
+
+context:
+  version: "2026.09.25"
+  bundle_date: "2026-09-25"
+
+package:
+  name: ca-certificates
+  version: ${{ version }}
+
+source:
+  - url: https://curl.se/ca/cacert-${{ bundle_date }}.pem
+    sha256: a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
+    file_name: cacert.pem
+  - url: https://www.mozilla.org/media/MPL/2.0/index.txt
+    sha256: 3f3d9e0024b1921b067d6f7f88deb4a60cbe7a78e76c64e3f1d7fc3b779b9d04
+    file_name: LICENSE.txt
+
+build:
+  noarch: generic
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    - mkdir -p "${PREFIX}/etc/ssl/certs"
+    - install -m 0644 "${SRC_DIR}/cacert.pem" "${PREFIX}/etc/ssl/certs/ca-certificates.crt"
+
+requirements: {}
+
+tests:
+  - package_contents:
+      files:
+        - etc/ssl/certs/ca-certificates.crt
+
+  - script:
+      - test "$(grep -c '^-----BEGIN CERTIFICATE-----$' "${PREFIX}/etc/ssl/certs/ca-certificates.crt")" = 121
+      - test "$(sha256sum "${PREFIX}/etc/ssl/certs/ca-certificates.crt" | cut -d' ' -f1)" = a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
+
+about:
+  homepage: https://curl.se/docs/caextract.html
+  license: MPL-2.0
+  license_file: LICENSE.txt
+  summary: Mozilla root certificates in PEM format
+  description: A pinned Mozilla CA certificate bundle converted and published by curl.
+  repository: https://github.com/mozilla-firefox/firefox
