@@ -63,10 +63,11 @@ The first ordinary toolchain input is a version-pinned repack of the official
 Linux/amd64 Go distribution. Its official GOROOT layout is retained below
 `lib/go/<version>/`, with `go` and `gofmt` linked from `bin/`. `lazygit` is the
 first normal tool recipe; like upstream binary releases, it expects `git` on
-`PATH` rather than pulling a distribution Git package. macOS builds and a
-release promotion process are still incomplete. The Linux package workflow has
-an initial affected-build scheduler for the current bootstrap recipes and these
-ordinary packages.
+`PATH` rather than pulling a distribution Git package. The canonical `rustup`
+manager is also packaged as an official binary repack without a selected Rust
+toolchain. macOS builds and a release promotion process are still incomplete.
+The Linux package workflow has an initial affected-build scheduler for the
+current bootstrap recipes and these ordinary packages.
 
 ## Design goals
 
@@ -104,6 +105,7 @@ recipes/
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
+  rustup/                Official Rust toolchain manager binary repack
 
 variants/
   dirty.yaml            Seed-compatible bootstrap variant
@@ -273,8 +275,9 @@ compiler, SDK, and minimum host interface choices have not been fixed yet.
 
 ## Language toolchain policy
 
-The following policy is target design; none of these language-toolchain recipes
-exists in the current tree.
+The Go distribution and rustup manager recipes are current. Their detailed
+consumer policies and the remaining language-runtime recipes below are target
+design unless a current recipe says otherwise.
 
 External language toolchains are exact inputs to CI builds. Finished native
 tools do not depend on their compiler manager at runtime.
