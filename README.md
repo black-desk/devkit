@@ -275,9 +275,9 @@ compiler, SDK, and minimum host interface choices have not been fixed yet.
 
 ## Language toolchain policy
 
-The Go distribution and rustup manager recipes are current. Their detailed
-consumer policies and the remaining language-runtime recipes below are target
-design unless a current recipe says otherwise.
+The Go distribution, rustup manager, and Rust toolchain lock recipes are
+current. Their detailed consumer policies and the remaining language-runtime
+recipes below are target design unless a current recipe says otherwise.
 
 External language toolchains are exact inputs to CI builds. Finished native
 tools do not depend on their compiler manager at runtime.
@@ -288,8 +288,9 @@ The channel packages `rustup` normally, but does not package generic `rustc` or
 `cargo` outputs as though they were the selected toolchain.
 
 A separate `rust-toolchain-lock` package records the exact selected Rust
-toolchain. Rust-using recipes declare both packages as build dependencies and
-install that exact toolchain into build-local state:
+toolchain. It is currently pinned to Rust `1.98.1`. Rust-using recipes declare
+these packages as build dependencies and install that exact toolchain into
+build-local state:
 
 ```bash
 export RUSTUP_HOME="${SRC_DIR}/.rustup"

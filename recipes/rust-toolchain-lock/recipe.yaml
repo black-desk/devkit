@@ -1,0 +1,40 @@
+schema_version: 1
+
+context:
+  version: "1.98.1"
+
+package:
+  name: rust-toolchain-lock
+  version: ${{ version }}
+
+source:
+  path: source
+
+build:
+  noarch: generic
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    - mkdir -p "${PREFIX}/share/rust-toolchain"
+    - cp "${SRC_DIR}/version" "${PREFIX}/share/rust-toolchain/version"
+
+requirements: {}
+
+tests:
+  - package_contents:
+      files:
+        - share/rust-toolchain/version
+
+  - script:
+      - test "$(cat "${PREFIX}/share/rust-toolchain/version")" = "${{ version }}"
+
+about:
+  homepage: https://rust-lang.org/
+  license: MIT
+  license_file: LICENSE.txt
+  summary: Exact Rust toolchain version selected by the devkit channel
+  description: A metadata-only lock that records the exact Rust toolchain used by Rust package builds.
+  repository: https://github.com/rust-lang/rust
+
+extra:
+  language-toolchain: rust
