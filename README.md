@@ -643,6 +643,8 @@ or pass an equivalent GCC `-B` prefix.
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
+- Package the canonical `git` tool and then replace `lazygit`'s current
+  upstream-compatible `PATH` expectation with an explicit runtime dependency.
 - Reject recipe deletion and rename explicitly and design their release
   semantics.
 - Extend graph rendering to handle mutually new local dependencies, multiple
