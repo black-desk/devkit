@@ -1,0 +1,51 @@
+schema_version: 1
+
+context:
+  version: "0.65.1"
+  commit: "17cb09fa7b08bc96d9f0e81b91f4720fc1a36700"
+  build_date: "2026-09-13T05:42:25Z"
+
+package:
+  name: lazygit
+  version: ${{ version }}
+
+source:
+  url: https://github.com/jesseduffield/lazygit/archive/refs/tags/v${{ version }}.tar.gz
+  sha256: df30ec1a5032b3c5672a30090fe787fb32d4122fd996d6d85e1d10135acfbc89
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+    env:
+      LAZYGIT_VERSION: ${{ version }}
+      LAZYGIT_COMMIT: ${{ commit }}
+      LAZYGIT_BUILD_DATE: ${{ build_date }}
+
+requirements:
+  build:
+    - go ==1.27.1
+
+tests:
+  - package_contents:
+      bin:
+        - lazygit
+
+  - script:
+      - lazygit --version > version.txt
+      - grep -F "commit=${{ commit }}" version.txt
+      - grep -F "build date=${{ build_date }}" version.txt
+      - grep -F "build source=devkit" version.txt
+      - grep -F "version=${{ version }}" version.txt
+      - grep -F "os=linux" version.txt
+      - grep -F "arch=amd64" version.txt
+
+about:
+  homepage: https://github.com/jesseduffield/lazygit
+  license: MIT
+  license_file: LICENSE
+  summary: Terminal UI for Git commands
+  description: A simple terminal UI for Git commands, built from the upstream source release with the devkit Go toolchain.
+  repository: https://github.com/jesseduffield/lazygit
+  documentation: https://github.com/jesseduffield/lazygit/blob/master/README.md
