@@ -65,9 +65,10 @@ Linux/amd64 Go distribution. Its official GOROOT layout is retained below
 first normal tool recipe; like upstream binary releases, it expects `git` on
 `PATH` rather than pulling a distribution Git package. The canonical `rustup`
 manager is also packaged as an official binary repack without a selected Rust
-toolchain. macOS builds and a release promotion process are still incomplete.
-The Linux package workflow has an initial affected-build scheduler for the
-current bootstrap recipes and these ordinary packages.
+toolchain. The first tool built from that locked Rust input is `ripgrep`. macOS
+builds and a release promotion process are still incomplete. The Linux package
+workflow has an initial affected-build scheduler for the current bootstrap
+recipes and these ordinary packages.
 
 ## Design goals
 
@@ -105,6 +106,7 @@ recipes/
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
+  ripgrep/               Fast regex search tool
   rustup/                Official Rust toolchain manager binary repack
 
 variants/
