@@ -61,10 +61,12 @@ SHA-256 hashes are recorded in `seed-packages.tsv`.
 
 The first ordinary toolchain input is a version-pinned repack of the official
 Linux/amd64 Go distribution. Its official GOROOT layout is retained below
-`lib/go/<version>/`, with `go` and `gofmt` linked from `bin/`. Aside from that
-input, normal-tool recipes, macOS builds, and a release promotion process are
-still incomplete. The Linux package workflow has an initial affected-build
-scheduler for the current bootstrap recipes and the Go package.
+`lib/go/<version>/`, with `go` and `gofmt` linked from `bin/`. `lazygit` is the
+first normal tool recipe; like upstream binary releases, it expects `git` on
+`PATH` rather than pulling a distribution Git package. macOS builds and a
+release promotion process are still incomplete. The Linux package workflow has
+an initial affected-build scheduler for the current bootstrap recipes and these
+ordinary packages.
 
 ## Design goals
 
@@ -101,6 +103,7 @@ recipes/
   gnuconfig/            Pinned config.guess and config.sub
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
+  lazygit/               Terminal UI for Git commands
 
 variants/
   dirty.yaml            Seed-compatible bootstrap variant
