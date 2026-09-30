@@ -27,8 +27,8 @@ tests:
         - go
         - gofmt
       files:
-        - LICENSE
-        - VERSION
+        - share/go/LICENSE
+        - share/go/VERSION
 
   - script:
       - export GOROOT="${PREFIX}"
@@ -40,6 +40,10 @@ tests:
       - export GOCACHE="${PWD}/.go-build-cache"
       - export GOTMPDIR="${PWD}/.go-tmp"
       - mkdir -p "${GOPATH}" "${GOMODCACHE}" "${GOCACHE}" "${GOTMPDIR}"
+      - test -f "${PREFIX}/share/go/LICENSE"
+      - test -f "${PREFIX}/share/go/VERSION"
+      - test ! -e "${PREFIX}/LICENSE"
+      - test ! -e "${PREFIX}/VERSION"
       - test "$(go version)" = "go version go${{ version }} linux/amd64"
       - test "$(go env GOROOT)" = "${PREFIX}"
       - CGO_ENABLED=0 go build -trimpath -buildvcs=false -o hello tests/hello.go
@@ -53,6 +57,6 @@ about:
   license: BSD-3-Clause
   license_file: LICENSE
   summary: The Go programming language distribution
-  description: An exact repack of the official Go linux-amd64 distribution for the devkit channel.
+  description: A version-pinned repack of the official Go linux-amd64 distribution for the devkit channel.
   repository: https://github.com/golang/go
   documentation: https://go.dev/doc/

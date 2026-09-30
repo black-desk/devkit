@@ -59,8 +59,9 @@ The current seed contains 22 archives, principally GCC/G++ 14.4.0, binutils
 headers, gnuconfig, and their metadata dependencies. Exact URLs, sizes, and
 SHA-256 hashes are recorded in `seed-packages.tsv`.
 
-The first ordinary toolchain input is an exact `go` repack of the official
-Linux/amd64 distribution. Aside from that input, normal-tool recipes, macOS
+The first ordinary toolchain input is a version-pinned repack of the official
+Linux/amd64 Go distribution. Collision-prone top-level distribution metadata is
+normalized below `share/go/`. Aside from that input, normal-tool recipes, macOS
 builds, and a release promotion process are still incomplete. The Linux package
 workflow has an initial affected-build scheduler for the current bootstrap
 recipes and the Go package.
@@ -99,7 +100,7 @@ recipes/
   make/                 GNU Make carrier
   gnuconfig/            Pinned config.guess and config.sub
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
-  go/                    Exact official Go linux-amd64 distribution repack
+  go/                    Official Go linux-amd64 distribution repack
 
 variants/
   dirty.yaml            Seed-compatible bootstrap variant
@@ -306,8 +307,10 @@ lock package triggers rebuilding the reverse build-dependency closure.
 
 ### Go
 
-The `go` package is an exact repack of the official Go distribution for each
-supported platform. Go applications use it as a build dependency only.
+The `go` package is a version-pinned repack of the official Go distribution for
+each supported platform. Its GOROOT layout is preserved, while generic top-level
+distribution metadata is moved below `share/go/`. Go applications use it as a
+build dependency only.
 
 Go builds isolate all state below the recipe source directory:
 
