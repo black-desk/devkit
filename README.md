@@ -70,6 +70,8 @@ builds and a release promotion process are still incomplete. The Linux package
 workflow has an initial affected-build scheduler for the current bootstrap
 recipes and these ordinary packages.
 
+`difftastic` is also built from the locked Rust toolchain input.
+
 ## Design goals
 
 - Keep the bootstrap fixed-point explicit and auditable.
@@ -107,6 +109,7 @@ recipes/
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
   ripgrep/               Fast regex search tool
+  difftastic/            Syntax-aware structural diff tool
   rustup/                Official Rust toolchain manager binary repack
 
 variants/
@@ -150,6 +153,7 @@ The intended layout is:
 ```text
 recipes/
   aerc/
+  difftastic/
   binutils/
   gcc-aliases/
   gcc-toolchain/
