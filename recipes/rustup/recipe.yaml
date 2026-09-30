@@ -1,0 +1,61 @@
+schema_version: 1
+
+context:
+  version: "1.29.1"
+  commit: "d95a37b6a"
+  build_date: "2026-08-13"
+
+package:
+  name: rustup
+  version: ${{ version }}
+
+source:
+  - url: https://static.rust-lang.org/rustup/archive/${{ version }}/x86_64-unknown-linux-gnu/rustup-init
+    sha256: dda7234360b7f578ca8b0ddcb80145646fa61a67c1720a5abc7051b35c9fcb71
+    file_name: rustup-init
+  - url: https://github.com/rust-lang/rustup/archive/refs/tags/${{ version }}.tar.gz
+    sha256: 00f79a02275fd0252be6928d7a44f96bfba706a0cc47a0c85557aa4a875d1181
+    target_directory: rustup-source
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      RUSTUP_VERSION: ${{ version }}
+
+requirements: {}
+
+tests:
+  - package_contents:
+      bin:
+        - rustup
+      files:
+        - lib/rustup/${{ version }}/rustup-init
+        - share/rustup/LICENSE-APACHE
+        - share/rustup/LICENSE-MIT
+
+  - script:
+      - export RUSTUP_HOME="${PWD}/.rustup-home"
+      - export CARGO_HOME="${PWD}/.cargo-home"
+      - export RUSTUP_TOOLCHAIN=""
+      - test "$(readlink "${PREFIX}/bin/rustup")" = "../lib/rustup/${{ version }}/rustup-init"
+      - rustup --version > rustup-version.txt
+      - grep -Fx "rustup ${{ version }} (${{ commit }} ${{ build_date }})" rustup-version.txt
+      - test "$(rustup toolchain list)" = "no installed toolchains"
+      - rustup show > rustup-show.txt
+      - grep -Fx "no active toolchain" rustup-show.txt
+
+about:
+  homepage: https://rustup.rs/
+  license: Apache-2.0 OR MIT
+  license_file:
+    - rustup-source/LICENSE-APACHE
+    - rustup-source/LICENSE-MIT
+  summary: The Rust toolchain installer and manager
+  description: A version-pinned repack of the official rustup linux-amd64 manager binary; it does not include a Rust toolchain.
+  repository: https://github.com/rust-lang/rustup
+  documentation: https://rust-lang.github.io/rustup/
