@@ -60,11 +60,11 @@ headers, gnuconfig, and their metadata dependencies. Exact URLs, sizes, and
 SHA-256 hashes are recorded in `seed-packages.tsv`.
 
 The first ordinary toolchain input is a version-pinned repack of the official
-Linux/amd64 Go distribution. Collision-prone top-level distribution metadata is
-normalized below `share/go/`. Aside from that input, normal-tool recipes, macOS
-builds, and a release promotion process are still incomplete. The Linux package
-workflow has an initial affected-build scheduler for the current bootstrap
-recipes and the Go package.
+Linux/amd64 Go distribution. Its official GOROOT layout is retained below
+`lib/go/<version>/`, with `go` and `gofmt` linked from `bin/`. Aside from that
+input, normal-tool recipes, macOS builds, and a release promotion process are
+still incomplete. The Linux package workflow has an initial affected-build
+scheduler for the current bootstrap recipes and the Go package.
 
 ## Design goals
 
@@ -308,9 +308,9 @@ lock package triggers rebuilding the reverse build-dependency closure.
 ### Go
 
 The `go` package is a version-pinned repack of the official Go distribution for
-each supported platform. Its GOROOT layout is preserved, while generic top-level
-distribution metadata is moved below `share/go/`. Go applications use it as a
-build dependency only.
+each supported platform. The complete official GOROOT is installed below
+`lib/go/<version>/`, while `bin/go` and `bin/gofmt` are relative links into it.
+Go applications use it as a build dependency only.
 
 Go builds isolate all state below the recipe source directory:
 
