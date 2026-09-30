@@ -111,6 +111,7 @@ recipes/
   fd/                    Fast filesystem search tool
   ripgrep/               Fast regex search tool
   difftastic/            Syntax-aware structural diff tool
+  pkgconf/               pkg-config-compatible metadata query tool
   rustup/                Official Rust toolchain manager binary repack
 
 variants/
@@ -166,6 +167,7 @@ recipes/
   make/
   neovim/
   notmuch/
+  pkgconf/
   python/
   ripgrep/
   rust-toolchain-lock/
@@ -453,10 +455,16 @@ Bootstrap cycles are permitted only inside that explicit generation supernode.
 
 The pull-request path classifier is deliberately explicit. Changes under
 `recipes/` select that recipe. Changes to `bootstrap-order.json`, `variants/`,
-`seed-packages.tsv`, the bootstrap/check scripts, or the locked Pixi build
-environment select every recipe. Other workflow and documentation changes do not
-build packages. Recipe deletion or rename is not supported yet and must be
-rejected rather than silently treated as a no-op.
+`seed-packages.tsv`, or the bootstrap/check scripts select every recipe. Other
+workflow, documentation, and Pixi orchestration changes do not schedule target
+packages by themselves. Recipe deletion or rename is not supported yet and must
+be rejected rather than silently treated as a no-op.
+
+The locked Pixi environment is an orchestration layer, not a target dependency
+graph input. If an orchestration tool change is known to alter package output,
+it must be paired with explicit recipe version/build-number changes or a
+deliberate full-rebuild change. This keeps test-only and build-utility lock
+updates from rerunning the expensive bootstrap fixed point automatically.
 
 There is also a known rendering limitation: the graph is rendered against the
 published baseline before any package from the pull request is built. A single

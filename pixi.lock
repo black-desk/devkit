@@ -68,6 +68,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/linux-64/mamba-2.9.0-h33f7037_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/ncurses-6.6-hdb14827_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/nettle-3.10.1-h5ef0d04_1.conda
+      - conda: https://prefix.dev/conda-forge/linux-64/ninja-1.13.2-h171cf75_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/oniguruma-6.9.10-hebe6cf0_1.conda
       - conda: https://prefix.dev/conda-forge/linux-64/openssl-3.6.4-h781a0a9_0.conda
       - conda: https://prefix.dev/conda-forge/linux-64/p11-kit-0.26.5-h8d769aa_2.conda
@@ -90,6 +91,7 @@ environments:
       - conda: https://prefix.dev/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_3.conda
       - conda: https://prefix.dev/conda-forge/noarch/ca-certificates-2026.7.22-hbd8a1cb_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/cpython-3.14.7-py314hd8ed1ab_106.conda
+      - conda: https://prefix.dev/conda-forge/noarch/meson-1.12.1-pyh5ded981_0.conda
       - conda: https://prefix.dev/conda-forge/noarch/nlohmann_json-abi-3.12.0-h0f90c79_2.conda
       - conda: https://prefix.dev/conda-forge/noarch/python-gil-3.14.7-h4df99d1_106.conda
       - conda: https://prefix.dev/conda-forge/noarch/python_abi-3.14-9_cp314.conda
@@ -906,6 +908,18 @@ packages:
     - nettle >=3.10.1,<3.11.0a0
   size: 1052171
   timestamp: 1787065085312
+- conda: https://prefix.dev/conda-forge/linux-64/ninja-1.13.2-h171cf75_1.conda
+  sha256: 2b5f2e865122f9fc0637f520a7cb22e16b9727b2db6761ee16cb5e6404412c81
+  md5: 2db7a395d7dc2b6ed5effaf68fb99443
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libstdcxx >=14
+  - libgcc >=14
+  license: Apache-2.0
+  license_family: APACHE
+  run_exports: {}
+  size: 186767
+  timestamp: 1786713048064
 - conda: https://prefix.dev/conda-forge/linux-64/oniguruma-6.9.10-hebe6cf0_1.conda
   sha256: 098de630b10d3276d52b075360fa8492574ac3f60ff098a8f32cc1738274f1dd
   md5: d0d628a0259bb9cbcd73f792b0b61387
@@ -1247,6 +1261,18 @@ packages:
   run_exports: {}
   size: 51289
   timestamp: 1788383537525
+- conda: https://prefix.dev/conda-forge/noarch/meson-1.12.1-pyh5ded981_0.conda
+  sha256: b8f20bb684aa5b4e7e277eb2ca82d2b1bc109a655e10c651008ef948d90c8884
+  md5: 669b846a7346f2f364947410a39c558c
+  depends:
+  - python >=3.11
+  - ninja >=1.8.2
+  - python
+  license: Apache-2.0
+  license_family: APACHE
+  run_exports: {}
+  size: 798852
+  timestamp: 1790167557353
 - conda: https://prefix.dev/conda-forge/noarch/nlohmann_json-abi-3.12.0-h0f90c79_2.conda
   sha256: 30d271dd63391e053aa3c393c5d93fb622dec5d50a64107171ee28242660608e
   md5: 849b8852621992c3f3a1901c939a0399

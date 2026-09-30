@@ -1,0 +1,62 @@
+schema_version: 1
+
+context:
+  version: "3.0.7"
+
+package:
+  name: pkgconf
+  version: ${{ version }}
+
+source:
+  url: https://github.com/pkgconf/pkgconf/archive/pkgconf-${{ version }}.tar.gz
+  sha256: a9ae678879771fcf15247ac2435e7ad8308be8a5921898e6720b3b8949410f73
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+    env:
+      PKGCONF_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: x86_64-pc-linux-gnu
+
+requirements:
+  build:
+    - gcc ==16.2.0 meta_hb0f4dca_0
+    - binutils ==2.46.1 h8204064_0
+    - sysroot_linux-64 ==2.28 h8204064_0
+
+tests:
+  - package_contents:
+      bin:
+        - pkgconf
+        - pkg-config
+
+  - script:
+      - test "$(readlink "${PREFIX}/bin/pkg-config")" = pkgconf
+      - version_output="$(${PREFIX}/bin/pkgconf --version)"
+      - test "${version_output}" = "${{ version }}"
+      - compatibility_output="$(${PREFIX}/bin/pkg-config --version)"
+      - test "${compatibility_output}" = "${{ version }}"
+      - >-
+        printf '%s\n' "prefix=${PREFIX}" 'Name: devkit-smoke'
+        'Description: pkgconf smoke metadata' 'Version: 1.2.3'
+        "Cflags: -I${PREFIX}/include/devkit-smoke"
+        "Libs: ${PREFIX}/lib/libdevkit-smoke.so" >
+        "${PWD}/devkit-smoke.pc"
+      - export PKG_CONFIG_PATH="${PWD}"
+      - modversion_output="$(${PREFIX}/bin/pkg-config --modversion devkit-smoke)"
+      - test "${modversion_output}" = "1.2.3"
+      - cflags_output="$(${PREFIX}/bin/pkg-config --cflags devkit-smoke)"
+      - test "${cflags_output}" = "-I${PREFIX}/include/devkit-smoke"
+      - libs_output="$(${PREFIX}/bin/pkg-config --libs devkit-smoke)"
+      - test "${libs_output}" = "${PREFIX}/lib/libdevkit-smoke.so"
+
+about:
+  homepage: https://gitea.pkgconf.dev/pkgconf/pkgconf
+  license: ISC
+  license_file: COPYING
+  summary: Package compiler and linker metadata toolkit
+  description: The pkgconf command with a pkg-config compatibility name, used to validate channel package metadata.
+  repository: https://github.com/pkgconf/pkgconf
+  documentation: https://gitea.pkgconf.dev/pkgconf/pkgconf

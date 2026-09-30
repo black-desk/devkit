@@ -45,7 +45,7 @@ git -C "$ROOT" diff --no-renames --name-only --diff-filter=ACDMRT \
 
 while IFS= read -r path; do
   case "$path" in
-    bootstrap-order.json | variants/* | seed-packages.tsv | pixi.toml | pixi.lock | \
+    bootstrap-order.json | variants/* | seed-packages.tsv | \
     scripts/bootstrap.sh | scripts/fetch-seed.sh | scripts/check-seed.sh | scripts/check-result.sh)
       FULL_REBUILD=1
       ;;
