@@ -1,0 +1,3 @@
+SPDX-FileCopyrightText: 2026 Chen Linxuan <me@black_desk.cn>
+
+SPDX-License-Identifier: MIT
