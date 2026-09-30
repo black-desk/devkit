@@ -4,6 +4,12 @@ set -euo pipefail
 ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 PREFIX_CHANNEL="${PREFIX_CHANNEL:-black-desk}"
 
+append_summary() {
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    printf '%s\n' "$1" >>"$GITHUB_STEP_SUMMARY"
+  fi
+}
+
 command -v rattler-build >/dev/null 2>&1 || {
   printf 'error: required tool not found: rattler-build\n' >&2
   exit 1
@@ -28,6 +34,23 @@ printf 'Uploading %d package archive(s) to prefix.dev/%s:\n' \
   "${#archives[@]}" "$PREFIX_CHANNEL"
 for archive in "${archives[@]}"; do
   printf '  - %s\n' "${archive#"$ROOT"/}"
+done
+
+append_summary '## Published packages'
+append_summary ''
+append_summary "- Channel: \`${PREFIX_CHANNEL}\`"
+append_summary "- Uploaded archives: ${#archives[@]}"
+append_summary ''
+append_summary '| Archive | Platform |'
+append_summary '| ------- | -------- |'
+
+for archive in "${archives[@]}"; do
+  case "$archive" in
+    */linux-64/*) platform='linux-64' ;;
+    */noarch/*) platform='noarch' ;;
+    *) platform='unknown' ;;
+  esac
+  append_summary "| \`${archive##*/}\` | \`${platform}\` |"
 done
 
 rattler-build upload prefix \
