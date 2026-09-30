@@ -11,7 +11,14 @@ CONDA_FORGE_CHANNEL="https://prefix.dev/conda-forge"
 PLAN_FILE="${PLAN_FILE:-$ROOT/.build-output/affected-plan.json}"
 CHANGED_FILES_FILE="$(mktemp)"
 CHANGED_RECIPES_FILE="$(mktemp)"
+HEAD_SHA="$(git -C "$ROOT" rev-parse HEAD)"
 trap 'rm -f "$CHANGED_FILES_FILE" "$CHANGED_RECIPES_FILE"' EXIT
+
+append_summary() {
+  if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
+    printf '%s\n' "$1" >>"$GITHUB_STEP_SUMMARY"
+  fi
+}
 
 if (($# != 1)); then
   printf 'usage: %s BASE_SHA\n' "$0" >&2
@@ -75,17 +82,23 @@ fi
 
 if [[ ! -s "$CHANGED_RECIPES_FILE" ]]; then
   printf 'No recipe changes; package build skipped.\n'
+  append_summary '## Affected package builds'
+  append_summary ''
+  append_summary "No recipe changes between \`${BASE_SHA}\` and \`${HEAD_SHA}\`; package build skipped."
   exit 0
 fi
 
 mapfile -t CHANGED_RECIPES <"$CHANGED_RECIPES_FILE"
+BUILT_ORDINARY_RECIPES=()
 
 mkdir -p "$(dirname "$PLAN_FILE")"
 
 BOOTSTRAP_RECIPE_CHANGED=0
 for recipe in "${CHANGED_RECIPES[@]}"; do
-  if jq --arg recipe "$recipe" 'index($recipe) != null' \
-    "$ROOT/bootstrap-order.json" >/dev/null; then
+  if [[ "$(
+    jq --arg recipe "$recipe" 'index($recipe) != null' \
+      "$ROOT/bootstrap-order.json"
+  )" == true ]]; then
     BOOTSTRAP_RECIPE_CHANGED=1
     break
   fi
@@ -115,6 +128,46 @@ BOOTSTRAP_COUNT="$(
 
 printf 'Affected package plan:\n'
 jq . "$PLAN_FILE"
+
+append_summary '## Affected package builds'
+append_summary ''
+append_summary "- Base: \`${BASE_SHA}\`"
+append_summary "- Head: \`${HEAD_SHA}\`"
+append_summary "- Global bootstrap input change: $(
+  if ((FULL_REBUILD)); then
+    printf 'yes'
+  else
+    printf 'no'
+  fi
+)"
+append_summary ''
+append_summary '### Changed recipe roots'
+append_summary ''
+
+for recipe in "${CHANGED_RECIPES[@]}"; do
+  append_summary "- \`${recipe}\`"
+done
+
+append_summary ''
+append_summary '### Rebuild plan'
+append_summary ''
+append_summary '| Package | Recipe | Layer | Reason |'
+append_summary '| ------- | ------ | ----- | ------ |'
+
+while IFS=$'\t' read -r package recipe bootstrap reasons; do
+  layer=ordinary
+  ((bootstrap == 1)) && layer=bootstrap
+  append_summary "| \`${package}\` | \`${recipe#recipes/}\` | ${layer} | ${reasons} |"
+done < <(
+  jq -r '.selected[] | [
+    .package,
+    .recipe,
+    (.bootstrap | if . then 1 else 0 end),
+    (.reasons | join("; "))
+  ] | @tsv' "$PLAN_FILE"
+)
+
+append_summary ''
 
 publish_recipe() {
   local recipe="$1"
@@ -212,6 +265,7 @@ build_selected_ordinary_recipes() {
   for recipe in "${recipes[@]}"; do
     build_recipe "$recipe" \
       "$ROOT/channels/result" "$DEVKIT_CHANNEL" "$CONDA_FORGE_CHANNEL"
+    BUILT_ORDINARY_RECIPES+=("$recipe")
   done
 }
 
@@ -229,5 +283,37 @@ else
     ! -name .gitkeep -exec rm -rf -- {} +
   build_selected_ordinary_recipes
 fi
+
+append_summary ''
+append_summary '### Result'
+append_summary ''
+
+if ((BOOTSTRAP_COUNT > 0)); then
+  append_summary 'The complete bootstrap generation was rebuilt through the fixed point.'
+else
+  append_summary 'No bootstrap recipe was rebuilt.'
+fi
+
+if ((${#BUILT_ORDINARY_RECIPES[@]} == 0)); then
+  append_summary 'No ordinary recipes were rebuilt.'
+else
+  append_summary "Ordinary recipes rebuilt: ${BUILT_ORDINARY_RECIPES[*]}"
+fi
+
+append_summary ''
+append_summary '#### Produced archives'
+append_summary ''
+append_summary '| Archive | Platform |'
+append_summary '| ------- | -------- |'
+
+for subdir in linux-64 noarch; do
+  [[ -d "$ROOT/channels/result/$subdir" ]] || continue
+  while IFS= read -r -d '' archive; do
+    append_summary "| \`${archive##*/}\` | \`${subdir}\` |"
+  done < <(
+    find "$ROOT/channels/result/$subdir" -maxdepth 1 -type f \
+      \( -name '*.conda' -o -name '*.tar.bz2' \) -print0 | sort -z
+  )
+done
 
 printf 'Affected package builds completed.\n'

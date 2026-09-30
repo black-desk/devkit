@@ -583,6 +583,10 @@ The package workflow is deliberately independent of the repository-check
 workflow. Publication is gated by the affected-build result and pull request
 review, not by formatting or generic repository checks.
 
+The package job writes its changed recipe roots, complete rebuild plan, rebuild
+result, and produced archives to the GitHub Actions job summary. After a push to
+`main`, the publication job appends the archives uploaded to prefix.dev.
+
 ## Package roles in the current bootstrap
 
 - `gcc-toolchain` is the coarse compiler carrier. It owns the complete GCC/G++
