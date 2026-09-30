@@ -18,6 +18,8 @@ build:
     binary_relocation: false
   script:
     file: build.sh
+    env:
+      GO_VERSION: ${{ version }}
 
 requirements: {}
 
@@ -27,11 +29,10 @@ tests:
         - go
         - gofmt
       files:
-        - share/go/LICENSE
-        - share/go/VERSION
+        - lib/go/${{ version }}/LICENSE
+        - lib/go/${{ version }}/VERSION
 
   - script:
-      - export GOROOT="${PREFIX}"
       - export GOENV=off
       - export GOWORK=off
       - export GOTOOLCHAIN=local
@@ -40,12 +41,14 @@ tests:
       - export GOCACHE="${PWD}/.go-build-cache"
       - export GOTMPDIR="${PWD}/.go-tmp"
       - mkdir -p "${GOPATH}" "${GOMODCACHE}" "${GOCACHE}" "${GOTMPDIR}"
-      - test -f "${PREFIX}/share/go/LICENSE"
-      - test -f "${PREFIX}/share/go/VERSION"
+      - test -f "${PREFIX}/lib/go/${{ version }}/LICENSE"
+      - test -f "${PREFIX}/lib/go/${{ version }}/VERSION"
       - test ! -e "${PREFIX}/LICENSE"
       - test ! -e "${PREFIX}/VERSION"
+      - test "$(readlink "${PREFIX}/bin/go")" = "../lib/go/${{ version }}/bin/go"
+      - test "$(readlink "${PREFIX}/bin/gofmt")" = "../lib/go/${{ version }}/bin/gofmt"
       - test "$(go version)" = "go version go${{ version }} linux/amd64"
-      - test "$(go env GOROOT)" = "${PREFIX}"
+      - test "$(go env GOROOT)" = "${PREFIX}/lib/go/${{ version }}"
       - CGO_ENABLED=0 go build -trimpath -buildvcs=false -o hello tests/hello.go
       - test "$(./hello)" = hello-go
     files:

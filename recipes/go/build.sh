@@ -12,24 +12,23 @@ fi
 test -x "${source_root}/bin/go"
 test -x "${source_root}/bin/gofmt"
 
-mkdir -p "${PREFIX}"
-cp -a "${source_root}/." "${PREFIX}/"
+: "${GO_VERSION:?rattler-build must provide GO_VERSION}"
 
-# Normalize collision-prone top-level distribution metadata into the package's
-# share directory. Keep go.env at the GOROOT root because it is functional Go
-# configuration rather than distribution documentation.
-metadata_dir="${PREFIX}/share/go"
-mkdir -p "${metadata_dir}"
-for file in CONTRIBUTING.md LICENSE PATENTS README.md SECURITY.md VERSION codereview.cfg; do
-  if [[ -f "${PREFIX}/${file}" ]]; then
-    mv "${PREFIX}/${file}" "${metadata_dir}/${file}"
-  fi
-done
+goroot="${PREFIX}/lib/go/${GO_VERSION}"
+mkdir -p "${goroot}" "${PREFIX}/bin"
+cp -a "${source_root}/." "${goroot}/"
+
+# Keep the command-line interface in the conventional bin directory while
+# retaining the official GOROOT layout below a versioned package directory.
+# Linux resolves the executable to its real target, so the go command discovers
+# this versioned GOROOT without embedding or wrapping it.
+ln -s "../lib/go/${GO_VERSION}/bin/go" "${PREFIX}/bin/go"
+ln -s "../lib/go/${GO_VERSION}/bin/gofmt" "${PREFIX}/bin/gofmt"
 
 # Rattler-Build places its generated source/build bookkeeping in the work
 # directory. Do not turn those files into part of the Go distribution.
 rm -f \
-  "${PREFIX}/.source_info.json" \
-  "${PREFIX}/build_env.sh" \
-  "${PREFIX}/conda_build.sh" \
-  "${PREFIX}/conda_build.log"
+  "${goroot}/.source_info.json" \
+  "${goroot}/build_env.sh" \
+  "${goroot}/conda_build.sh" \
+  "${goroot}/conda_build.log"
