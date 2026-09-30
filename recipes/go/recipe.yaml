@@ -1,0 +1,58 @@
+schema_version: 1
+
+context:
+  version: "1.27.1"
+
+package:
+  name: go
+  version: ${{ version }}
+
+source:
+  url: https://go.dev/dl/go${{ version }}.linux-amd64.tar.gz
+  sha256: 63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+
+requirements: {}
+
+tests:
+  - package_contents:
+      bin:
+        - go
+        - gofmt
+      files:
+        - LICENSE
+        - VERSION
+
+  - script:
+      - export GOROOT="${PREFIX}"
+      - export GOENV=off
+      - export GOWORK=off
+      - export GOTOOLCHAIN=local
+      - export GOPATH="${PWD}/.go-path"
+      - export GOMODCACHE="${PWD}/.go-mod-cache"
+      - export GOCACHE="${PWD}/.go-build-cache"
+      - export GOTMPDIR="${PWD}/.go-tmp"
+      - mkdir -p "${GOPATH}" "${GOMODCACHE}" "${GOCACHE}" "${GOTMPDIR}"
+      - test "$(go version)" = "go version go${{ version }} linux/amd64"
+      - test "$(go env GOROOT)" = "${PREFIX}"
+      - CGO_ENABLED=0 go build -trimpath -buildvcs=false -o hello tests/hello.go
+      - test "$(./hello)" = hello-go
+    files:
+      recipe:
+        - tests/
+
+about:
+  homepage: https://go.dev/
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: The Go programming language distribution
+  description: An exact repack of the official Go linux-amd64 distribution for the devkit channel.
+  repository: https://github.com/golang/go
+  documentation: https://go.dev/doc/

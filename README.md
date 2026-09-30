@@ -59,10 +59,11 @@ The current seed contains 22 archives, principally GCC/G++ 14.4.0, binutils
 headers, gnuconfig, and their metadata dependencies. Exact URLs, sizes, and
 SHA-256 hashes are recorded in `seed-packages.tsv`.
 
-Everything outside bootstrap proper is still incomplete: there are not yet
-normal-tool recipes, macOS builds, or a release promotion process. The Linux
-package workflow now has an initial affected-build scheduler for the current
-bootstrap recipes.
+The first ordinary toolchain input is an exact `go` repack of the official
+Linux/amd64 distribution. Aside from that input, normal-tool recipes, macOS
+builds, and a release promotion process are still incomplete. The Linux package
+workflow has an initial affected-build scheduler for the current bootstrap
+recipes and the Go package.
 
 ## Design goals
 
@@ -98,6 +99,7 @@ recipes/
   make/                 GNU Make carrier
   gnuconfig/            Pinned config.guess and config.sub
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
+  go/                    Exact official Go linux-amd64 distribution repack
 
 variants/
   dirty.yaml            Seed-compatible bootstrap variant
