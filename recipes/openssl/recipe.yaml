@@ -1,0 +1,107 @@
+schema_version: 1
+
+context:
+  version: "3.5.9"
+
+package:
+  name: openssl
+  version: ${{ version }}
+
+source:
+  url: https://github.com/openssl/openssl/releases/download/openssl-${{ version }}/openssl-${{ version }}.tar.gz
+  sha256: 603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+    env:
+      OPENSSL_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: x86_64-pc-linux-gnu
+
+requirements:
+  build:
+    - gcc ==16.2.0 meta_hb0f4dca_0
+    - binutils ==2.46.1 h8204064_0
+    - make ==4.4.1 h8204064_0
+    - perl ==5.44.0 hb0f4dca_0
+    - sysroot_linux-64 ==2.28 h8204064_0
+  run:
+    - ca-certificates >=2026.09.25
+  run_exports:
+    strong:
+      - openssl >=3.5.9,<4
+
+tests:
+  - package_contents:
+      files:
+        - bin/openssl
+        - include/openssl-${{ version }}/openssl/ssl.h
+        - include/openssl-${{ version }}/openssl/crypto.h
+        - include/openssl-${{ version }}/openssl/opensslv.h
+        - etc/ssl/openssl.cnf
+        - lib/libssl.so
+        - lib/libssl.so.3
+        - lib/libcrypto.so
+        - lib/libcrypto.so.3
+        - lib/pkgconfig/openssl.pc
+        - lib/pkgconfig/libssl.pc
+        - lib/pkgconfig/libcrypto.pc
+        - lib/cmake/OpenSSL/OpenSSLConfig.cmake
+        - lib/ossl-modules/legacy.so
+
+  - script:
+      - >-
+        test "$(command -v pkg-config)" = "${PREFIX}/bin/pkg-config"
+      - >-
+        "${PREFIX}/bin/openssl" version | grep -F "OpenSSL ${{ version }}"
+      - >-
+        test "$("${PREFIX}/bin/openssl" version -d)" =
+        "OPENSSLDIR: \"${PREFIX}/etc/ssl\""
+      - >-
+        test "$("${PREFIX}/bin/openssl" version -m)" =
+        "MODULESDIR: \"${PREFIX}/lib/ossl-modules\""
+      - >-
+        test "$(readlink "${PREFIX}/etc/ssl/cert.pem")" =
+        "certs/ca-certificates.crt"
+      - >-
+        test -f "${PREFIX}/etc/ssl/certs/ca-certificates.crt"
+      - >-
+        "${PREFIX}/bin/openssl" list -providers | grep -F default
+      - >-
+        "${PREFIX}/bin/openssl" list -providers -provider legacy |
+        grep -F legacy
+      - export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+      - pc_path="$("${PREFIX}/bin/pkg-config" --path libssl)"
+      - cflags="$("${PREFIX}/bin/pkg-config" --cflags libssl)"
+      - cflags="${cflags% }"
+      - >-
+        test "$cflags" =
+        "-I$(dirname "$pc_path")/../../include/openssl-${{ version }}"
+      - libs="$("${PREFIX}/bin/pkg-config" --libs libssl)"
+      - libs="${libs% }"
+      - test "$libs" = "$(dirname "$pc_path")/../../lib/libssl.so"
+      - >-
+        test "$("${PREFIX}/bin/pkg-config" --modversion libssl)" =
+        "${{ version }}"
+      - crypto_libs="$("${PREFIX}/bin/pkg-config" --libs libcrypto)"
+      - crypto_libs="${crypto_libs% }"
+      - test "$crypto_libs" = "$(dirname "$pc_path")/../../lib/libcrypto.so"
+      - test ! -e "${PREFIX}/include/openssl"
+      - test ! -e "${PREFIX}/bin/c_rehash"
+      - >-
+        grep -F 'set(OPENSSL_INCLUDE_DIR "${_ossl_prefix}/include/openssl-${{
+        version }}")' "${PREFIX}/lib/cmake/OpenSSL/OpenSSLConfig.cmake"
+    requirements:
+      run:
+        - pkgconf ==3.0.7 hb0f4dca_0
+
+about:
+  homepage: https://openssl-library.org/
+  license: Apache-2.0
+  license_file: LICENSE.txt
+  summary: TLS and cryptography library
+  description: The OpenSSL TLS and cryptography libraries used by Git's HTTPS transports.
+  repository: https://github.com/openssl/openssl
+  documentation: https://docs.openssl.org/
