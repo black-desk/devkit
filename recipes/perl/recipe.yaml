@@ -1,0 +1,75 @@
+schema_version: 1
+
+context:
+  version: "5.44.0"
+
+package:
+  name: perl
+  version: ${{ version }}
+
+source:
+  url: https://www.cpan.org/src/5.0/perl-${{ version }}.tar.xz
+  sha256: 505cf43912e9480495c344c70260452e32aa2a73c546a026b3f100053b23ce91
+  patches:
+    - patches/deterministic-remote-debugger-port.patch
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+    env:
+      PERL_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: x86_64-pc-linux-gnu
+
+requirements:
+  build:
+    - gcc ==16.2.0 meta_hb0f4dca_0
+    - binutils ==2.46.1 h8204064_0
+    - make ==4.4.1 h8204064_0
+    - sysroot_linux-64 ==2.28 h8204064_0
+
+tests:
+  - package_contents:
+      bin:
+        - perl
+        - pod2text
+        - perlbug
+      files:
+        - lib/perl5/${{ version }}/x86_64-linux-thread-multi/Config.pm
+
+  - script:
+      - test "$(command -v perl)" = "${PREFIX}/bin/perl"
+      - perl -v | grep -F "v${{ version }}"
+      - perl -e 'print "perl-ok\n"'
+      - perl -Mstrict -Mwarnings -e 'print "core-modules-ok\n"'
+      - >-
+        perl -MPOSIX -MSocket -MStorable -MTest::More -e 'print
+        "dynamic-modules-ok\n"'
+      - >-
+        perl -e 'print "$_\n" for @INC' | grep -F
+        "${PREFIX}/lib/perl5/${{ version }}/"
+      - test "$(perl -V:usethreads)" = "usethreads='define';"
+      - >-
+        test "$(perl -V:userelocatableinc)" =
+        "userelocatableinc='define';"
+      - test "$(perl -V:cf_by)" = "cf_by='black-desk';"
+      # Config{sysroot} is XS-extension build metadata, not a dependency of
+      # pure-Perl execution. It resolves beside the active interpreter; code
+      # compiling XS modules must explicitly use the channel compiler and
+      # sysroot packages rather than relying on the host-integrating gcc
+      # default.
+      - >-
+        test "$(perl -V:sysroot)" =
+        "sysroot='${PREFIX}/x86_64-pc-linux-gnu/sysroot';"
+
+about:
+  homepage: https://www.perl.org/
+  license: GPL-1.0-or-later OR Artistic-1.0-Perl
+  license_file:
+    - Artistic
+    - Copying
+  summary: The Perl 5 programming language interpreter
+  description: A relocatable Perl interpreter and core module set used by OpenSSL and Git builds.
+  repository: https://github.com/Perl/perl5
+  documentation: https://www.perl.org/docs.html

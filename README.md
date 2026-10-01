@@ -74,7 +74,9 @@ for the current bootstrap recipes and these ordinary packages.
 
 The first independent Git dependencies are packaged as ordinary C libraries with
 isolated headers: `zlib`, `pcre2`, and `expat`. The pinned Mozilla CA bundle is
-packaged separately as `ca-certificates` for later HTTPS support.
+packaged separately as `ca-certificates` for later HTTPS support. OpenSSL's
+Perl-based build system will use a local `perl` interpreter rather than a host
+tool.
 
 ## Design goals
 
@@ -111,6 +113,7 @@ recipes/
   expat/                Stream-oriented XML parser library
   make/                 GNU Make carrier
   gnuconfig/            Pinned config.guess and config.sub
+  perl/                 Perl interpreter and core modules
   pcre2/                Perl-compatible regular expression library
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
@@ -177,6 +180,7 @@ recipes/
   make/
   neovim/
   notmuch/
+  perl/
   pkgconf/
   pcre2/
   python/

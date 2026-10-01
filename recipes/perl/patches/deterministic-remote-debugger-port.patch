@@ -1,0 +1,5 @@
+--- a/lib/perl5db.t
++++ b/lib/perl5db.t
+@@ -3085 +3085 @@
+-    local $ENV{PERLDB_OPTS} = "NonStop=0 RemotePort=non-existent-host.tld:9001";
++    local $ENV{PERLDB_OPTS} = "NonStop=0 RemotePort=127.0.0.1:1";
