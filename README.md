@@ -73,10 +73,9 @@ for the current bootstrap recipes and these ordinary packages.
 `difftastic` is also built from the locked Rust toolchain input.
 
 The first independent Git dependencies are packaged as ordinary C libraries with
-isolated headers: `zlib`, `pcre2`, and `expat`. The pinned Mozilla CA bundle is
-packaged separately as `ca-certificates` for later HTTPS support. OpenSSL's
-Perl-based build system will use a local `perl` interpreter rather than a host
-tool.
+isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
+bundle is packaged separately as `ca-certificates` for HTTPS support. OpenSSL's
+Perl-based build system uses the local `perl` interpreter.
 
 ## Design goals
 
@@ -113,8 +112,9 @@ recipes/
   expat/                Stream-oriented XML parser library
   make/                 GNU Make carrier
   gnuconfig/            Pinned config.guess and config.sub
-  perl/                 Perl interpreter and core modules
+  openssl/              TLS and cryptography library
   pcre2/                Perl-compatible regular expression library
+  perl/                 Perl interpreter and core modules
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
@@ -180,9 +180,10 @@ recipes/
   make/
   neovim/
   notmuch/
+  openssl/
+  pcre2/
   perl/
   pkgconf/
-  pcre2/
   python/
   ripgrep/
   rust-toolchain-lock/
