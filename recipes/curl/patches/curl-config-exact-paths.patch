@@ -1,0 +1,73 @@
+--- a/curl-config.in
++++ b/curl-config.in
+@@ -25,12 +25,14 @@
+
+ # shellcheck disable=SC2006
+
+-prefix='@prefix@'
++script_dir="$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)"
++prefix="$(CDPATH='' cd -- "${script_dir}/../../.." && pwd)"
+ # Used in 'libdir'
+ # shellcheck disable=SC2034
+-exec_prefix="@exec_prefix@"
++exec_prefix="${prefix}"
+ # shellcheck disable=SC2034
+-includedir="@includedir@"
++includedir="${prefix}/include/curl-@CURLVERSION@"
++libdir="${prefix}/lib"
+
+ usage()
+ {
+@@ -70,11 +72,11 @@
+     ;;
+
+   --ca)
+-    echo '@CURL_CA_BUNDLE@'
++    echo "${prefix}/etc/ssl/certs/ca-certificates.crt"
+     ;;
+
+   --cc)
+-    echo '@CC@'
++    echo "${prefix}/bin/gcc"
+     ;;
+
+   --prefix)
+@@ -141,23 +143,19 @@
+     ;;
+
+   --cflags)
+-    if test "@includedir@" = '/usr/include'; then
+-      echo '@LIBCURL_PC_CFLAGS@'
++    cflags='@LIBCURL_PC_CFLAGS@'
++    if test -n "$cflags"; then
++      echo "$cflags -I${includedir}"
+     else
+-      echo "@LIBCURL_PC_CFLAGS@ -I@includedir@"
++      echo "-I${includedir}"
+     fi
+     ;;
+
+   --libs)
+-    if test "@libdir@" != '/usr/lib' && test "@libdir@" != '/usr/lib64'; then
+-      curllibdir="-L@libdir@ "
+-    else
+-      curllibdir=''
+-    fi
+     if test '@ENABLE_SHARED@' = 'no'; then
+-      echo "${curllibdir}-lcurl @LIBCURL_PC_LIBS_PRIVATE@"
++      echo "${libdir}/libcurl.a ${libdir}/libssl.a ${libdir}/libcrypto.a ${libdir}/libz.a -ldl -pthread"
+     else
+-      echo "${curllibdir}-lcurl"
++      echo "${libdir}/libcurl.so"
+     fi
+     ;;
+
+@@ -167,7 +165,7 @@
+
+   --static-libs)
+     if test '@ENABLE_STATIC@' != 'no'; then
+-      echo "@libdir@/libcurl.@libext@ @LIBCURL_PC_LDFLAGS_PRIVATE@ @LIBCURL_PC_LIBS_PRIVATE@"
++      echo "${libdir}/libcurl.a ${libdir}/libssl.a ${libdir}/libcrypto.a ${libdir}/libz.a -ldl -pthread"
+     else
+       echo 'curl was built with static libraries disabled' >&2
+       exit 1
