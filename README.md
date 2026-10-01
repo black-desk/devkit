@@ -77,6 +77,14 @@ isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
 bundle is packaged separately as `ca-certificates` for HTTPS support. OpenSSL's
 Perl-based build system uses the local `perl` interpreter.
 
+During channel bring-up, recipes favor completing the applications that the
+channel is intended to provide over exhaustively enabling every upstream
+optional feature. Library recipes select the smallest explicit dependency set
+needed by those applications and disable unsupported extras. A later release
+line will review each library's build options individually; that review must
+record the chosen options and use the normal version/build-number and affected
+rebuild process.
+
 ## Design goals
 
 - Keep the bootstrap fixed-point explicit and auditable.
