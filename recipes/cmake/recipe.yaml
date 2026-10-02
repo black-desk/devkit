@@ -1,0 +1,96 @@
+schema_version: 1
+
+context:
+  version: "3.31.8"
+  openssl_version: "3.5.9"
+
+package:
+  name: cmake
+  version: ${{ version }}
+
+source:
+  url: https://github.com/Kitware/CMake/releases/download/v${{ version }}/cmake-${{ version }}.tar.gz
+  sha256: e3cde3ca83dc2d3212105326b8f1b565116be808394384007e7ef1c253af6caa
+  patches:
+    - patches/bootstrap-exclude-ghs-generator.patch
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+    env:
+      CMAKE_VERSION: ${{ version }}
+      OPENSSL_VERSION: ${{ openssl_version }}
+      SYSROOT_TRIPLET: x86_64-pc-linux-gnu
+
+requirements:
+  build:
+    - gxx ==16.2.0 meta_h1da33c7_0
+    - binutils ==2.46.1 h8204064_0
+    - make ==4.4.1 h8204064_0
+    - openssl ==3.5.9 hb0f4dca_0
+    - pkgconf ==3.0.7 hb0f4dca_0
+    - sysroot_linux-64 ==2.28 h8204064_0
+  run:
+    - gxx ==16.2.0 meta_h1da33c7_0
+    - openssl >=3.5.9,<4
+
+tests:
+  - package_contents:
+      bin:
+        - cmake
+        - cpack
+        - ctest
+      files:
+        - doc/cmake-3.31/Copyright.txt
+
+  - script:
+      - test "$(command -v cmake)" = "${PREFIX}/bin/cmake"
+      - test "$("${PREFIX}/bin/cmake" --version | head -n 1)" = "cmake version ${{ version }}"
+      - test "$("${PREFIX}/bin/ctest" --version | head -n 1)" = "ctest version ${{ version }}"
+      - test "$("${PREFIX}/bin/cpack" --version | head -n 1)" = "cpack version ${{ version }}"
+      - SYSROOT="${PREFIX}/x86_64-pc-linux-gnu/sysroot"
+      - test -d "${SYSROOT}"
+      - >-
+        "${PREFIX}/bin/cmake" -S tests -B "${PWD}/build"
+        -G "Unix Makefiles"
+        -D CMAKE_C_COMPILER="${PREFIX}/bin/gcc"
+        -D CMAKE_CXX_COMPILER="${PREFIX}/bin/g++"
+        -D CMAKE_C_FLAGS="--sysroot=${SYSROOT} -O2 -pipe"
+        -D CMAKE_CXX_FLAGS="--sysroot=${SYSROOT} -O2 -pipe"
+        -D CMAKE_EXE_LINKER_FLAGS="--sysroot=${SYSROOT}"
+        -D CMAKE_BUILD_TYPE=Release
+      - >-
+        "${PREFIX}/bin/cmake" --build "${PWD}/build"
+        --parallel "${CPU_COUNT}"
+      - test "$(${PWD}/build/devkit-cmake-test)" = "hello-cmake"
+      - >-
+        "${PREFIX}/bin/ctest" --test-dir "${PWD}/build"
+        --output-on-failure
+      - cmake_dependencies="$(ldd "${PREFIX}/bin/cmake")"
+      - >-
+        echo "$cmake_dependencies" | grep -F 'libssl.so.3 =>' |
+        grep -F "${PREFIX}/"
+      - >-
+        echo "$cmake_dependencies" | grep -F 'libcrypto.so.3 =>' |
+        grep -F "${PREFIX}/"
+      - >-
+        echo "$cmake_dependencies" | grep -F 'libstdc++.so.6 =>' |
+        grep -F "${PREFIX}/"
+    requirements:
+      run:
+        - make ==4.4.1 h8204064_0
+        - sysroot_linux-64 ==2.28 h8204064_0
+    files:
+      recipe:
+        - tests/
+
+about:
+  homepage: https://cmake.org/
+  license: BSD-3-Clause
+  license_file: Copyright.txt
+  summary: Cross-platform build system generator
+  description: The CMake build system generator built with the devkit compiler toolchain.
+  repository: https://gitlab.kitware.com/cmake/cmake
+  documentation: https://cmake.org/cmake/help/latest/
