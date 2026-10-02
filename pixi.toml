@@ -13,8 +13,6 @@ coreutils = "*"
 cpio = "*"
 rpm-tools = "*"
 uv = ">=0.12.20,<0.13"
-meson = ">=1.6,<2"
-ninja = ">=1.12,<2"
 
 [tasks]
 bootstrap = "bash scripts/bootstrap.sh"
