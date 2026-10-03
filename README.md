@@ -83,6 +83,15 @@ bundled Python download metadata. The Linux binaries use the host glibc and
 `libgcc_s.so.1`; their required symbol versions are no newer than `GLIBC_2.28`
 and `GCC_4.2.0`.
 
+The `python` recipe packages CPython 3.14.8 from the `python-build-standalone`
+20261001 release. Rattler-Build verifies the pinned archive, then uv 0.12.22
+installs it from a local mirror without network access. The distribution stays
+under `lib/uv-python/`, with `python`, `python3`, and `python3.14` exposed in
+`bin/`. It retains the bundled standard library, headers, shared Python library,
+and pip; uv is a build dependency only. Package tests check relocated
+interpreter and sysconfig paths, native standard library modules, virtual
+environments with pip, and offline uv tool installation.
+
 The first independent Git dependencies are packaged as ordinary C libraries with
 isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
 bundle is packaged separately as `ca-certificates` for HTTPS support. OpenSSL's
@@ -152,6 +161,7 @@ recipes/
   difftastic/            Syntax-aware structural diff tool
   pkgconf/               pkg-config-compatible metadata query tool
   rustup/                Official Rust toolchain manager binary repack
+  python/                CPython standalone distribution installed by uv
   uv/                    Python package, tool, and interpreter manager
   zlib/                  General-purpose compression library
 
@@ -332,8 +342,8 @@ compiler, SDK, and minimum host interface choices have not been fixed yet.
 
 ## Language toolchain policy
 
-The Go distribution, rustup manager, Rust toolchain lock, and uv recipes are
-current. Their detailed consumer policies and the remaining language-runtime
+The Go distribution, rustup manager, Rust toolchain lock, Python, and uv recipes
+are current. Their detailed consumer policies and the remaining language-runtime
 recipes below are target design unless a current recipe says otherwise.
 
 External language toolchains are exact inputs to CI builds. Finished native
@@ -396,11 +406,24 @@ toolchain nor its module/build caches become runtime dependencies.
 
 ### Python
 
-The planned canonical `python` runtime package uses `uv python install` with
-`UV_PYTHON_INSTALL_DIR` below the package prefix and `UV_PYTHON_BIN_DIR` set to
-`$PREFIX/bin`. Its inputs must pin the Python version, the
-`python-build-standalone` build date (`UV_PYTHON_CPYTHON_BUILD`), the uv
-version, and the download checksum or download metadata.
+The canonical `python` runtime package uses `uv python install` with
+`UV_PYTHON_INSTALL_DIR=$PREFIX/lib/uv-python` and
+`UV_PYTHON_BIN_DIR=$PREFIX/bin`. The recipe pins Python 3.14.8, the
+`python-build-standalone` build date 20261001 (`UV_PYTHON_CPYTHON_BUILD`), uv
+0.12.22, and the release archive's SHA-256. An explicit source `file_name`
+preserves the archive for uv, which installs it offline through a local
+`UV_PYTHON_INSTALL_MIRROR`.
+
+The upstream runtime layout and bundled libraries are retained; its
+`sys.prefix`, headers, and site-packages live inside the versioned distribution,
+not directly at the conda prefix. OpenSSL uses the upstream system certificate
+paths, with the usual `SSL_CERT_FILE` and `SSL_CERT_DIR` overrides. The PEP 668
+marker identifies the devkit conda channel as the runtime's owner. Use virtual
+environments for Python packages; the public `bin/` entries are the three Python
+interpreter names, while bundled pip is available as `python -m pip`. Manager
+lock files and caches are excluded. Binary relocation is disabled to preserve
+the standalone distribution's loader paths; conda still handles prefix text and
+symlink relocation.
 
 Python tool recipes will use `uv tool install` to create private environments
 below the package prefix, with exact per-platform constraints for the tool and

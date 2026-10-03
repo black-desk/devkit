@@ -1,0 +1,80 @@
+schema_version: 1
+
+context:
+  version: "3.14.8"
+  python_minor: "3.14"
+  standalone_build: "20261001"
+  archive: cpython-${{ version }}+${{ standalone_build }}-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz
+  install_key: cpython-${{ version }}-linux-x86_64-gnu
+
+package:
+  name: python
+  version: ${{ version }}
+
+source:
+  url: https://github.com/astral-sh/python-build-standalone/releases/download/${{ standalone_build }}/${{ archive }}
+  sha256: b373a4a4e4e70fc05f368c9b53d7738bf37637682b650d96c742805d2da26c32
+  # An explicit file_name preserves the archive for uv to unpack itself.
+  file_name: ${{ archive }}
+  target_directory: ${{ standalone_build }}
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      PYTHON_VERSION: ${{ version }}
+      PYTHON_MINOR: ${{ python_minor }}
+      PYTHON_INSTALL_KEY: ${{ install_key }}
+      PYTHON_STANDALONE_BUILD: ${{ standalone_build }}
+
+requirements:
+  build:
+    - uv ==0.12.22
+
+tests:
+  - package_contents:
+      bin:
+        - python
+        - python3
+        - python${{ python_minor }}
+      files:
+        - lib/uv-python/${{ install_key }}/BUILD
+        - lib/uv-python/${{ install_key }}/include/python${{ python_minor }}/Python.h
+        - lib/uv-python/${{ install_key }}/lib/libpython${{ python_minor }}.so.1.0
+        - lib/uv-python/${{ install_key }}/lib/python${{ python_minor }}/LICENSE.txt
+        - lib/uv-python/${{ install_key }}/lib/python${{ python_minor }}/EXTERNALLY-MANAGED
+
+  - script:
+      - test "$(python --version)" = "Python ${{ version }}"
+      - test "$(python3 --version)" = "Python ${{ version }}"
+      - test "$(python${{ python_minor }} --version)" = "Python ${{ version }}"
+      - python -I tests/runtime.py
+      - python -I -m venv venv
+      - venv/bin/python -I -c 'import sys; assert sys.prefix != sys.base_prefix'
+      - venv/bin/python -I -m pip --version
+    files:
+      recipe:
+        - tests/runtime.py
+
+  - script:
+      - bash tests/uv-tools.sh
+    requirements:
+      run:
+        - uv ==0.12.22
+    files:
+      recipe:
+        - tests/uv-tools.sh
+        - tests/make-wheel.py
+
+about:
+  homepage: https://www.python.org/
+  license: Python-2.0
+  license_file: LICENSE.txt
+  summary: The Python programming language runtime
+  description: CPython installed offline by uv from a pinned python-build-standalone archive, with its relocatable distribution retained under the package prefix.
+  repository: https://github.com/python/cpython
+  documentation: https://docs.python.org/3.14/
