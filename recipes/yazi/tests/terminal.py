@@ -8,8 +8,12 @@ import signal
 import struct
 import subprocess
 import termios
+import tempfile
 import time
 
+# Keep the Unix socket private and below the platform's socket path limit.
+runtime_dir = tempfile.TemporaryDirectory(prefix="devkit-yazi-", dir="/tmp")
+os.environ["XDG_RUNTIME_DIR"] = runtime_dir.name
 root = Path.cwd()
 for name in ("config", "cache", "state", "data"):
     path = root / name
@@ -70,4 +74,5 @@ finally:
         os.kill(pid, signal.SIGKILL)
         os.waitpid(pid, 0)
     os.close(terminal)
+    runtime_dir.cleanup()
 print("Yazi terminal startup, file listing, ya IPC, and clean exit passed")

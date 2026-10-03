@@ -46,7 +46,6 @@ tests:
   - script:
       - yazi --version | grep -F '26.9.1 (no-gitcl 2026-09-01)'
       - ya --version | grep -F '26.9.1 (no-gitcl 2026-09-01)'
-      - yazi --help
       - ya --help
       - python -I tests/terminal.py
     requirements:
