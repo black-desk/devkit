@@ -10,5 +10,9 @@ libs="$(pkg-config --libs libffi)"
 [[ " $libs " != *" -L${PREFIX}/lib "* ]]
 gcc $cflags tests/consumer.c $libs -Wl,-rpath,"${PREFIX}/lib" -o consumer
 ./consumer
-ldd ./consumer >linked.txt
-grep -F "${PREFIX}/lib/libffi.so" linked.txt
+ldd ./consumer | tee linked.txt
+for library in libffi.so.8; do
+	resolved="$(awk -v name="$library" '$1 == name {print $3}' linked.txt)"
+	test -n "$resolved"
+	test "$(realpath "$resolved")" = "$(realpath "${PREFIX}/lib/$library")"
+done

@@ -10,11 +10,12 @@ libs="$(pkg-config --libs gio-2.0 gobject-2.0)"
 [[ " $libs " != *" -L${PREFIX}/lib "* ]]
 gcc $cflags tests/consumer.c $libs -Wl,-rpath,"${PREFIX}/lib" -o consumer
 ./consumer
-ldd ./consumer >linked.txt
-grep -F "${PREFIX}/lib/libglib-2.0.so" linked.txt
-grep -F "${PREFIX}/lib/libffi.so" linked.txt
-grep -F "${PREFIX}/lib/libpcre2-8.so" linked.txt
-grep -F "${PREFIX}/lib/libz.so" linked.txt
 gdbus-codegen --help
 glib-mkenums --version
 glib-compile-resources --version
+ldd ./consumer | tee linked.txt
+for library in libglib-2.0.so.0 libgobject-2.0.so.0 libgio-2.0.so.0 libffi.so.8 libpcre2-8.so.0 libz.so.1; do
+	resolved="$(awk -v name="$library" '$1 == name {print $3}' linked.txt)"
+	test -n "$resolved"
+	test "$(realpath "$resolved")" = "$(realpath "${PREFIX}/lib/$library")"
+done

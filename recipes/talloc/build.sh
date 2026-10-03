@@ -14,6 +14,7 @@ export PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig:${PREFIX}/share/pkgconfig"
 export PKG_CONFIG_PATH="${PKG_CONFIG_LIBDIR}"
 export LD_LIBRARY_PATH="${PREFIX}/lib:${BUILD_PREFIX}/lib"
 
+export PYTHONHASHSEED=1
 python buildtools/bin/waf configure --prefix="${PREFIX}" \
 	--libdir="${PREFIX}/lib" --includedir="${PREFIX}/include/talloc-${PKG_VERSION}" \
 	--disable-python --without-gettext

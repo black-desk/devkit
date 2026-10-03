@@ -10,10 +10,6 @@ libs="$(pkg-config --libs xapian-core)"
 [[ " $libs " != *" -L${PREFIX}/lib "* ]]
 g++ $cflags tests/consumer.cpp $libs -Wl,-rpath,"${PREFIX}/lib" -o consumer
 ./consumer
-ldd ./consumer >linked.txt
-grep -F "${PREFIX}/lib/libxapian.so" linked.txt
-grep -F "${PREFIX}/lib/libstdc++.so" linked.txt
-grep -F "${PREFIX}/lib/libz.so" linked.txt
 config="${PREFIX}/libexec/xapian/bin/xapian-config"
 test ! -e "${PREFIX}/bin/xapian-config"
 test "$("$config" --version)" = 'xapian-config - xapian-core 1.4.32'
@@ -22,3 +18,9 @@ test "$("$config" --libs)" = "${PREFIX}/lib/libxapian.so"
 test "$("$config" --ltlibs)" = "${PREFIX}/lib/libxapian.so"
 g++ $("$config" --cxxflags) tests/consumer.cpp $("$config" --libs) -Wl,-rpath,"${PREFIX}/lib" -o consumer-config
 ./consumer-config
+ldd ./consumer | tee linked.txt
+for library in libxapian.so.30 libstdc++.so.6 libz.so.1; do
+	resolved="$(awk -v name="$library" '$1 == name {print $3}' linked.txt)"
+	test -n "$resolved"
+	test "$(realpath "$resolved")" = "$(realpath "${PREFIX}/lib/$library")"
+done

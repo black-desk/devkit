@@ -42,5 +42,5 @@ tests:
 about:
   homepage: https://talloc.samba.org/
   license: LGPL-3.0-or-later
-  license_file: talloc.h
+  license_file: LICENSE
   summary: Hierarchical memory allocator with destructors

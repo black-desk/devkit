@@ -10,5 +10,9 @@ libs="$(pkg-config --libs talloc)"
 [[ " $libs " != *" -L${PREFIX}/lib "* ]]
 gcc $cflags tests/consumer.c $libs -Wl,-rpath,"${PREFIX}/lib" -o consumer
 ./consumer
-ldd ./consumer >linked.txt
-grep -F "${PREFIX}/lib/libtalloc.so" linked.txt
+ldd ./consumer | tee linked.txt
+for library in libtalloc.so.2; do
+	resolved="$(awk -v name="$library" '$1 == name {print $3}' linked.txt)"
+	test -n "$resolved"
+	test "$(realpath "$resolved")" = "$(realpath "${PREFIX}/lib/$library")"
+done
