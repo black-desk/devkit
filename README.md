@@ -92,6 +92,21 @@ and pip; uv is a build dependency only. Package tests check relocated
 interpreter and sysconfig paths, native standard library modules, virtual
 environments with pip, and offline uv tool installation.
 
+The `b4` recipe packages b4 0.16.0 as the first private Python tool environment.
+It installs offline with uv 0.12.22 under `share/devkit/python-tools/b4`, with a
+relative `bin/b4` symlink and exact Python 3.14.8 runtime dependency. Git is
+also a runtime dependency. All 15 runtime distributions and the setuptools
+84.0.0 build backend are pinned; Rattler-Build verifies each input's SHA-256
+before uv runs. Only dkimpy 1.1.8 comes from an sdist: setuptools packages its
+Python files without a native compiler. Other inputs use upstream wheels,
+including the native pygit2, PyNaCl, CFFI, and charset-normalizer extensions.
+Their bundled libraries and relative RPATHs are retained, with a glibc 2.28
+minimum. Tests cover relocated interpreter/receipt paths, dependency versions,
+native Git and signing operations, isolation from normal uv tool management, and
+an offline `git format-patch` → `b4 am` → `git am` workflow. Optional
+completion/TUI extras, OpenPGP via GnuPG, and git-bug integration are not
+included.
+
 The first independent Git dependencies are packaged as ordinary C libraries with
 isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
 bundle is packaged separately as `ca-certificates` for HTTPS support. OpenSSL's
@@ -161,6 +176,7 @@ recipes/
   difftastic/            Syntax-aware structural diff tool
   pkgconf/               pkg-config-compatible metadata query tool
   rustup/                Official Rust toolchain manager binary repack
+  b4/                    Mailing-list patch tools in a private uv environment
   python/                CPython standalone distribution installed by uv
   uv/                    Python package, tool, and interpreter manager
   zlib/                  General-purpose compression library
@@ -425,9 +441,14 @@ lock files and caches are excluded. Binary relocation is disabled to preserve
 the standalone distribution's loader paths; conda still handles prefix text and
 symlink relocation.
 
-Python tool recipes will use `uv tool install` to create private environments
-below the package prefix, with exact per-platform constraints for the tool and
-all transitive dependencies. The intended build-local configuration is:
+Python tool recipes use `uv tool install` to create private environments below
+the package prefix, with exact per-platform constraints for the tool and all
+transitive dependencies. `recipes/b4/` implements this for Linux x86_64, using
+SHA-256-pinned local artifacts and a pinned build backend. When updating b4,
+update `requirements.lock`, `build-constraints.txt`, and the corresponding
+URLs/hashes in `recipe.yaml` together. Native wheel tags must remain compatible
+with the packaged Python and the glibc 2.28 floor. The build-local configuration
+follows this pattern:
 
 ```bash
 export UV_CACHE_DIR="${SRC_DIR}/.uv-cache"

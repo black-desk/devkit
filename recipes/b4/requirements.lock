@@ -1,0 +1,16 @@
+# Runtime closure for CPython 3.14, Linux x86_64 (glibc >= 2.28).
+PyNaCl==1.6.2
+b4==0.16.0
+certifi==2026.7.22
+cffi==2.1.1
+charset-normalizer==3.5.2
+dkimpy==1.1.8
+dnspython==2.8.0
+ezgb==0.2.0
+idna==3.20
+liblore==0.10.0
+patatt==0.8.0
+pycparser==3.0
+pygit2==1.20.1
+requests==2.34.2
+urllib3==2.8.0

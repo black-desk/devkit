@@ -1,0 +1,119 @@
+schema_version: 1
+
+context:
+  version: "0.16.0"
+
+package:
+  name: b4
+  version: ${{ version }}
+
+source:
+  - url: https://files.pythonhosted.org/packages/3e/d0/f301f83ac8dbe53442c5a43f6a39016f94f754d7a9815a875b65e218a307/pynacl-1.6.2-cp38-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
+    sha256: 8a66d6fb6ae7661c58995f9c6435bda2b1e68b54b598a6a10247bfcdadac996c
+    file_name: pynacl-1.6.2-cp38-abi3-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/23/ff/86a9d1c24aefcc0fb9cde57e49afcb68f93be8b4427fdb1f1a24f8dd4524/b4-0.16.0-py3-none-any.whl
+    sha256: b6072d5b311a19b61eff6540c0d6a91cb13c197e5a987b528e81efa9aeaf1608
+    file_name: b4-0.16.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl
+    sha256: 62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775
+    file_name: certifi-2026.7.22-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/e9/02/4e7d553a7ac4b4238b38b3c1b80d486e9d4436f8d2acbf87a0997fe3f402/cffi-2.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    sha256: b0431303acaea1089ad4b3e9ce4e6518193def1118d4073ca848635ee4ea2e96
+    file_name: cffi-2.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/18/24/bad3ac4271589df29cf5ce2f5ae490518a5739358052bd0d61209e6fea54/charset_normalizer-3.5.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+    sha256: 34276fd796040bf0993ab33a369aa572e6979c7aab225a88893667ad8eac8f7a
+    file_name: charset_normalizer-3.5.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/f0/6f/84e91828186bbfcedd7f9385ef5e0d369632444195c20e08951b7ffe0481/dkimpy-1.1.8.tar.gz
+    sha256: b5f60fb47bbf5d8d762f134bcea0c388eba6b498342a682a21f1686545094b77
+    file_name: dkimpy-1.1.8.tar.gz
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/ba/5a/18ad964b0086c6e62e2e7500f7edc89e3faa45033c71c1893d34eed2b2de/dnspython-2.8.0-py3-none-any.whl
+    sha256: 01d9bbc4a2d76bf0db7c1f729812ded6d912bd318d3b1cf81d30c0f845dbf3af
+    file_name: dnspython-2.8.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/71/d5/f0e0abfb01b6936326bf01b30ffeac5a9fa11b1fb4e8b8191541adf1e9ec/ezgb-0.2.0-py3-none-any.whl
+    sha256: 45b9a54c1d76f2f4538374b5a071c8faaad179f7aee53f18bf588b740dccd4c4
+    file_name: ezgb-0.2.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/58/a2/bb081bab032533a855d44de1d56f8e8426114ff1ba5d1f07a438a0a654f8/idna-3.20-py3-none-any.whl
+    sha256: ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c
+    file_name: idna-3.20-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/1d/99/f67b6079a2fb951cfdc47a4c6ac01c94ebd0f627506bcfbab6bc2b4a23f8/liblore-0.10.0-py3-none-any.whl
+    sha256: 0c13ddd335c7a650736c16ce08c6156da8ef2a905c02d79aa8b9f802ac7cbf43
+    file_name: liblore-0.10.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/07/0f/51505e1a25f9cf2fec7c026134f93f09731b82ab4b33285611e1b2db4b7f/patatt-0.8.0-py3-none-any.whl
+    sha256: 9b8324376619fa8d2d9808e324f3cea4ee7f332d5fe64b770d98578f2b28ea2c
+    file_name: patatt-0.8.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/0c/c3/44f3fbbfa403ea2a7c779186dc20772604442dde72947e7d01069cbe98e3/pycparser-3.0-py3-none-any.whl
+    sha256: b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
+    file_name: pycparser-3.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/b6/01/f6e3c18ad9dabeb7302575b1174864fd90842bd4afedb3f5bdd926047ff4/pygit2-1.20.1-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
+    sha256: 860c971fd53a9f14713a51b6343827b82d2b7dc7955e8c28c81ca3c90033b6a2
+    file_name: pygit2-1.20.1-cp314-cp314-manylinux_2_26_x86_64.manylinux_2_28_x86_64.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/a0/f4/c67b0b3f1b9245e8d266f0f112c500d50e5b4e83cb6f3b71b6528104182a/requests-2.34.2-py3-none-any.whl
+    sha256: 2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0
+    file_name: requests-2.34.2-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl
+    sha256: 51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670
+    file_name: setuptools-84.0.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/92/9d/c4e665119135114480843e7ab388fa94d8480650450e6f8e26b70d323a4c/urllib3-2.8.0-py3-none-any.whl
+    sha256: 0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3
+    file_name: urllib3-2.8.0-py3-none-any.whl
+    target_directory: artifacts
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    # Preserve auditwheel's relative RPATHs and bundled native libraries.
+    binary_relocation: false
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - uv ==0.12.22
+  host:
+    - python ==3.14.8
+  run:
+    - python ==3.14.8
+    - git >=2.56.0,<3
+    - __glibc >=2.28
+
+tests:
+  - package_contents:
+      bin:
+        - b4
+      files:
+        - share/devkit/python-tools/b4/uv-receipt.toml
+        - share/devkit/python-tools/b4/pyvenv.cfg
+  - script:
+      - bash tests/smoke.sh
+    requirements:
+      run:
+        - uv ==0.12.22
+    files:
+      recipe:
+        - tests/smoke.sh
+        - tests/runtime.py
+        - requirements.lock
+
+about:
+  homepage: https://b4.docs.kernel.org/
+  license: GPL-2.0-or-later
+  license_file: licenses/**
+  summary: Tools for working with patches in public-inbox archives
+  description: b4 and its pinned Python dependencies installed offline by uv in a private environment, using upstream manylinux wheels for native extensions.
+  repository: https://git.kernel.org/pub/scm/utils/b4/b4.git
+  documentation: https://b4.docs.kernel.org/
