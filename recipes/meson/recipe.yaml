@@ -1,0 +1,45 @@
+schema_version: 1
+
+context:
+  version: "1.12.1"
+
+package:
+  name: meson
+  version: ${{ version }}
+
+source:
+  url: https://files.pythonhosted.org/packages/57/99/36cd25f9598eef70db97577440a70a360af505f6f01c2338a18d1556079c/meson-1.12.1-py3-none-any.whl
+  sha256: 930bc7542cbd9f57009e182fd014eba48cf1a0180a7b9006d2d32d8f168d8b02
+  file_name: meson-1.12.1-py3-none-any.whl
+  target_directory: artifacts
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - uv >=0.12,<0.13
+  host:
+    - python ==3.14.8
+  run:
+    - python ==3.14.8
+    - ninja >=1.8,<2
+
+tests:
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+    requirements:
+      run:
+        - gcc ==16.2.0
+
+about:
+  homepage: https://mesonbuild.com/
+  license: Apache-2.0
+  license_file: licenses/COPYING
+  summary: Meson build system in a private uv-managed Python environment
