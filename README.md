@@ -396,6 +396,10 @@ release archive; network fallback downloads are disabled. Introspection data,
 translations, documentation generation, tracing, libmount, SELinux, and libelf
 integration are disabled for this initial mail-focused build.
 
+Metadata tests normalize paths and reject shared include roots, broad prefix
+library search paths, and unqualified channel library names, including in
+`pkg-config --libs --static` and `xapian-config` output.
+
 Package tests compile and run consumers of libffi, Talloc, Xapian, and GLib from
 the relocated prefix, check dependency resolution, and exercise a Xapian search,
 GIO memory output, GObject allocation, and GLib regular expressions. Meson and

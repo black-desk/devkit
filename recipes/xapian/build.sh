@@ -17,7 +17,9 @@ export LD_LIBRARY_PATH="${PREFIX}/lib:${BUILD_PREFIX}/lib"
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
 export CPPFLAGS="$(pkg-config --cflags zlib)"
-export LIBS="$(pkg-config --libs zlib)"
+# Pass the exact DSO through the compiler driver: GNU libtool otherwise drops
+# a bare .so input when constructing libxapian's shared-library link command.
+export LIBS="-Wl,${PREFIX}/lib/libz.so"
 # Xapian clears LIBS before AC_SEARCH_LIBS. Verify the selected library, then
 # supply its exact path as the search result instead of adding a broad -L path.
 printf '#include <zlib.h>\nint main(void) { return zlibVersion() == 0; }\n' >check-zlib.c
