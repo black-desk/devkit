@@ -1,0 +1,7 @@
+message := "devkit"
+
+prepare:
+    @printf 'ready\n' > prepared.txt
+
+hello name="world": prepare
+    @printf '%s %s\n' '{{message}}' '{{name}}'

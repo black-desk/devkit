@@ -66,11 +66,34 @@ first normal tool recipe; it declares the channel's `git` package as a runtime
 dependency so installation includes Git on `PATH`. The canonical `rustup`
 manager is also packaged as an official binary repack without a selected Rust
 toolchain. The tools built from that locked Rust input currently include
-`ripgrep`, `fd`, and `uv`. macOS builds and a release promotion process are
-still incomplete. The Linux package workflow has an initial affected-build
-scheduler for the current bootstrap recipes and these ordinary packages.
+`ripgrep`, `fd`, `uv`, `yazi`, and `just`. macOS builds and a release promotion
+process are still incomplete. The Linux package workflow has an initial
+affected-build scheduler for the current bootstrap recipes and these ordinary
+packages.
 
 `difftastic` is also built from the locked Rust toolchain input.
+
+The `yazi` recipe builds Yazi 26.9.1 and its `ya` companion with embedded Lua,
+Bash/Fish/Zsh completions, and the glibc 2.28 sysroot. Git, fd, and ripgrep are
+runtime dependencies for plugin management and search. Additional preview and
+opener tools remain optional: `file`, FFmpeg, 7-Zip, Poppler (`pdftoppm`),
+ImageMagick, `fzf`, `zoxide`, and `xdg-open` must be supplied separately for the
+features that use them. The terminal test starts Yazi in a pseudoterminal,
+checks a file listing, sends a quit action through `ya`, and verifies the saved
+working directory.
+
+The `just` recipe builds just 1.58.0 with Bash/Fish/Zsh completions and a man
+page. Its tests exercise recipe dependencies, parameters, and dry runs. Both
+Rust recipes retain upstream Cargo.lock, use Rust 1.98.1 and the channel C
+toolchain/sysroot for native dependencies, and use thin LTO to limit build
+memory.
+
+The `gopls` recipe builds gopls 0.23.0 using Go 1.27.1, upstream go.mod/go.sum,
+module checksum verification, `CGO_ENABLED=0`, and trimmed build paths. Unlike
+standalone Go applications, the language server needs the Go command at runtime
+to load workspaces; it depends on the channel's Go 1.27 series. Offline tests
+check symbol definitions and diagnostics in a local module. Build and test
+telemetry is disabled, without changing user telemetry settings.
 
 The `uv` recipe builds uv 0.12.22 and its `uvx` launcher from source, with Bash,
 Fish, and Zsh completions. It uses the locked Rust toolchain and local
@@ -171,6 +194,9 @@ recipes/
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
+  gopls/                 Go language server
+  yazi/                  Terminal file manager and ya companion
+  just/                  Project command runner
   fd/                    Fast filesystem search tool
   ripgrep/               Fast regex search tool
   difftastic/            Syntax-aware structural diff tool
@@ -326,6 +352,9 @@ The intended migration is incremental:
 5. Add `osx-arm64`; its platform and compiler strategy is still to be designed.
 6. Add candidate and stable release channels, manifests, and promotion checks.
 
+The next ordinary-package work is the mail toolchain: `notmuch`, `aerc`, `lei`,
+and `lieer`. These remain planned and are not yet packaged.
+
 At every step, the existing Linux bootstrap remains the reference fixed point
 until a new bootstrap generation has completed the same verification.
 
@@ -363,7 +392,9 @@ are current. Their detailed consumer policies and the remaining language-runtime
 recipes below are target design unless a current recipe says otherwise.
 
 External language toolchains are exact inputs to CI builds. Finished native
-tools do not depend on their compiler manager at runtime.
+tools do not depend on their compiler manager at runtime unless their own
+functionality requires it, as gopls requires the Go command for workspace
+analysis.
 
 ### Rust
 
@@ -400,7 +431,8 @@ lock package triggers rebuilding the reverse build-dependency closure.
 The `go` package is a version-pinned repack of the official Go distribution for
 each supported platform. The complete official GOROOT is installed below
 `lib/go/<version>/`, while `bin/go` and `bin/gofmt` are relative links into it.
-Go applications use it as a build dependency only.
+Standalone Go applications use it as a build dependency only; gopls also
+declares a Go runtime dependency.
 
 Go builds isolate all state below the recipe source directory:
 
@@ -418,7 +450,8 @@ export GOFLAGS="-mod=readonly"
 
 Pure Go tools are built with `CGO_ENABLED=0`, `-trimpath`, and
 `-buildvcs=false`, and are emitted directly to `$PREFIX/bin`. Neither the Go
-toolchain nor its module/build caches become runtime dependencies.
+toolchain nor its module/build caches become runtime dependencies of standalone
+applications. The gopls exception includes the Go toolchain but no build caches.
 
 ### Python
 
