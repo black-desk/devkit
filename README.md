@@ -62,8 +62,8 @@ SHA-256 hashes are recorded in `seed-packages.tsv`.
 The first ordinary toolchain input is a version-pinned repack of the official
 Linux/amd64 Go distribution. Its official GOROOT layout is retained below
 `lib/go/<version>/`, with `go` and `gofmt` linked from `bin/`. `lazygit` is the
-first normal tool recipe; like upstream binary releases, it expects `git` on
-`PATH` rather than pulling a distribution Git package. The canonical `rustup`
+first normal tool recipe; it declares the channel's `git` package as a runtime
+dependency so installation includes Git on `PATH`. The canonical `rustup`
 manager is also packaged as an official binary repack without a selected Rust
 toolchain. The tools built from that locked Rust input currently include
 `ripgrep` and `fd`. macOS builds and a release promotion process are still
@@ -83,8 +83,8 @@ local curl/OpenSSL and the CA bundle, PCRE2, Perl scripts, and
 tests cover basic repository operations, PCRE2 grep, worktrees, subtree, and
 local shared-library resolution. Some optional Perl commands, such as `git svn`
 and SMTP delivery with `git send-email`, require additional modules not
-currently packaged here. Adding an explicit Git runtime dependency to `lazygit`
-remains a follow-up.
+currently packaged here. Installing `lazygit` also installs this Git package;
+its package tests check Git's path and basic repository initialization.
 
 During channel bring-up, recipes favor completing the applications that the
 channel is intended to provide over exhaustively enabling every upstream
@@ -789,8 +789,6 @@ and `${PREFIX}/lib/lib<library>.so`. The shared `${PREFIX}/include` and
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
-- Replace `lazygit`'s current upstream-compatible Git `PATH` expectation with an
-  explicit runtime dependency on the local `git` package.
 - Reject recipe deletion and rename explicitly and design their release
   semantics.
 - Extend graph rendering to handle mutually new local dependencies, multiple
