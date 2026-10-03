@@ -18,6 +18,12 @@ cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
 export CPPFLAGS="$(pkg-config --cflags zlib)"
 export LIBS="$(pkg-config --libs zlib)"
+# Xapian clears LIBS before AC_SEARCH_LIBS. Verify the selected library, then
+# supply its exact path as the search result instead of adding a broad -L path.
+printf '#include <zlib.h>\nint main(void) { return zlibVersion() == 0; }\n' >check-zlib.c
+"${CC}" ${CFLAGS} ${CPPFLAGS} check-zlib.c ${LIBS} ${LDFLAGS} -o check-zlib
+./check-zlib
+export ac_cv_search_zlibVersion="${LIBS}"
 ./configure --prefix="${PREFIX}" --libdir="${PREFIX}/lib" \
 	--includedir="${PREFIX}/include/xapian-${PKG_VERSION}" \
 	--enable-shared --disable-static --disable-documentation --disable-maintainer-mode
