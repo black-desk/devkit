@@ -1,0 +1,37 @@
+schema_version: 1
+
+context:
+  version: "16.2.0"
+
+package:
+  name: libstdcxx
+  version: ${{ version }}
+
+build:
+  number: 0
+  string: meta_h${{ hash }}_${{ build_number }}
+  script: echo "libstdc++ runtime interface alias"
+  files: []
+
+requirements:
+  run:
+    # The existing carrier retains ownership of the shared runtime and compiler.
+    - gcc-toolchain ==${{ version }}
+
+tests:
+  - script:
+      # Exercise the runtime supplied by the dependency, not the host's copy.
+      - g++ -std=c++17 tests/runtime.cpp -ldl -Wl,-rpath,"${PREFIX}/lib" -o runtime
+      - ./runtime > runtime-path.txt
+      - grep -Fx "${PREFIX}/lib/libstdc++.so.6" runtime-path.txt
+    files:
+      recipe:
+        - tests/runtime.cpp
+
+about:
+  homepage: https://gcc.gnu.org/onlinedocs/libstdc++/
+  license: GPL-3.0-or-later WITH GCC-exception-3.1
+  summary: C++ standard library runtime interface for the devkit GCC carrier
+  description: An empty metapackage selecting the exact gcc-toolchain version that supplies libstdc++, including the complete compiler installation.
+  repository: https://gcc.gnu.org/git/gcc.git
+  documentation: https://gcc.gnu.org/onlinedocs/libstdc++/

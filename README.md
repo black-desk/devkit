@@ -182,6 +182,7 @@ bootstrap-order.json    Ordered bootstrap recipe membership
 recipes/
   gcc-toolchain/        Coarse single-package GCC/G++ carrier
   gcc-aliases/          gcc and gxx interface outputs
+  libstdcxx/            C++ runtime alias selecting the complete GCC carrier
   binutils/             Native assembler, linker, and binary tools
   ca-certificates/      Pinned Mozilla CA certificate bundle
   expat/                Stream-oriented XML parser library
@@ -838,6 +839,11 @@ result, and produced archives to the GitHub Actions job summary. After a push to
 - `gcc` and `gxx` are interface packages selecting the carrier. They permit the
   same carrier recipe to operate against seed, dirty, and self-hosted channel
   stages.
+- `libstdcxx` is an ordinary, metadata-only runtime interface, pinned to
+  `gcc-toolchain ==16.2.0`. Installing it intentionally installs the complete
+  compiler carrier. The package name uses `xx` because conda package names
+  cannot contain `+`; the library remains `libstdc++.so.6`. Its separate recipe
+  keeps this consumer interface outside the bootstrap generation.
 - `binutils` is one native output owning the assembler, linker, and binary
   inspection tools. It deliberately does not reproduce conda-forge's `ld_impl` /
   `binutils_impl` split.
@@ -882,6 +888,24 @@ and `${PREFIX}/lib/lib<library>.so`. The shared `${PREFIX}/include` and
 `sysroot_linux-64` is therefore not a direct runtime dependency of
 `gcc-toolchain`, `gcc`, `gxx`, or `binutils`.
 
+### C++ runtime policy
+
+Channel packages that dynamically use libstdc++ declare a runtime dependency on
+`libstdcxx` compatible with the GCC version used to build them. The metapackage
+selects the existing `gcc-toolchain` carrier; runtime files retain that single
+owner, and installing the full compiler is an accepted cost.
+
+Consumers must set relocatable RPATH/RUNPATH entries so their executables and
+shared libraries load the prefix's `libstdc++.so.6`. A conda dependency ensures
+the file is installed, but does not by itself change the dynamic loader search
+path. This policy does not add a global `LD_LIBRARY_PATH` or change the
+host-integrating default behavior of `g++`. The metapackage test compiles and
+runs a C++ consumer and verifies the loaded runtime's path.
+
+The glibc deployment baseline and the libstdc++ symbol requirements are separate
+checks. Existing C++ outputs still need an audit for this runtime dependency and
+loader policy; adding the interface does not retroactively change their linkage.
+
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
@@ -896,8 +920,8 @@ and `${PREFIX}/lib/lib<library>.so`. The shared `${PREFIX}/include` and
 - Replace current Rocky Linux mirror URLs with immutable vault URLs if archive
   stability requires it.
 - Pin Pixi in CI and run the workflow in locked mode.
-- Finish the GCC libstdc++ runtime strategy for hosts with older system
-  runtimes.
+- Audit existing C++ outputs against the `libstdcxx` dependency and loader
+  policy, including execution on hosts with older system runtimes.
 - Define and test the oldest supported host glibc baseline.
 
 ## Bootstrap-stage command reference
