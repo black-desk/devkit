@@ -1,0 +1,59 @@
+schema_version: 1
+
+context:
+  version: "0.12.22"
+
+package:
+  name: uv
+  version: ${{ version }}
+
+source:
+  url: https://github.com/astral-sh/uv/archive/refs/tags/${{ version }}.tar.gz
+  sha256: 056ef9a33d6812a51153799ce5b35b08f02f4f37b32a26d22e99245a1f16b77c
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - gcc ==16.2.0
+    - binutils ==2.46.1
+    - make ==4.4.1
+    - sysroot_linux-64 ==2.28 h8204064_0
+    - rustup ==1.29.1
+    - rust-toolchain-lock ==1.98.1
+
+tests:
+  - package_contents:
+      bin:
+        - uv
+        - uvx
+      files:
+        - share/bash-completion/completions/uv
+        - share/bash-completion/completions/uvx
+        - share/fish/vendor_completions.d/uv.fish
+        - share/fish/vendor_completions.d/uvx.fish
+        - share/zsh/site-functions/_uv
+        - share/zsh/site-functions/_uvx
+
+  - script:
+      - test "$(uv --version | cut -d ' ' -f 1,2)" = "uv ${{ version }}"
+      - test "$(uvx --version | cut -d ' ' -f 1,2)" = "uvx ${{ version }}"
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+
+about:
+  homepage: https://docs.astral.sh/uv/
+  license: Apache-2.0 OR MIT
+  license_file:
+    - LICENSE-APACHE
+    - LICENSE-MIT
+  summary: A fast Python package and project manager written in Rust
+  description: Python package, tool, and interpreter management built with the devkit-selected Rust toolchain, without self-update.
+  repository: https://github.com/astral-sh/uv
+  documentation: https://docs.astral.sh/uv/

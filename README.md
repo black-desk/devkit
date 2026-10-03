@@ -66,11 +66,22 @@ first normal tool recipe; it declares the channel's `git` package as a runtime
 dependency so installation includes Git on `PATH`. The canonical `rustup`
 manager is also packaged as an official binary repack without a selected Rust
 toolchain. The tools built from that locked Rust input currently include
-`ripgrep` and `fd`. macOS builds and a release promotion process are still
-incomplete. The Linux package workflow has an initial affected-build scheduler
-for the current bootstrap recipes and these ordinary packages.
+`ripgrep`, `fd`, and `uv`. macOS builds and a release promotion process are
+still incomplete. The Linux package workflow has an initial affected-build
+scheduler for the current bootstrap recipes and these ordinary packages.
 
 `difftastic` is also built from the locked Rust toolchain input.
+
+The `uv` recipe builds uv 0.12.22 and its `uvx` launcher from source, with Bash,
+Fish, and Zsh completions. It uses the locked Rust toolchain and local
+GCC/binutils/Make/sysroot for its native dependencies. The release build keeps
+the upstream performance allocator, uses thin LTO to reduce build memory, and
+disables self-update so upgrades remain owned by the channel. The package does
+not include a Python interpreter. Its offline package tests cover both
+executables, custom installation directories, project initialization, and the
+bundled Python download metadata. The Linux binaries use the host glibc and
+`libgcc_s.so.1`; their required symbol versions are no newer than `GLIBC_2.28`
+and `GCC_4.2.0`.
 
 The first independent Git dependencies are packaged as ordinary C libraries with
 isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
@@ -141,6 +152,7 @@ recipes/
   difftastic/            Syntax-aware structural diff tool
   pkgconf/               pkg-config-compatible metadata query tool
   rustup/                Official Rust toolchain manager binary repack
+  uv/                    Python package, tool, and interpreter manager
   zlib/                  General-purpose compression library
 
 variants/
@@ -320,7 +332,7 @@ compiler, SDK, and minimum host interface choices have not been fixed yet.
 
 ## Language toolchain policy
 
-The Go distribution, rustup manager, and Rust toolchain lock recipes are
+The Go distribution, rustup manager, Rust toolchain lock, and uv recipes are
 current. Their detailed consumer policies and the remaining language-runtime
 recipes below are target design unless a current recipe says otherwise.
 
@@ -384,33 +396,40 @@ toolchain nor its module/build caches become runtime dependencies.
 
 ### Python
 
-The channel provides a canonical `python` runtime package, preferably built
-directly from a pinned `python-build-standalone` release archive rather than
-through an indirect `uv python install` request.
+The planned canonical `python` runtime package uses `uv python install` with
+`UV_PYTHON_INSTALL_DIR` below the package prefix and `UV_PYTHON_BIN_DIR` set to
+`$PREFIX/bin`. Its inputs must pin the Python version, the
+`python-build-standalone` build date (`UV_PYTHON_CPYTHON_BUILD`), the uv
+version, and the download checksum or download metadata.
 
-`uv` is a build-time dependency only. Python tool recipes create private
-environments below the package prefix and install from exact per-platform lock
-or constraints files:
+Python tool recipes will use `uv tool install` to create private environments
+below the package prefix, with exact per-platform constraints for the tool and
+all transitive dependencies. The intended build-local configuration is:
 
 ```bash
 export UV_CACHE_DIR="${SRC_DIR}/.uv-cache"
 export UV_NO_CONFIG=1
 export UV_PYTHON_DOWNLOADS=never
+export UV_TOOL_DIR="${PREFIX}/share/devkit/python-tools"
+export UV_TOOL_BIN_DIR="${PREFIX}/bin"
 
-uv venv \
+uv tool install \
   --python "${PREFIX}/bin/python" \
-  "${PREFIX}/share/devkit/python-tools/${PACKAGE_NAME}"
-
-uv pip install \
-  --python "${PREFIX}/share/devkit/python-tools/${PACKAGE_NAME}/bin/python" \
   --link-mode copy \
-  -r "${SRC_DIR}/requirements.lock"
+  --constraints "${SRC_DIR}/requirements.lock" \
+  "${PKG_NAME}==${PKG_VERSION}"
 ```
 
-The package owns the resulting environment and its entrypoints. It does not
-contain `uv-receipt.toml`, use the user's `UV_TOOL_DIR`, or register the tool
-with uv. Consequently, a user's normal `uv tool list`, `uv tool upgrade`, or
-`uv python uninstall` commands do not manage or remove channel-owned files.
+The package owns the resulting environment, entrypoints, and per-tool
+`uv-receipt.toml`. uv discovers tools and interpreters by their configured
+directories; there is no central installation registry to ship. These directory
+overrides are only set during the build, not in user activation scripts. A
+user's normal `uv tool list`, `uv tool upgrade`, or `uv python uninstall`
+therefore does not manage channel-owned files unless the user explicitly points
+uv at those private directories. Caches and shared directory lock files are not
+packaged. Conda prefix handling must relocate symlinks, entrypoint scripts,
+`pyvenv.cfg`, and receipts, with package tests checking a different install
+prefix. uv is a build dependency only for these Python and Python tool packages.
 
 Python tool packages have a direct exact runtime dependency on `python` and are
 built separately for `linux-64` and `osx-arm64`; they are not `noarch: python`
