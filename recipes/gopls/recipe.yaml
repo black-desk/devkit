@@ -1,0 +1,43 @@
+schema_version: 1
+
+context:
+  version: "0.23.0"
+
+package:
+  name: gopls
+  version: ${{ version }}
+
+source:
+  url: https://github.com/golang/tools/archive/refs/tags/gopls/v${{ version }}.tar.gz
+  sha256: 1ba41875b918db73c6a409ad8f552b85f72dfeea43ffb541b798322ff6b4152b
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - go ==1.27.1
+  run:
+    - go >=1.27.1,<1.28
+
+tests:
+  - package_contents:
+      bin:
+        - gopls
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+
+about:
+  homepage: https://go.dev/gopls/
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: The Go language server
+  description: Go language server built from pinned upstream source with verified Go modules and a channel Go runtime dependency for workspace analysis.
+  repository: https://github.com/golang/tools/tree/master/gopls
+  documentation: https://go.dev/gopls/
