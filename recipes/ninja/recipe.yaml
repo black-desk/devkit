@@ -1,0 +1,40 @@
+schema_version: 1
+
+context:
+  version: "1.13.2"
+
+package:
+  name: ninja
+  version: ${{ version }}
+
+source:
+  url: https://github.com/ninja-build/ninja/archive/refs/tags/v1.13.2.tar.gz
+  sha256: 974d6b2f4eeefa25625d34da3cb36bdcebe7fbce40f4c16ac0835fd1c0cbae17
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - gcc ==16.2.0
+    - binutils >=2.46,<3
+    - sysroot_linux-64 ==2.28
+    - python >=3.14,<4
+  run:
+    - libstdcxx ==16.2.0
+
+tests:
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+
+about:
+  homepage: https://ninja-build.org/
+  license: Apache-2.0
+  license_file: COPYING
+  summary: Small build system focused on speed

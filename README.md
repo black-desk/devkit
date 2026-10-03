@@ -373,8 +373,34 @@ The intended migration is incremental:
 5. Add `osx-arm64`; its platform and compiler strategy is still to be designed.
 6. Add candidate and stable release channels, manifests, and promotion checks.
 
-The next ordinary-package work is the mail toolchain: `notmuch`, `aerc`, `lei`,
-and `lieer`. These remain planned and are not yet packaged.
+The mail toolchain (`notmuch`, `aerc`, `lei`, and `lieer`) is being added in
+stages. Its first foundation layer contains Xapian 1.4.32 (the stable branch),
+Talloc 2.5.0, libffi 3.8.0, Meson 1.12.1, Ninja 1.13.2, and GLib 2.90.0. The
+applications themselves, GMime, GPGME, and the GnuPG dependency chain remain
+planned and are not yet packaged.
+
+Meson is installed offline from its pinned wheel in a private uv environment,
+with the same relocation policy as b4. Ninja is compiled from source and depends
+on `libstdcxx`; Xapian uses that runtime interface as well. Both explicitly link
+with the package prefix's runtime search path, which is relocated at packaging.
+New build dependencies use names or version ranges where compatible; the GCC,
+sysroot, and private Python interpreter versions remain deliberate constraints.
+
+The new libraries retain version-specific include roots and exact-library
+pkg-config metadata. Xapian's corrected `xapian-config` helper lives below
+`libexec/xapian/bin`. Talloc omits Python bindings and gettext. libffi omits
+static libraries and generated documentation. GLib supplies GLib, GObject, GIO,
+and GIRepository, including its Python command-line utilities, with an explicit
+Python runtime dependency. GLib uses the GVDB sources already included in its
+release archive; network fallback downloads are disabled. Introspection data,
+translations, documentation generation, tracing, libmount, SELinux, and libelf
+integration are disabled for this initial mail-focused build.
+
+Package tests compile and run consumers of libffi, Talloc, Xapian, and GLib from
+the relocated prefix, check dependency resolution, and exercise a Xapian search,
+GIO memory output, GObject allocation, and GLib regular expressions. Meson and
+Ninja tests execute actual builds. The common affected planner schedules this
+entire new dependency chain within one PR before any new package is published.
 
 At every step, the existing Linux bootstrap remains the reference fixed point
 until a new bootstrap generation has completed the same verification.

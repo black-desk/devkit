@@ -1,0 +1,52 @@
+schema_version: 1
+
+context:
+  version: "1.4.32"
+
+package:
+  name: xapian
+  version: ${{ version }}
+
+source:
+  url: https://oligarchy.co.uk/xapian/1.4.32/xapian-core-1.4.32.tar.xz
+  sha256: c4fd64e81127311756adf5579268d14a79f285ce8ac4ead0930c96195897aece
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - gcc ==16.2.0
+    - binutils >=2.46,<3
+    - sysroot_linux-64 ==2.28
+    - make
+    - gnuconfig
+    - pkgconf
+    - perl
+  host:
+    - zlib >=1.3,<2
+  run:
+    - libstdcxx ==16.2.0
+  run_exports:
+    strong:
+      - xapian >=1.4.32,<1.5
+
+tests:
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+    requirements:
+      run:
+        - gcc ==16.2.0
+        - pkgconf
+
+about:
+  homepage: https://xapian.org/
+  license: GPL-2.0-or-later
+  license_file: COPYING
+  summary: Full-text search engine library and database utilities
