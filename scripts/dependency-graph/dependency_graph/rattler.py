@@ -36,6 +36,10 @@ def package_name(spec: Any) -> str | None:
             spec = spec["source"]
         elif isinstance(spec.get("spec"), str):
             spec = spec["spec"]
+        elif isinstance(spec.get("pin_compatible"), dict):
+            spec = spec["pin_compatible"]["name"]
+        elif isinstance(spec.get("pin_subpackage"), dict):
+            spec = spec["pin_subpackage"]["name"]
         elif isinstance(spec.get("pin_subpackage"), str):
             spec = spec["pin_subpackage"]
         else:
@@ -56,6 +60,9 @@ def rendered_spec(spec: Any) -> str:
         for key in ("source", "spec", "pin_subpackage"):
             if isinstance(spec.get(key), str):
                 return spec[key]
+        name = package_name(spec)
+        if name:
+            return name
         return json.dumps(spec, sort_keys=True, separators=(",", ":"))
     return str(spec)
 
@@ -113,33 +120,30 @@ def _error_details(stdout: str, stderr: str) -> str:
 
 
 def _requirements(payload: dict[str, Any]) -> dict[str, list[str]]:
-    finalized = payload.get("finalized_dependencies") or {}
-    requirements: dict[str, list[str]] = {}
-
-    for section in ("build", "host", "run"):
-        rendered_section = finalized.get(section) or {}
-        depends = rendered_section.get("depends") or []
-        specs = rendered_section.get("specs") or []
-        section_specs = list(depends) + list(specs)
-        specs = [
-            rendered_spec(item)
-            for item in section_specs
-            if package_name(item) is not None
-        ]
+    recipe = payload.get("recipe", {})
+    raw = recipe.get("requirements") or {}
+    requirements = {}
+    for kind in ("build", "host", "run", "run_constraints", "run_constrained"):
+        specs = raw.get(kind) or []
         if specs:
-            requirements[section] = specs
-
-        # Conda constraints are represented by rattler-build under the
-        # corresponding section.  At recipe level this is run_constrained.
-        constraints = rendered_section.get("constraints") or []
-        if section == "run" and constraints:
-            requirements["run_constrained"] = [
-                rendered_spec(item)
-                for item in constraints
-                if package_name(item) is not None
+            requirements["run_constrained" if kind == "run_constraints" else kind] = [
+                rendered_spec(spec) for spec in specs
             ]
-
-    return requirements
+    for test in recipe.get("tests", []):
+        for specs in (test.get("requirements") or {}).values():
+            requirements.setdefault("test", []).extend(rendered_spec(s) for s in specs)
+    # Include declared exports conservatively, even when an ignore rule would
+    # remove them at solve time. Self exports need no extra graph edge.
+    exports = raw.get("run_exports") or {}
+    if isinstance(exports, list):
+        exports = {"weak": exports}
+    requirements["run_exports"] = [
+        rendered_spec(spec)
+        for specs in exports.values()
+        for spec in specs
+        if package_name(spec) != recipe.get("package", {}).get("name")
+    ]
+    return {kind: specs for kind, specs in requirements.items() if specs}
 
 
 def _render_one(
@@ -153,7 +157,6 @@ def _render_one(
         "--recipe",
         str(recipe.resolve()),
         "--render-only",
-        "--with-solve",
         "--target-platform",
         options.target_platform,
         "--channel-priority",
@@ -185,7 +188,9 @@ def _render_one(
     return _extract_rendered_array(result.stdout)
 
 
-def render_outputs(options: RenderOptions) -> tuple[list[RenderedOutput], list[Path]]:
+def render_outputs(
+    options: RenderOptions,
+) -> tuple[list[RenderedOutput], list[Path]]:
     recipes = discover_recipes(options.root)
     if not recipes:
         raise RenderError(f"no recipes found below {Path(options.root) / 'recipes'}")
@@ -221,12 +226,18 @@ def render_outputs(options: RenderOptions) -> tuple[list[RenderedOutput], list[P
                             )
                         ),
                         bootstrap=recipe.parent.name in bootstrap,
+                        build_number=int(build.get("number", 0)),
                         requirements=_requirements(payload),
                     )
                 )
 
     outputs.sort(
-        key=lambda item: (item.recipe, item.name, item.version, item.build_string)
+        key=lambda item: (
+            item.recipe,
+            item.name,
+            item.version,
+            item.build_string,
+        )
     )
     return outputs, recipes
 
@@ -250,7 +261,9 @@ def build_graph(outputs: list[RenderedOutput]) -> DependencyGraph:
             for rendered_spec in output.requirements.get(kind, []):
                 provider_name = package_name(rendered_spec)
                 if provider_name is None:
-                    continue
+                    raise RenderError(
+                        f"cannot determine dependency name in {output.recipe}: {rendered_spec}"
+                    )
                 provider = by_name.get(provider_name)
                 if provider is None:
                     node.external_dependencies.setdefault(provider_name, []).append(
@@ -263,7 +276,12 @@ def build_graph(outputs: list[RenderedOutput]) -> DependencyGraph:
                     kind=kind,
                     requirement=str(rendered_spec),
                 )
-                key = (edge.provider, edge.consumer, edge.kind, edge.requirement)
+                key = (
+                    edge.provider,
+                    edge.consumer,
+                    edge.kind,
+                    edge.requirement,
+                )
                 if key not in seen_edges:
                     seen_edges.add(key)
                     edges.append(edge)
@@ -273,6 +291,11 @@ def build_graph(outputs: list[RenderedOutput]) -> DependencyGraph:
             specs[:] = sorted(set(specs))
 
     edges.sort(
-        key=lambda edge: (edge.provider, edge.consumer, edge.kind, edge.requirement)
+        key=lambda edge: (
+            edge.provider,
+            edge.consumer,
+            edge.kind,
+            edge.requirement,
+        )
     )
     return DependencyGraph(nodes=by_name, edges=edges)

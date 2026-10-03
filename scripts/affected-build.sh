@@ -8,10 +8,7 @@ set -euo pipefail
 ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 DEVKIT_CHANNEL="${DEVKIT_CHANNEL:-https://prefix.dev/black-desk}"
 PLAN_FILE="${PLAN_FILE:-$ROOT/.build-output/affected-plan.json}"
-CHANGED_FILES_FILE="$(mktemp)"
-CHANGED_RECIPES_FILE="$(mktemp)"
 HEAD_SHA="$(git -C "$ROOT" rev-parse HEAD)"
-trap 'rm -f "$CHANGED_FILES_FILE" "$CHANGED_RECIPES_FILE"' EXIT
 
 append_summary() {
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
@@ -55,88 +52,22 @@ verify_standalone_target_channel() {
   done
 }
 
-verify_standalone_target_channel
+mkdir -p "$(dirname "$PLAN_FILE")"
+# The same offline planner is used by developers and CI. Validate revisions
+# before downloading dependencies or running the expensive bootstrap.
+bash "$ROOT/scripts/dependency-graph/graph" plan --root "$ROOT" \
+  --check --json "$BASE_SHA" >"$PLAN_FILE"
 
-FULL_REBUILD=0
-git -C "$ROOT" diff --no-renames --name-only --diff-filter=ACDMRT \
-  "$BASE_SHA"...HEAD >"$CHANGED_FILES_FILE"
-
-while IFS= read -r path; do
-  case "$path" in
-    bootstrap-order.json | variants/* | seed-packages.tsv | \
-    scripts/bootstrap.sh | scripts/fetch-seed.sh | scripts/check-seed.sh | scripts/check-result.sh)
-      FULL_REBUILD=1
-      ;;
-    recipes/*/recipe.yaml | recipes/*/*)
-      recipe="${path#recipes/}"
-      printf '%s\n' "${recipe%%/*}" >>"$CHANGED_RECIPES_FILE"
-      ;;
-    recipes/*)
-      printf 'error: unexpected file directly below recipes/: %s\n' "$path" >&2
-      exit 1
-      ;;
-  esac
-done <"$CHANGED_FILES_FILE"
-
-sort -u -o "$CHANGED_RECIPES_FILE" "$CHANGED_RECIPES_FILE"
-
-# Validate changed recipe names before a global-input fallback can replace the
-# roots with the complete current recipe set.
-while IFS= read -r recipe; do
-  [[ "$recipe" != */* && -f "$ROOT/recipes/$recipe/recipe.yaml" ]] || {
-    printf 'error: changed recipe missing from head tree: %s\n' "$recipe" >&2
-    printf 'Recipe deletion is not handled by affected CI yet.\n' >&2
-    exit 1
-  }
-done <"$CHANGED_RECIPES_FILE"
-
-if ((FULL_REBUILD)); then
-  : >"$CHANGED_RECIPES_FILE"
-  for recipe_file in "$ROOT"/recipes/*/recipe.yaml; do
-    [[ -f "$recipe_file" ]] || continue
-    basename "$(dirname "$recipe_file")" >>"$CHANGED_RECIPES_FILE"
-  done
-fi
-
-if [[ ! -s "$CHANGED_RECIPES_FILE" ]]; then
+if [[ "$(jq '.selected | length' "$PLAN_FILE")" == 0 ]]; then
   printf 'No recipe changes; package build skipped.\n'
-  append_summary '## Affected package builds'
-  append_summary ''
-  append_summary "No recipe changes between \`${BASE_SHA}\` and \`${HEAD_SHA}\`; package build skipped."
+  append_summary 'No recipe changes; package build skipped.'
   exit 0
 fi
 
-mapfile -t CHANGED_RECIPES <"$CHANGED_RECIPES_FILE"
+verify_standalone_target_channel
+FULL_REBUILD="$(jq '.global_change | if . then 1 else 0 end' "$PLAN_FILE")"
+mapfile -t CHANGED_RECIPES < <(jq -r '.changed_recipes[]' "$PLAN_FILE")
 BUILT_ORDINARY_RECIPES=()
-
-mkdir -p "$(dirname "$PLAN_FILE")"
-
-BOOTSTRAP_RECIPE_CHANGED=0
-for recipe in "${CHANGED_RECIPES[@]}"; do
-  if [[ "$(
-    jq --arg recipe "$recipe" 'index($recipe) != null' \
-      "$ROOT/bootstrap-order.json"
-  )" == true ]]; then
-    BOOTSTRAP_RECIPE_CHANGED=1
-    break
-  fi
-done
-
-if ((BOOTSTRAP_RECIPE_CHANGED)); then
-  # The published channel can be empty while it is being initialized. Render
-  # the graph only after the local bootstrap generation is available.
-  bash "$ROOT/scripts/bootstrap.sh"
-  bash "$ROOT/scripts/dependency-graph/graph" affected \
-    --root "$ROOT" \
-    --channel "$ROOT/channels/result" \
-    --channel "$DEVKIT_CHANNEL" \
-    --json "${CHANGED_RECIPES[@]}" >"$PLAN_FILE"
-else
-  bash "$ROOT/scripts/dependency-graph/graph" affected \
-    --root "$ROOT" \
-    --channel "$DEVKIT_CHANNEL" \
-    --json "${CHANGED_RECIPES[@]}" >"$PLAN_FILE"
-fi
 
 BOOTSTRAP_COUNT="$(
   jq '[.selected[] | select(.bootstrap == true)] | length' "$PLAN_FILE"
@@ -290,7 +221,7 @@ if ((BOOTSTRAP_COUNT > 0)); then
   # Bootstrap recipes form a cyclic generation and therefore use the complete
   # seed -> dirty -> result -> self-host fixed point rather than a package-wise
   # channel build.  Selected ordinary consumers are rebuilt against that result.
-  ((BOOTSTRAP_RECIPE_CHANGED)) || bash "$ROOT/scripts/bootstrap.sh"
+  bash "$ROOT/scripts/bootstrap.sh"
   build_selected_ordinary_recipes
 else
   mkdir -p "$ROOT/channels/result"

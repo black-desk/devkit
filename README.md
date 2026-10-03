@@ -301,7 +301,7 @@ the edges; a complete resolved closure is not expanded into direct edges.
 Bootstrap membership is explicit rather than inferred from a directory. It is
 represented by `bootstrap-order.json`, a top-level JSON array of recipe
 directory names. `scripts/bootstrap.sh` executes that order in each stage; the
-dependency-graph prototype reads the same array as the bootstrap generation
+dependency-graph tool reads the same array as the bootstrap generation
 membership. Stage-specific variants and channel boundaries remain part of the
 bootstrap and graph entry points rather than the recipe namespace.
 
@@ -312,32 +312,52 @@ topological scheduler. Outside bootstrap, SCCs should be rejected.
 
 ## Dependency graph tooling
 
-The rendered-recipe graph tooling lives in `scripts/dependency-graph/`. It does
-not bump build numbers or publish packages. Pull-request CI uses its `affected`
-report as the source of build scheduling input.
+The rendered-recipe graph tooling lives in `scripts/dependency-graph/`. Local
+checks and package CI share the `plan` command. It reports every affected output
+and verifies deliberate version/build-number changes; it never edits recipes.
 
-The renderer invokes each recipe with
-`rattler-build --render-only --with-solve`, using the final Linux generation's
-variant and either the local result channel (for audit commands after a local
-bootstrap) or the published Linux baseline channels (for pull-request
-scheduling). It maps rendered package outputs—not recipe directory names—to
-graph nodes, adds direct build, host, run, and constrained-run edges, records
-dependencies that resolve outside the local graph, and rejects SCCs outside the
-explicit bootstrap generation. Selecting any bootstrap output expands the
-generation to its complete membership and schedules those outputs according to
-`bootstrap-order.json`.
+Before preparing a PR, run:
 
-After a successful bootstrap:
+```bash
+pixi run bash scripts/dependency-graph/graph plan origin/main
+pixi run bash scripts/dependency-graph/graph plan --check origin/main
+```
+
+The base is the merge base of the requested commit and `HEAD`. The comparison
+includes committed, staged, unstaged, and untracked (non-ignored) recipe
+changes, so developers can rerun it while adjusting build numbers. `--check`
+exits nonzero for missing revisions; without it the report remains available for
+planning. Use `--json` for machine-readable output, including old/new versions,
+build numbers, and per-output errors. Keep the remote base current before
+preparing a PR; CI checks against the event's base commit again.
+
+The renderer invokes each recipe with `rattler-build build --render-only`,
+without solving or downloading dependencies. It uses the final Linux variant,
+maps package outputs to nodes, and reads declared build, host, run,
+run-constraint, and test requirements. Declared local run exports contribute
+conservative edges from their referenced providers to the exporting package
+(self exports add no edge), so provider changes propagate through exporters to
+consumers. Ignore rules do not prune this conservative graph. Actual solving,
+export application, and version compatibility checks happen during the build.
+
+Impact analysis combines base and working-tree edges, so removing a dependency
+cannot hide an affected consumer. Scheduling uses only current edges. Selecting
+an output selects all sibling outputs in its recipe; recipes are then sorted as
+atomic build units. The explicit bootstrap generation is one unit, internally
+ordered by `bootstrap-order.json`. Cycles outside that unit and bootstrap
+dependencies on ordinary recipes are rejected.
+
+The existing explicit-root and audit commands remain available:
 
 ```bash
 pixi run graph-audit
 pixi run bash scripts/dependency-graph/graph affected recipes/gcc-toolchain
 ```
 
-Both graph commands accept `--json` for machine-readable reports. The tool's
-Python environment is managed separately by `uv` through
-`scripts/dependency-graph/pyproject.toml` and `uv.lock`; Pixi supplies `uv`
-itself. The current prototype has no third-party Python runtime dependencies.
+All graph commands accept `--json`. The tool's Python environment is managed
+separately by `uv` through `scripts/dependency-graph/pyproject.toml` and
+`uv.lock`; Pixi supplies `uv` itself. There are no third-party Python runtime
+dependencies.
 
 ## Migration plan
 
@@ -591,9 +611,9 @@ Target-package rendering and builds use only the pull request's local
 not a fallback for target dependencies. The hosted channel must not declare a
 CEP 42 base or override relation, because rattler-build discovers and follows
 those relations recursively; the affected-build script checks its repodata
-before rendering or building. The locked Pixi environment that runs the build
-scripts is a separate orchestration layer and may still use external tools until
-equivalent channel-owned build tooling exists.
+before building. The locked Pixi environment that runs the build scripts is a
+separate orchestration layer and may still use external tools until equivalent
+channel-owned build tooling exists.
 
 The compiler's internal headers and `sysroot_linux-64` are exceptions to this
 layout: they implement the compiler/sysroot interface rather than ordinary
@@ -613,9 +633,13 @@ normalized logical comparison and is deferred.
 
 The current Linux scheduler validates the selected closure by rebuilding it in
 pull requests and uploads the generated archives after the change reaches
-`main`. It does not rewrite recipe build numbers; an unchanged filename is an
-immutable publication error rather than an overwrite. Release manifests and
-candidate-channel promotion remain future work.
+`main`. Before any package build, CI checks every selected output against the
+base: an unchanged software version requires a strictly larger build number and
+a changed build string. A new output or changed software version may start at
+build 0. Developers make these changes explicitly, including all affected
+consumers and sibling outputs. CI does not rewrite recipes. Publishing an
+existing filename remains an error rather than an overwrite. Release manifests
+and candidate-channel promotion remain future work.
 
 The initial rules are conservative:
 
@@ -628,7 +652,7 @@ The initial rules are conservative:
   closure.
 - A leaf tool source change rebuilds that tool.
 - Every package submitted for publication has a deliberate version or build
-  number change and passes through release promotion.
+  number change; release promotion remains future work.
 
 The reverse dependency graph is derived from the repository's rendered recipe
 metadata. Published channels solve and overlay unchanged packages; they are not
@@ -643,7 +667,7 @@ before scheduling:
 1. Discover every `recipes/*/recipe.yaml`.
 2. Load the explicit bootstrap membership manifest and set those recipes aside
    as the bootstrap generation supernode.
-3. Render every remaining recipe with its intended channels and variant
+3. Render all recipes without solving, using their intended variant
    configuration.
 4. Make every rendered package output a graph node. A multi-output recipe
    contributes multiple nodes; its directory name is not a package node.
@@ -665,11 +689,12 @@ and transitive build-time, runtime, and constraint consumer will be selected.
 The selected set will be topologically scheduled with providers before
 consumers.
 
-Bootstrap changes are handled before this ordinary graph. A change to the seed
-manifest, bootstrap membership, bootstrap stage ordering, or a bootstrap recipe
-reruns the complete bootstrap generation. On success, the generation's public
-interfaces are used as changed roots in the ordinary reverse-dependency graph.
-Bootstrap cycles are permitted only inside that explicit generation supernode.
+Bootstrap changes are checked and scheduled as part of this graph. A change to
+the seed manifest, bootstrap membership, bootstrap stage ordering, or a
+bootstrap recipe selects the complete bootstrap generation and its ordinary
+consumers before any build starts. After revision validation, the complete
+generation is rebuilt. Bootstrap cycles are permitted only inside that explicit
+generation supernode.
 
 The pull-request path classifier is deliberately explicit. Changes under
 `recipes/` select that recipe. Changes to `bootstrap-order.json`, `variants/`,
@@ -684,12 +709,30 @@ it must be paired with explicit recipe version/build-number changes or a
 deliberate full-rebuild change. This keeps test-only and build-utility lock
 updates from rerunning the expensive bootstrap fixed point automatically.
 
-There is also a known rendering limitation: the graph is rendered against the
-published baseline before any package from the pull request is built. A single
-pull request that introduces both a new local dependency and its first consumer
-can therefore fail to solve until the renderer gains an unpublished-local-output
-mode. Adding such a provider in a preceding pull request is the current
-incremental workflow.
+A single PR can introduce a new dependency and its consumers. Planning needs no
+published copy of that dependency. Each completed recipe is indexed into the
+local result channel before its consumers are solved, with strict priority over
+the published baseline. If a consumer's version constraint excludes the new
+local provider, the build fails; update the constraint together with the
+provider.
+
+Dependencies may use names or compatibility ranges; exact version/build pins are
+not required by the planner. Retain exact pins where the toolchain, ABI, or a
+private Python environment requires them. Existing recipe pins are not relaxed
+automatically; revise them deliberately when updating their providers.
+
+The graph conservatively matches local providers by package name, regardless of
+version constraints. It does not expand the published channel's solved
+dependency closure or external run exports. Changes only in external channel
+contents do not trigger rebuilding. Multiple variants of the same package name
+remain unsupported. Revision checks are relative to Git, not a reservation of
+filenames in the published channel; concurrent PRs must be brought up to date
+before merge.
+
+The `h<hash>` portion of a build string identifies variant parameters, not
+source contents or the complete resolved dependency set. Changing a literal
+dependency constraint need not change that hash. It does not replace the
+build-number bump.
 
 For example, a `go` change selects every package with a direct or transitive
 build edge to `go`. A `python` runtime change selects Python tools through
@@ -805,14 +848,15 @@ pixi run graph-test
 
 Package builds live in `.github/workflows/packages.yml`. On pull requests, that
 workflow derives changed recipe directories from the PR diff, asks the rendered
-graph for their conservative reverse closure, and builds that closure. Bootstrap
-recipe changes and changes to global bootstrap inputs run the complete seed →
-dirty → result → self-host fixed point before building selected ordinary
-consumers. Ordinary recipe changes build sequentially through the same
-`output/<recipe>/` source-cache layout used by bootstrap, publish into the
-generated local `channels/result` overlay, and resolve unchanged baseline
-packages from the public `https://prefix.dev/black-desk` channel. Conda-forge is
-not a target-dependency fallback. Other repository changes skip package builds.
+graph for their conservative reverse closure, checks version/build-number
+changes for all selected outputs, and builds that closure. Bootstrap recipe
+changes and changes to global bootstrap inputs run the complete seed → dirty →
+result → self-host fixed point before building selected ordinary consumers.
+Ordinary recipe changes build sequentially through the same `output/<recipe>/`
+source-cache layout used by bootstrap, publish into the generated local
+`channels/result` overlay, and resolve unchanged baseline packages from the
+public `https://prefix.dev/black-desk` channel. Conda-forge is not a
+target-dependency fallback. Other repository changes skip package builds.
 
 Pull requests validate the affected closure but do not publish it. After the
 pull request is merged to `main`, the package workflow runs against the push
@@ -909,11 +953,10 @@ loader policy; adding the interface does not retroactively change their linkage.
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
-- Reject recipe deletion and rename explicitly and design their release
-  semantics.
-- Extend graph rendering to handle mutually new local dependencies, multiple
-  platforms, and reviewed output/version selection.
-- Add publishable version/build-number validation and release promotion.
+- Design release semantics for recipe/output deletion and rename (currently
+  rejected by the planner).
+- Extend graph rendering to multiple platforms and multiple variants per output.
+- Add channel-wide filename collision checks and release promotion.
 - Add release manifests and promotion scripts.
 - Decide whether `tzdata` remains an imported data-only exception or becomes a
   local package.

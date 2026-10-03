@@ -81,12 +81,23 @@ def reverse_closure(
 
     # A bootstrap input can affect generation ordering as a whole, so selecting
     # one member selects the explicit bootstrap generation.
+    roots = set(roots)
     if roots & bootstrap_names:
         roots |= bootstrap_names
 
     consumers: dict[str, set[str]] = defaultdict(set)
     for edge in graph.edges:
         consumers[edge.provider].add(edge.consumer)
+
+    # Building any output rebuilds every sibling output from that recipe.
+    by_recipe: dict[str, set[str]] = defaultdict(set)
+    for name, node in graph.nodes.items():
+        by_recipe[node.output.recipe].add(name)
+    for members in by_recipe.values():
+        for name in members:
+            consumers[name].update(members - {name})
+    for name in bootstrap_names:
+        consumers[name].update(bootstrap_names - {name})
 
     selected = set(roots)
     reasons: dict[str, list[str]] = {name: ["changed root"] for name in sorted(roots)}
@@ -112,6 +123,7 @@ def selected_schedule(
 ) -> list[str]:
     """Topologically schedule selected outputs with bootstrap as one node."""
 
+    selected = set(selected)
     bootstrap_names = {
         name for name, node in graph.nodes.items() if node.output.bootstrap
     }
@@ -122,7 +134,11 @@ def selected_schedule(
     supernodes: set[str] = set()
     representation: dict[str, str] = {}
     for name in selected:
-        supernode = "__bootstrap_generation__" if name in bootstrap_names else name
+        supernode = (
+            "__bootstrap_generation__"
+            if name in bootstrap_names
+            else graph.nodes[name].output.recipe
+        )
         supernodes.add(supernode)
         representation[name] = supernode
 
@@ -133,6 +149,8 @@ def selected_schedule(
             continue
         provider = representation[edge.provider]
         consumer = representation[edge.consumer]
+        if consumer == "__bootstrap_generation__" and provider != consumer:
+            raise ValueError("bootstrap generation cannot depend on ordinary recipes")
         if provider == consumer or consumer in adjacency[provider]:
             continue
         adjacency[provider].add(consumer)
@@ -168,5 +186,7 @@ def selected_schedule(
             for recipe in bootstrap_order:
                 result.extend(bootstrap_outputs_by_recipe_name.get(recipe, []))
         else:
-            result.append(supernode)
+            result.extend(
+                sorted(name for name in selected if representation[name] == supernode)
+            )
     return result
