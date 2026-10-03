@@ -77,6 +77,15 @@ isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
 bundle is packaged separately as `ca-certificates` for HTTPS support. OpenSSL's
 Perl-based build system uses the local `perl` interpreter.
 
+The `git` recipe builds Git 2.56.0 with the locked Rust input, HTTPS through
+local curl/OpenSSL and the CA bundle, PCRE2, Perl scripts, and
+`contrib/subtree`. It disables Tcl/Tk, Python helpers, and gettext. Its package
+tests cover basic repository operations, PCRE2 grep, worktrees, subtree, and
+local shared-library resolution. Some optional Perl commands, such as `git svn`
+and SMTP delivery with `git send-email`, require additional modules not
+currently packaged here. Adding an explicit Git runtime dependency to `lazygit`
+remains a follow-up.
+
 During channel bring-up, recipes favor completing the applications that the
 channel is intended to provide over exhaustively enabling every upstream
 optional feature. Library recipes select the smallest explicit dependency set
@@ -119,6 +128,7 @@ recipes/
   ca-certificates/      Pinned Mozilla CA certificate bundle
   expat/                Stream-oriented XML parser library
   make/                 GNU Make carrier
+  git/                  Git with Rust, HTTPS, PCRE2, Perl scripts, and subtree
   gnuconfig/            Pinned config.guess and config.sub
   openssl/              TLS and cryptography library
   pcre2/                Perl-compatible regular expression library
@@ -779,8 +789,8 @@ and `${PREFIX}/lib/lib<library>.so`. The shared `${PREFIX}/include` and
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
-- Package the canonical `git` tool and then replace `lazygit`'s current
-  upstream-compatible `PATH` expectation with an explicit runtime dependency.
+- Replace `lazygit`'s current upstream-compatible Git `PATH` expectation with an
+  explicit runtime dependency on the local `git` package.
 - Reject recipe deletion and rename explicitly and design their release
   semantics.
 - Extend graph rendering to handle mutually new local dependencies, multiple
