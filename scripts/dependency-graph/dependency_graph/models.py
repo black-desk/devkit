@@ -3,7 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-DEPENDENCY_KINDS = ("build", "host", "run", "run_constrained")
+DEPENDENCY_KINDS = (
+    "build",
+    "host",
+    "run",
+    "run_constrained",
+    "test",
+    "run_exports",
+)
 
 
 @dataclass(frozen=True)
@@ -16,6 +23,7 @@ class RenderedOutput:
     recipe: str
     target_platform: str
     bootstrap: bool
+    build_number: int = 0
     requirements: dict[str, list[str]] = field(default_factory=dict)
 
 

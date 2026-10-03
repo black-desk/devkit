@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -9,6 +10,7 @@ from typing import Any
 
 from .graph import non_bootstrap_cycles, reverse_closure, selected_schedule
 from .models import DependencyEdge, DependencyGraph, RenderOptions, json_safe
+from .plan import repository_plan
 from .rattler import (
     RenderError,
     build_graph,
@@ -262,6 +264,15 @@ def build_parser() -> argparse.ArgumentParser:
         nargs="+",
         help="changed package output name or recipe directory/path",
     )
+    plan = subparsers.add_parser(
+        "plan",
+        help="list affected outputs and check revisions against Git base",
+    )
+    _add_render_arguments(plan, root)
+    plan.add_argument("base", help="base commit; compare merge base with working tree")
+    plan.add_argument(
+        "--check", action="store_true", help="fail if any revision is missing"
+    )
     return parser
 
 
@@ -271,6 +282,26 @@ def main(argv: list[str] | None = None) -> int:
     options = _options(args)
 
     try:
+        if args.command == "plan":
+            report = repository_plan(options, args.base)
+            if args.json:
+                print(json.dumps(json_safe(report), indent=2, sort_keys=True))
+            else:
+                _print_affected(report)
+                for item in report["selected"]:
+                    status = item["error"] or "OK"
+                    print(
+                        f"  {item['package']}: {item['previous_version']}/{item['previous_build_number']} -> {item['version']}/{item['build_number']}: {status}"
+                    )
+            if args.check and not report["valid"]:
+                for item in report["selected"]:
+                    if item["error"]:
+                        print(
+                            f"error: {item['package']} ({item['recipe']}): {item['error']}",
+                            file=sys.stderr,
+                        )
+                return 1
+            return 0
         outputs, _recipes = render_outputs(options)
         graph = build_graph(outputs)
         cycles = non_bootstrap_cycles(graph)
@@ -293,7 +324,12 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 _print_affected(report)
         return 0
-    except (RenderError, OSError, ValueError) as exc:
+    except (
+        RenderError,
+        OSError,
+        ValueError,
+        subprocess.CalledProcessError,
+    ) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1
 

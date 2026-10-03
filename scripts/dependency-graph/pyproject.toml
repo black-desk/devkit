@@ -1,7 +1,7 @@
 [project]
 name = "devkit-dependency-graph"
 version = "0.1.0"
-description = "Audit-only rendered recipe dependency graph prototype"
+description = "Rendered recipe dependency graph and affected build planner"
 requires-python = ">=3.11"
 dependencies = []
 

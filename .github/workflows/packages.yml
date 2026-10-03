@@ -34,7 +34,7 @@ jobs:
           cache: true
           run-install: true
 
-      - name: Build affected packages
+      - name: Validate revisions and build affected packages
         env:
           DEVKIT_CHANNEL: https://prefix.dev/black-desk
           BASE_SHA: >-

@@ -92,7 +92,7 @@ class GraphTests(unittest.TestCase):
             ],
         )
         selected, reasons = reverse_closure(graph, {"gcc"}, {"gcc", "make"})
-        self.assertEqual(selected, {"gcc", "make", "ripgrep", "lazygit"})
+        self.assertEqual(selected, {"gcc", "gxx", "make", "ripgrep", "lazygit"})
         self.assertIn("depends on gcc", reasons["ripgrep"])
         schedule = selected_schedule(graph, selected, ["gcc-toolchain", "make"])
         self.assertEqual(schedule[:3], ["gcc", "gxx", "make"])
