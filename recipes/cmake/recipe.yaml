@@ -14,11 +14,12 @@ source:
     patches:
       - patches/bootstrap-exclude-ghs-generator.patch
       - patches/curl-long-proxy-type.patch
+      - patches/default-host-discovery.patch
 
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -78,6 +79,7 @@ tests:
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - test "$(command -v cmake)" = "${PREFIX}/bin/cmake"
+      - bash tests/discovery.sh
       - test "$("${PREFIX}/bin/cmake" --version | head -n 1)" = "cmake version ${{ version }}"
       - test "$("${PREFIX}/bin/ctest" --version | head -n 1)" = "ctest version ${{ version }}"
       - test "$("${PREFIX}/bin/cpack" --version | head -n 1)" = "cpack version ${{ version }}"

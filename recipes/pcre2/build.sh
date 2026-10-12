@@ -4,28 +4,59 @@ set -euxo pipefail
 : "${PCRE2_VERSION:?rattler-build must provide PCRE2_VERSION}"
 : "${SYSROOT_TRIPLET:?rattler-build must provide SYSROOT_TRIPLET}"
 
-source "${BUILD_PREFIX}/share/devkit/build-env.sh"
+: "${BUILD_PREFIX:?}"
+: "${PREFIX:?}"
+export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
+export CC="${BUILD_PREFIX}/bin/clang"
+export CXX="${BUILD_PREFIX}/bin/clang++"
+DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+export AR="${BUILD_PREFIX}/bin/llvm-ar"
+export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
+export NM="${BUILD_PREFIX}/bin/llvm-nm"
+export STRIP="${BUILD_PREFIX}/bin/llvm-strip"
+export OBJCOPY="${BUILD_PREFIX}/bin/llvm-objcopy"
+export OBJDUMP="${BUILD_PREFIX}/bin/llvm-objdump"
+export READELF="${BUILD_PREFIX}/bin/llvm-readelf"
+export LD="${BUILD_PREFIX}/bin/ld.lld"
+export PATH="${BUILD_PREFIX}/bin:${PATH}"
+export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
+export CXXFLAGS="${CFLAGS}"
+export CPPFLAGS="${DEVKIT_FLAGS}"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+test -d "${SYSROOT}"
+test -x "${CC}"
 
-cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" config.guess
-cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
-
-./configure \
-  --prefix="${PREFIX}" \
-  --libdir="${PREFIX}/lib" \
-  --includedir="${PREFIX}/include/pcre2-${PCRE2_VERSION}" \
-  --enable-shared \
-  --enable-static \
-  --disable-pcre2-16 \
-  --disable-pcre2-32 \
-  --enable-jit \
-  --disable-valgrind \
-  --disable-coverage \
-  --disable-fuzz-support \
-  --disable-diff-fuzz-support
-
-make -j"${CPU_COUNT}"
-make check
-make install
+# Match forge's complete interfaces and use upstream's relocatable CMake exports.
+# libedit supplies pcre2test's readline interface without another readline library.
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_INSTALL_LIBDIR=lib \
+  -DCMAKE_INSTALL_INCLUDEDIR="include/pcre2-${PCRE2_VERSION}" \
+  -DCMAKE_C_COMPILER="${CC}" \
+  -DCMAKE_C_FLAGS="${CFLAGS} -O3" \
+  -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" \
+  -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_FIND_ROOT_PATH="${PREFIX};${SYSROOT}" \
+  -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+  -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+  -DCMAKE_DISABLE_FIND_PACKAGE_Readline=ON \
+  -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON \
+  -DPCRE2_BUILD_PCRE2_8=ON -DPCRE2_BUILD_PCRE2_16=ON -DPCRE2_BUILD_PCRE2_32=ON \
+  -DPCRE2_SUPPORT_JIT=ON -DPCRE2_SUPPORT_UNICODE=ON \
+  -DPCRE2_BUILD_PCRE2GREP=ON -DPCRE2_BUILD_TESTS=ON \
+  -DPCRE2_SUPPORT_LIBZ=ON -DPCRE2_SUPPORT_LIBBZ2=ON \
+  -DPCRE2_SUPPORT_LIBEDIT=ON -DPCRE2_SUPPORT_LIBREADLINE=OFF \
+  -DZLIB_INCLUDE_DIR="${PREFIX}/include/zlib-1.3.2" \
+  -DZLIB_LIBRARY="${PREFIX}/lib/libz.so" \
+  -DBZIP2_INCLUDE_DIR="${PREFIX}/include/bzip2-1.0.8" \
+  -DBZIP2_LIBRARY_RELEASE="${PREFIX}/lib/libbz2.so" \
+  -DEDITLINE_INCLUDE_DIR="${PREFIX}/include/libedit-3.1.20260512/editline" \
+  -DEDITLINE_LIBRARY="${PREFIX}/lib/libedit.so"
+cmake --build build --parallel "${CPU_COUNT}"
+ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}"
+cmake --install build
 
 # The source patch keeps upstream's command-line interface while making its
 # flag output relocatable and exact. Keep the generated helper private to this
@@ -34,21 +65,24 @@ install -d -m 0755 "${PREFIX}/libexec/pcre2/bin"
 mv "${PREFIX}/bin/pcre2-config" \
   "${PREFIX}/libexec/pcre2/bin/pcre2-config"
 
-cat >"${PREFIX}/lib/pkgconfig/libpcre2-8.pc" <<EOF
+for width in 8 16 32; do
+cat >"${PREFIX}/lib/pkgconfig/libpcre2-${width}.pc" <<EOF
 prefix=\${pcfiledir}/../..
 exec_prefix=\${prefix}
 libdir=\${prefix}/lib
 includedir=\${prefix}/include
 
 Name: libpcre2-8
-Description: PCRE2 - Perl compatible regular expressions C library (2nd API) with 8 bit character support
+Description: PCRE2 - Perl compatible regular expressions C library (2nd API) with ${width} bit character support
 Version: ${PCRE2_VERSION}
 License: BSD-3-Clause WITH PCRE2-exception
 Cflags: -I\${includedir}/pcre2-${PCRE2_VERSION}
 Cflags.private: -DPCRE2_STATIC
-Libs: \${libdir}/libpcre2-8.so
+Libs: \${libdir}/libpcre2-${width}.so
 Libs.private: -lm
 EOF
+
+done
 
 cat >"${PREFIX}/lib/pkgconfig/libpcre2-posix.pc" <<EOF
 prefix=\${pcfiledir}/../..

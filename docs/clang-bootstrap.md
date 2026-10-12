@@ -1312,3 +1312,75 @@ stages and 1 for result-rebuild. No stage variant or package hash is added.
 Independent package tests run only after result-rebuild is complete, before
 promotion. This reduces repeated suite execution without changing build features
 or the final acceptance tests. Local bootstrap remains cancelled.
+
+## Recipe-local build environments
+
+The earlier build-env.sh, test-env.sh and rust-env.sh design is superseded.
+Compiler/tool variables and build flags now live in each consuming recipe. The
+three shared environment scripts are removed from the repository and the Clang
+package. clang.cfg still owns the explicit channel compiler policy, and
+finalize-elf.py remains the relocation utility; neither is an environment
+script.
+
+Each bootstrap recipe prepares its fresh seed build prefix with relative clang
+and clang++ symlinks to clang-23 and clang++-23 before using the unversioned
+drivers. This is an ordinary recipe build-script step after dependency
+installation, with no reliance on rattler-build internals. No extra seed package
+is introduced and seed-packages.tsv and downloaded archives remain unchanged.
+Ordinary recipes only use the channel compiler and do not carry seed branches.
+Seed compiler flags and libc++ header selection retain their existing behavior.
+
+Recipes gate upstream suites directly on DEVKIT_RUN_TESTS (default 1),
+validating 0/1 before building. Final-stage test workloads are unchanged. The
+seven Rust recipes define their own scoped devkit_rustup function and linker
+settings; preload remains limited to upstream Rust invocations. Updating the
+seed GCC development layout, libc++ versioned headers or Rust linking policy
+requires reviewing these recipe-local settings together. LLVM binary-tool path
+declarations are expected to remain stable. The completed environment refactor
+is included with the subsequent CI repair.
+
+Local verification compares 74 recipe/mode environments against the previous
+helper behavior, including seed driver symlink targets. All 27 upstream-suite
+gates skip with 0 and execute with 1 or the default. All 91 recipe/variant
+renderings, the 18 dependency-graph tests, revision planning, Bash syntax and
+format/whitespace checks pass. This is configuration and orchestration
+verification. Subsequent focused package builds are recorded below; the full
+local bootstrap remains stopped.
+
+## Default host development discovery
+
+Channel CMake excludes its own installation prefix from implicit system-prefix
+and PATH-derived package, library and header searches. Paths are canonicalized
+so symlinks into that prefix are also excluded. Program searches retain PATH;
+channel Clang, Ninja and other tools remain available. Explicit package roots,
+package directories, CMAKE_PREFIX_PATH, hints and project installation prefixes
+retain upstream behavior and can select channel development interfaces. Metadata
+stays in its existing locations; recipes explicitly select their dependency
+prefixes rather than relying on CMake's installation location.
+
+Channel pkgconf uses upstream with-pkg-config-dir to search host /usr/local and
+/usr metadata directories, including x86_64-linux-gnu and lib64 locations. On
+Linux pkgconf does not derive these paths from PATH. PKG_CONFIG_LIBDIR replaces
+the default directories and PKG_CONFIG_PATH adds explicit overrides. The system
+include/library options only control flag filtering, not metadata discovery.
+These changes affect development discovery, not tool runtime dependencies.
+
+Focused validation compiles patched CMake 3.31.8 and pkgconf 3.0.7 from source.
+Synthetic metadata tests cover default exclusion, symlinked PATH entries,
+explicit prefix/environment overrides, retained program searches and searches
+outside the tool prefix. Both recipes include these discovery checks as package
+tests. Full bootstrap validation has not been repeated for this policy change.
+
+The CI run on 4c2c0f933686 reached the result-stage libnghttp2 build and failed
+because its CXX override added a host-prefix libc++ header tree alongside the
+build-prefix tree selected by clang.cfg. libc++ include_next then skipped the
+intended C headers, causing missing errno and math declarations. The recipe now
+moves its existing CXXFLAGS policy onto CXX (configure temporarily clears
+CXXFLAGS during its C++20 probe), retaining only one libc++ header tree. A
+focused channel build passes the upstream and package suites.
+
+Rust recipes obtain absolute RUSTC and RUSTDOC paths through rustup which after
+installing the pinned toolchain. rustup run alone adds CARGO_HOME/bin to PATH,
+which need not contain rustc shims in a fresh recipe environment. Cargo
+therefore must not rely on a developer's host rustup installation. The existing
+scoped llvm-libgcc preload still applies only to upstream Rust invocations.

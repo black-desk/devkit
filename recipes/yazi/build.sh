@@ -1,7 +1,34 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-source "${BUILD_PREFIX}/share/devkit/rust-env.sh"
+: "${BUILD_PREFIX:?}"
+: "${PREFIX:?}"
+export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
+export CC="${BUILD_PREFIX}/bin/clang"
+export CXX="${BUILD_PREFIX}/bin/clang++"
+DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+export AR="${BUILD_PREFIX}/bin/llvm-ar"
+export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
+export NM="${BUILD_PREFIX}/bin/llvm-nm"
+export STRIP="${BUILD_PREFIX}/bin/llvm-strip"
+export OBJCOPY="${BUILD_PREFIX}/bin/llvm-objcopy"
+export OBJDUMP="${BUILD_PREFIX}/bin/llvm-objdump"
+export READELF="${BUILD_PREFIX}/bin/llvm-readelf"
+export LD="${BUILD_PREFIX}/bin/ld.lld"
+export PATH="${BUILD_PREFIX}/bin:${PATH}"
+export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
+export CXXFLAGS="${CFLAGS}"
+export CPPFLAGS="${DEVKIT_FLAGS}"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+test -d "${SYSROOT}"
+test -x "${CC}"
+
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib"
+devkit_rustup() {
+  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/libgcc_s.so.1" \
+    "${BUILD_PREFIX}/bin/rustup" "$@"
+}
 
 test -x "${BUILD_PREFIX}/bin/rustup"
 test -f "${BUILD_PREFIX}/share/rust-toolchain/version"
@@ -33,6 +60,10 @@ export VERGEN_BUILD_DATE=2026-09-01
 devkit_rustup toolchain install "${RUST_TOOLCHAIN}" \
   --profile minimal \
   --no-self-update
+
+# Cargo must not depend on rustup shims installed on the build host.
+export RUSTC="$(devkit_rustup which --toolchain "${RUST_TOOLCHAIN}" rustc)"
+export RUSTDOC="$(devkit_rustup which --toolchain "${RUST_TOOLCHAIN}" rustdoc)"
 
 devkit_rustup run "${RUST_TOOLCHAIN}" cargo build \
   --locked --release --package yazi-fm --package yazi-cli

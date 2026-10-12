@@ -3,14 +3,15 @@ set -euxo pipefail
 
 : "${SYSROOT_TRIPLET:?}"
 SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
+CC="${BUILD_PREFIX}/bin/clang"
+CXX="${BUILD_PREFIX}/bin/clang++"
 if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
-  CC="${BUILD_PREFIX}/bin/clang-23"
-  CXX="${BUILD_PREFIX}/bin/clang++-23"
+  # Prepare the fresh seed build environment with unversioned driver names.
+  ln -sfn clang-23 "${BUILD_PREFIX}/bin/clang"
+  ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   GCC_INSTALL="${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0"
   COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${GCC_INSTALL} -O2 -fPIC --rtlib=compiler-rt"
 else
-  CC="${BUILD_PREFIX}/bin/clang"
-  CXX="${BUILD_PREFIX}/bin/clang++"
   COMMON_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg -O2 -fPIC --rtlib=compiler-rt"
 fi
 COMMON_FLAGS="--start-no-unused-arguments ${COMMON_FLAGS} --end-no-unused-arguments"
@@ -103,9 +104,7 @@ cp test-probe-prefix/bin/* .
 
 install -d "${PREFIX}/share/devkit"
 install -m 0644 "${RECIPE_DIR}/clang.cfg" "${PREFIX}/share/devkit/clang.cfg"
-for helper in build-env.sh rust-env.sh finalize-elf.py; do
-  install -m 0644 "${RECIPE_DIR}/${helper}" "${PREFIX}/share/devkit/${helper}"
-done
+install -m 0644 "${RECIPE_DIR}/finalize-elf.py" "${PREFIX}/share/devkit/finalize-elf.py"
 for driver in clang clang++; do
   install -m 0644 "${RECIPE_DIR}/host.cfg" "${PREFIX}/bin/${driver}.cfg"
 done
