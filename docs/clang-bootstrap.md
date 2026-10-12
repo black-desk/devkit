@@ -1288,3 +1288,12 @@ The shared generic action also requires Conventional Commits, so the experiment
 commit message is normalized before re-running CI. Package builds are still
 running, and the local dirty stage has completed Clang and libxcrypt and is now
 building/testing Perl.
+
+The subsequent CI run completes every dirty recipe and its independent stage
+package tests. It fails the closure name comparison because the runner's locale
+sorts libxcrypt before libxml2, whereas the manually maintained expected list
+uses C collation. Captured expected/actual lists contain the same 45 package
+names. Both lists are now normalized with LC_ALL=C sort -u before comparison;
+strict channel provenance and compiler/runtime audits remain in place. Local
+bootstrap was cancelled at the maintainer's request and is not resumed. Result
+and self-host validation remain pending the next CI run.
