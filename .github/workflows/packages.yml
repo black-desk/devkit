@@ -13,12 +13,19 @@ concurrency:
 permissions:
   contents: read
 
-jobs:
-  affected-packages:
-    name: Affected package builds
-    runs-on: ubuntu-24.04
-    timeout-minutes: 360
+env:
+  PLAN_FILE: ${{ github.workspace }}/.build-output/affected-plan.json
+  DEVKIT_CHANNEL: https://prefix.dev/black-desk
 
+jobs:
+  plan:
+    name: Plan affected package builds
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      bootstrap_required: ${{ steps.plan.outputs.bootstrap_required }}
+      ordinary_required: ${{ steps.plan.outputs.ordinary_required }}
+      build_required: ${{ steps.plan.outputs.build_required }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -34,54 +41,36 @@ jobs:
           cache: true
           run-install: true
 
-      - name: Validate revisions and build affected packages
+      - name: Validate revisions and write build plan
+        id: plan
         env:
-          DEVKIT_CHANNEL: https://prefix.dev/black-desk
           BASE_SHA: >-
             ${{
               github.event_name == 'pull_request'
               && github.event.pull_request.base.sha
               || github.event.before
             }}
-        run: pixi run bash scripts/affected-build.sh "$BASE_SHA"
+        run: pixi run bash scripts/affected-plan.sh "$BASE_SHA"
 
-      - name: Archive built packages
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main'
-        run: |
-          mkdir -p channels/result
-          tar --create --gzip --file result-packages.tar.gz \
-            --directory channels result
-
-      - name: Upload built packages
-        if: >-
-          github.event_name == 'push' &&
-          github.ref == 'refs/heads/main'
+      - name: Upload build plan
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: result-packages
-          path: result-packages.tar.gz
-          retention-days: 1
+          name: build-plan
+          path: .build-output/affected-plan.json
+          retention-days: 3
           if-no-files-found: error
 
-  publish-packages:
-    name: Publish affected packages
-    needs:
-      - affected-packages
-    if: >-
-      github.event_name == 'push' &&
-      github.ref == 'refs/heads/main'
+  dirty:
+    name: Bootstrap dirty
+    needs: [plan]
+    if: needs.plan.outputs.bootstrap_required == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      id-token: write
-
+    timeout-minutes: 360
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
           submodules: recursive
 
@@ -92,17 +81,307 @@ jobs:
           cache: true
           run-install: true
 
-      - name: Download built packages
+      - name: Download build plan
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: result-packages
-          path: .
+          name: build-plan
+          path: .build-output
 
-      - name: Extract built packages
+      - name: Build dirty generation
+        run: pixi run bash scripts/bootstrap.sh dirty
+
+      - name: Archive dirty channel
+        run: >-
+          tar --create --gzip --file .build-output/dirty-channel.tar.gz
+          --directory channels dirty
+
+      - name: Upload dirty channel
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dirty-channel
+          path: .build-output/dirty-channel.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+
+  result:
+    name: Bootstrap result
+    needs: [plan, dirty]
+    if: needs.plan.outputs.bootstrap_required == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          cache: true
+          run-install: true
+
+      - name: Download build plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-plan
+          path: .build-output
+
+      - name: Download dirty channel
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: dirty-channel
+          path: .build-output
+
+      - name: Extract dirty channel
         run: |
           mkdir -p channels
-          tar --extract --gzip --file result-packages.tar.gz \
-            --directory channels
+          tar --extract --gzip --file .build-output/dirty-channel.tar.gz --directory channels
+
+      - name: Build result generation
+        run: pixi run bash scripts/bootstrap.sh result
+
+      - name: Archive result channel
+        run: >-
+          tar --create --gzip --file .build-output/result-channel.tar.gz
+          --directory channels result
+
+      - name: Upload result channel
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: result-channel
+          path: .build-output/result-channel.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+
+  selfhost:
+    name: Bootstrap selfhost
+    needs: [plan, result]
+    if: needs.plan.outputs.bootstrap_required == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          cache: true
+          run-install: true
+
+      - name: Download build plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-plan
+          path: .build-output
+
+      - name: Download result channel
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: result-channel
+          path: .build-output
+
+      - name: Extract result channel
+        run: |
+          mkdir -p channels
+          tar --extract --gzip --file .build-output/result-channel.tar.gz --directory channels
+
+      - name: Build selfhost generation
+        run: pixi run bash scripts/bootstrap.sh selfhost
+
+      - name: Archive selfhost channel
+        run: >-
+          tar --create --gzip --file .build-output/selfhost-channel.tar.gz
+          --directory channels result-rebuild
+
+      - name: Upload selfhost channel
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: selfhost-channel
+          path: .build-output/selfhost-channel.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+
+  smoke:
+    name: Self-hosted package tests and smoke checks
+    needs: [plan, selfhost]
+    if: needs.plan.outputs.bootstrap_required == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          cache: true
+          run-install: true
+
+      - name: Download build plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-plan
+          path: .build-output
+
+      - name: Download selfhost channel
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: selfhost-channel
+          path: .build-output
+
+      - name: Extract selfhost channel
+        run: |
+          mkdir -p channels
+          tar --extract --gzip --file .build-output/selfhost-channel.tar.gz --directory channels
+
+      - name: Test self-hosted generation
+        run: pixi run bash scripts/bootstrap.sh test
+
+  ordinary:
+    name: Build affected ordinary packages
+    needs: [plan, smoke]
+    if: >-
+      !cancelled() && needs.plan.result == 'success' &&
+      needs.plan.outputs.ordinary_required == 'true' &&
+      (needs.plan.outputs.bootstrap_required == 'false' || needs.smoke.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          cache: true
+          run-install: true
+
+      - name: Download build plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-plan
+          path: .build-output
+
+      - name: Download selfhost channel
+        if: needs.plan.outputs.bootstrap_required == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: selfhost-channel
+          path: .build-output
+
+      - name: Extract selfhost channel
+        if: needs.plan.outputs.bootstrap_required == 'true'
+        run: |
+          mkdir -p channels
+          tar --extract --gzip --file .build-output/selfhost-channel.tar.gz --directory channels
+
+      - name: Build and test ordinary packages
+        run: pixi run bash scripts/build-ordinary.sh
+
+      - name: Archive ordinary channel
+        run: >-
+          tar --create --gzip --file .build-output/ordinary-channel.tar.gz
+          --directory channels ordinary
+
+      - name: Upload ordinary channel
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ordinary-channel
+          path: .build-output/ordinary-channel.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+
+  publish-packages:
+    name: Publish affected packages
+    needs: [plan, smoke, ordinary]
+    if: >-
+      !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.plan.result == 'success' && needs.plan.outputs.build_required == 'true' &&
+      (needs.plan.outputs.bootstrap_required == 'false' || needs.smoke.result == 'success') &&
+      (needs.plan.outputs.ordinary_required == 'false' || needs.ordinary.result == 'success')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: recursive
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+        with:
+          pixi-version: v0.81.0
+          cache: true
+          run-install: true
+
+      - name: Download build plan
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: build-plan
+          path: .build-output
+
+      - name: Download selfhost channel
+        if: needs.plan.outputs.bootstrap_required == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: selfhost-channel
+          path: .build-output
+
+      - name: Extract selfhost channel
+        if: needs.plan.outputs.bootstrap_required == 'true'
+        run: |
+          mkdir -p channels
+          tar --extract --gzip --file .build-output/selfhost-channel.tar.gz --directory channels
+
+      - name: Download ordinary channel
+        if: needs.plan.outputs.ordinary_required == 'true'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ordinary-channel
+          path: .build-output
+
+      - name: Extract ordinary channel
+        if: needs.plan.outputs.ordinary_required == 'true'
+        run: |
+          mkdir -p channels
+          tar --extract --gzip --file .build-output/ordinary-channel.tar.gz --directory channels
+
+      - name: Assemble verified publication channel
+        run: |
+          inputs=()
+          if [[ "$(jq -r '.bootstrap_required' "$PLAN_FILE")" == true ]]; then
+            inputs+=(--input selfhost "$PWD/channels/result-rebuild")
+          fi
+          if [[ "$(jq '.ordinary_recipes | length' "$PLAN_FILE")" != 0 ]]; then
+            inputs+=(--input ordinary "$PWD/channels/ordinary")
+          fi
+          pixi run python scripts/channel-artifact.py merge --plan "$PLAN_FILE" \
+            --channel "$PWD/channels/result" "${inputs[@]}"
 
       - name: Publish affected packages
         env:
@@ -112,12 +391,23 @@ jobs:
   packages-pass:
     name: packages-pass
     if: always()
-    needs:
-      - affected-packages
+    needs: [plan, dirty, result, selfhost, smoke, ordinary]
     runs-on: ubuntu-latest
-
     steps:
-      - name: Decide whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
-        with:
-          jobs: ${{ toJSON(needs) }}
+      - name: Check required stages and intentional skips
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          jobs = json.loads(os.environ["NEEDS_JSON"])
+          assert jobs["plan"]["result"] == "success", "Planning failed or was cancelled"
+          outputs = jobs["plan"]["outputs"]
+          for job in ("dirty", "result", "selfhost", "smoke", "ordinary"):
+              flag = "ordinary_required" if job == "ordinary" else "bootstrap_required"
+              assert outputs[flag] in ("true", "false"), f"Invalid plan output: {flag}"
+              expected = "success" if outputs[flag] == "true" else "skipped"
+              actual = jobs[job]["result"]
+              assert actual == expected, f"{job}: expected {expected}, got {actual}"
+          PY

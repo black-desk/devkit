@@ -240,9 +240,12 @@ variants/
   result.yaml           Result sysroot and target-triplet variant
 
 scripts/
-  bootstrap.sh          Reset build outputs, fetch, build, index, and verify
+  bootstrap.sh          Run all bootstrap stages or a single stage
   clean-build-outputs.py Preserve source caches while removing generated output
-  affected-build.sh     Build the recipes affected by a pull request or push
+  affected-plan.sh      Validate revisions and write a portable build plan
+  affected-build.sh     Run the planned local pipeline
+  build-ordinary.sh     Build ordinary recipes from an existing plan
+  channel-artifact.py   Verify, seal and merge portable stage channels
   dependency-graph/     Rendered recipe graph and affected-closure calculator
   publish-result.sh     Upload generated result archives to prefix.dev
   fetch-seed.sh         Download and verify the fixed seed
@@ -892,34 +895,32 @@ metadata, secret scanning, and PR commit linting), formatting checks backed by
 pixi run graph-test
 ```
 
-Package builds live in `.github/workflows/packages.yml`. On pull requests, that
-workflow derives changed recipe directories from the PR diff, asks the rendered
-graph for their conservative reverse closure, checks version/build-number
-changes for all selected outputs, and builds that closure. Bootstrap recipe
-changes and changes to global bootstrap inputs run the complete seed → dirty →
-result → self-host fixed point before building selected ordinary consumers.
-Ordinary recipe changes build sequentially through the same `output/<recipe>/`
-source-cache layout used by bootstrap, publish into the generated local
-`channels/result` overlay, and resolve unchanged baseline packages from the
-public `https://prefix.dev/black-desk` channel. Conda-forge is not a
-target-dependency fallback. Other repository changes skip package builds.
+Package builds live in `.github/workflows/packages.yml`. A planning job checks
+version/build-number revisions and calculates the affected closure once. Three
+separate bootstrap jobs build dirty, result and selfhost, followed by a job for
+independent package tests and channel smoke checks, then a job for selected
+ordinary packages. Each execution job has its own six-hour limit. Bootstrap
+stages are skipped when only ordinary recipes change; all execution jobs are
+skipped when no target packages change.
 
-Pull requests validate the affected closure but do not publish it. After the
-pull request is merged to `main`, the package workflow runs against the push
-diff, builds the affected closure, and uploads the generated archives in
-`channels/result` to `https://prefix.dev/black-desk`. Publication uses
-prefix.dev trusted publishing through GitHub Actions OIDC, so `packages.yml` is
-the workflow that must be configured as a trusted publisher. The repository does
-not store or use a `PREFIX_API_KEY` secret. Immutable package publication
-remains intentional.
+The plan travels as an artifact and small job outputs control scheduling.
+Channel artifacts contain archives, repodata, relative package manifests and
+checksums tied to the checkout and plan. Each runner creates fresh environments;
+no installed environment or build tree is transferred. Ordinary output remains
+separate from the immutable, tested selfhost input. Publication verifies and
+merges the required artifacts into channels/result. Intentional skips pass the
+final gate; failures, cancellations and unexpected skips do not.
 
-The package workflow is deliberately independent of the repository-check
-workflow. Publication is gated by the affected-build result and pull request
-review, not by formatting or generic repository checks.
+Pull requests validate without publishing. Main pushes retain prefix.dev OIDC
+trusted publishing after every required build and test succeeds. The workflow
+remains independent of repository checks and does not use PREFIX_API_KEY.
+Planning and stage outcomes appear in job summaries. Artifacts are retained for
+three days and logs remain available through Actions.
 
-The package job writes its changed recipe roots, complete rebuild plan, rebuild
-result, and produced archives to the GitHub Actions job summary. After a push to
-`main`, the publication job appends the archives uploaded to prefix.dev.
+See [the stage interfaces and artifact protocol](docs/package-ci.md) for input
+channels, skip rules, local commands and validation. `pixi run bootstrap` and
+`scripts/affected-build.sh BASE_SHA` remain local one-command entry points using
+the same independently executable stages as CI.
 
 ## Package roles in the current bootstrap
 
@@ -1078,18 +1079,20 @@ upstream suites and independent package tests in dirty and result. Final
 self-hosting runs upstream suites during builds, then
 `scripts/test-bootstrap-stage.sh` executes the packaged recipe tests using only
 the completed stage channel. Channel-wide closure/compiler/runtime/glibc checks
-still run at every stage boundary. Package builds use `--test skip` to defer
+run at dirty/result boundaries and in the final smoke job; selfhost checks
+closure before handing off its output. Package builds use `--test skip` to defer
 independent package tests until the full stage is available. Self-hosting reads
-the completed result and writes `channels/result-rebuild`; it replaces result
-only after all checks pass. Recipes read `DEVKIT_RUN_TESTS` through the
-supported script environment interface: `0` skips upstream suites and `1` runs
-them. Standalone recipe builds default to `1`; this setting does not add a stage
-variant or alter package hashes. Cheap build smoke probes remain enabled
-throughout. Final-stage suites retain their full workloads, including Zstd's
-30,000-round fuzzer. The generated per-stage package manifests live in output/.
-The expanded closure still needs validation; this infrastructure change does not
-establish a successful bootstrap. Stage checks also inspect installed ELF symbol
-versions against the glibc 2.28 sysroot baseline. Autotools recipes patch
-bundled libtool to retain explicit Clang configuration and linker flags during
-shared-library links; otherwise libtool can silently reload the default host
-policy.
+the completed result and writes `channels/result-rebuild`; local full bootstrap
+promotes it after all checks pass, while CI passes it read-only to ordinary
+builds and assembles the publication channel later. Recipes read
+`DEVKIT_RUN_TESTS` through the supported script environment interface: `0` skips
+upstream suites and `1` runs them. Standalone recipe builds default to `1`; this
+setting does not add a stage variant or alter package hashes. Cheap build smoke
+probes remain enabled throughout. Final-stage suites retain their full
+workloads, including Zstd's 30,000-round fuzzer. The generated per-stage package
+manifests live inside their stage channels as `stage-packages.txt`. The expanded
+closure still needs validation; this infrastructure change does not establish a
+successful bootstrap. Stage checks also inspect installed ELF symbol versions
+against the glibc 2.28 sysroot baseline. Autotools recipes patch bundled libtool
+to retain explicit Clang configuration and linker flags during shared-library
+links; otherwise libtool can silently reload the default host policy.
