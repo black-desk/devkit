@@ -15,7 +15,7 @@ test -f tests/psl_ascii.dafsa
 ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/libpsl-${LIBRARY_VERSION}" \
   --enable-runtime=libicu --enable-builtin --disable-static
 make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
-make check AM_LDFLAGS=-no-install
+devkit_test make check AM_LDFLAGS=-no-install
 make install AM_LDFLAGS=-no-install
 rm -f "${PREFIX}/lib/libpsl.la"
 # The seed carrier excludes this Python data-regeneration helper too.

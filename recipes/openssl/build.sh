@@ -18,7 +18,7 @@ source "${SRC_DIR}/devkit-build/build-env.sh"
   no-zlib
 
 make -j"${CPU_COUNT}"
-make test
+devkit_test make test
 make install
 
 # These Perl helpers would make the OpenSSL runtime pull in Perl. The channel

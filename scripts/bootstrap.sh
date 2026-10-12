@@ -97,7 +97,7 @@ build() {
   fi
   local recipe_file="$ROOT/recipes/$recipe/recipe.yaml"
   clean_build_output "$BUILD_ROOT/$output"
-  "$RBT" build \
+  DEVKIT_RUN_TESTS="$RUN_UPSTREAM_TESTS" "$RBT" build \
     --recipe "$recipe_file" \
     --target-platform linux-64 \
     --no-config \
@@ -133,6 +133,10 @@ recipe_variant() {
 
 run_stage() {
   local stage_variant="$1" channel="$2" input_channel="$3"
+  local RUN_UPSTREAM_TESTS=0
+  [[ "$channel" != result-rebuild ]] || RUN_UPSTREAM_TESTS=1
+  printf 'Bootstrap stage %s: upstream/package tests %s\n' \
+    "$channel" "$RUN_UPSTREAM_TESTS"
   local manifest="$BUILD_ROOT/bootstrap/$channel-packages.txt"
   mkdir -p "${manifest%/*}"
   : > "$manifest"
@@ -155,7 +159,9 @@ run_stage() {
       done
     done
   done
-  bash "$ROOT/scripts/test-bootstrap-stage.sh" "$ROOT/channels/$channel" "$manifest"
+  if [[ "$channel" == result-rebuild ]]; then
+    bash "$ROOT/scripts/test-bootstrap-stage.sh" "$ROOT/channels/$channel" "$manifest"
+  fi
   bash "$ROOT/scripts/check-result.sh" "$ROOT/channels/$channel"
 }
 

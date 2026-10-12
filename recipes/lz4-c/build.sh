@@ -2,15 +2,18 @@
 set -euxo pipefail
 source "${SRC_DIR}/devkit-build/build-env.sh"
 make -j"${CPU_COUNT}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
-make -C tests datagen
-# Preserve conda-forge's basic test corpus, including large and linked blocks.
-tests/datagen -g0 | ./lz4 -v | ./lz4 -t
-tests/datagen -g16KB | ./lz4 -9 | ./lz4 -t
-tests/datagen | ./lz4 | ./lz4 -t
-tests/datagen -g6M -P99 | ./lz4 -9BD | ./lz4 -t
-tests/datagen -g17M | ./lz4 -9v | ./lz4 -qt
-tests/datagen -g33M | ./lz4 --no-frame-crc | ./lz4 -t
-tests/datagen -g256MB | ./lz4 -vqB4D | ./lz4 -t
+lz4_upstream_tests() {
+  make -C tests datagen
+  # Preserve conda-forge's corpus, including large and linked blocks.
+  tests/datagen -g0 | ./lz4 -v | ./lz4 -t
+  tests/datagen -g16KB | ./lz4 -9 | ./lz4 -t
+  tests/datagen | ./lz4 | ./lz4 -t
+  tests/datagen -g6M -P99 | ./lz4 -9BD | ./lz4 -t
+  tests/datagen -g17M | ./lz4 -9v | ./lz4 -qt
+  tests/datagen -g33M | ./lz4 --no-frame-crc | ./lz4 -t
+  tests/datagen -g256MB | ./lz4 -vqB4D | ./lz4 -t
+}
+devkit_test lz4_upstream_tests
 make install PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
 python3 - <<'PY'
 import os

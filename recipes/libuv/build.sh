@@ -11,7 +11,7 @@ cmake -S . -B build -G Ninja \
   -DLIBUV_BUILD_SHARED=ON -DLIBUV_BUILD_TESTS=ON -DBUILD_TESTING=ON
 cmake --build build --target uv uv_a uv_run_tests --parallel "${CPU_COUNT}"
 # Run the full shared-library suite; tests run against the build-tree RUNPATH.
-ctest --test-dir build -R '^uv_test$' --output-on-failure
+devkit_test ctest --test-dir build -R '^uv_test$' --output-on-failure
 cmake --install build
 python3 - <<'PY'
 import os

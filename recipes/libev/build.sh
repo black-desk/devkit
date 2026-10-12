@@ -4,7 +4,7 @@ source "${SRC_DIR}/devkit-build/build-env.sh"
 cp "${BUILD_PREFIX}/share/gnuconfig/"config.* .
 ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/libev-${LIBRARY_VERSION}"
 make -j"${CPU_COUNT}"
-make check
+devkit_test make check
 make install
 # All three headers, including the compatibility interface, stay version-isolated.
 "${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libev-${LIBRARY_VERSION}" \

@@ -2,8 +2,10 @@
 set -euxo pipefail
 source "${SRC_DIR}/devkit-build/build-env.sh"
 export CFLAGS="${CFLAGS} -Wall -Winline -D_FILE_OFFSET_BITS=64"
-# Build the static library and tools and execute upstream compression fixtures.
+# Build libraries/tools separately from the upstream fixture target.
 make -j"${CPU_COUNT}" CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
+  CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}" libbz2.a bzip2 bzip2recover
+devkit_test make test CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"
 make install PREFIX="${PREFIX}" CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${LDFLAGS}"

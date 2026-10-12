@@ -7,7 +7,7 @@ source "${SRC_DIR}/devkit-build/build-env.sh"
   --extra-cflags="${CFLAGS}" --extra-ldflags="${LDFLAGS} -Wl,-rpath,${SRC_DIR}/librhash" \
   --disable-openssl --enable-lib-static --enable-lib-shared
 make -j"${CPU_COUNT}"
-make test-libs test-full
+devkit_test make test-libs test-full
 make install
 make -C librhash install-lib-headers install-so-link
 mkdir -p "${PREFIX}/lib/pkgconfig"

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Source only in an explicitly opted-in channel package build.
+source "${BASH_SOURCE[0]%/*}/test-env.sh"
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
 export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"

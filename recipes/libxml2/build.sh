@@ -18,7 +18,7 @@ cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
 # Libtool's -no-install builds executables with build-tree RUNPATH instead of
 # loader-environment shell wrappers. Finalization replaces that RUNPATH.
 make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
-make check AM_LDFLAGS=-no-install
+devkit_test make check AM_LDFLAGS=-no-install
 make install AM_LDFLAGS=-no-install
 mv "${PREFIX}/include/libxml2" "${PREFIX}/include/libxml2-${LIBRARY_VERSION}"
 python3 - <<'PY'

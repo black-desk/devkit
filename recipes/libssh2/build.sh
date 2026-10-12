@@ -18,7 +18,7 @@ cmake -S . -B build -G Ninja \
 # SSH-service integration tests are deferred until OpenSSH is packaged.
 # Keep standalone tests enabled without depending on host sshd or Docker.
 cmake --build build --parallel "${CPU_COUNT}"
-ctest --test-dir build --output-on-failure
+devkit_test ctest --test-dir build --output-on-failure
 cmake --install build
 python3 - <<'PY'
 import os

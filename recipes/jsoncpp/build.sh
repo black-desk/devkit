@@ -13,7 +13,7 @@ cmake -S . -B build -G Ninja \
   -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON \
   -DJSONCPP_WITH_TESTS=ON -DJSONCPP_WITH_POST_BUILD_UNITTEST=ON
 cmake --build build --parallel "${CPU_COUNT}"
-ctest --test-dir build --output-on-failure
+devkit_test ctest --test-dir build --output-on-failure
 cmake --install build
 python3 - <<'PYMETA'
 import os
