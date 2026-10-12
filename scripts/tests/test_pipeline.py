@@ -31,9 +31,7 @@ class ArtifactTests(unittest.TestCase):
                 {
                     "head_sha": "abc",
                     "valid": True,
-                    "selected": [
-                        {"recipe": "recipes/compiler", "bootstrap": True}
-                    ],
+                    "selected": [{"recipe": "recipes/compiler", "bootstrap": True}],
                     "bootstrap_required": True,
                     "ordinary_recipes": [],
                 }
@@ -66,9 +64,7 @@ class ArtifactTests(unittest.TestCase):
             state["inputs"],
             {"dirty": ARTIFACT.digest(moved / "stage-state.json")},
         )
-        self.assertNotIn(
-            str(self.root), (result / "stage-state.json").read_text()
-        )
+        self.assertNotIn(str(self.root), (result / "stage-state.json").read_text())
 
     def test_rejects_tampered_missing_and_extra_files(self):
         package = self.channel / "linux-64/pkg.conda"
@@ -86,9 +82,7 @@ class ArtifactTests(unittest.TestCase):
                 lambda: (self.channel / "noarch/repodata.json").write_text(
                     '{"changed": true}'
                 ),
-                lambda: (self.channel / "noarch/repodata.json").write_text(
-                    "{}"
-                ),
+                lambda: (self.channel / "noarch/repodata.json").write_text("{}"),
             ),
         ):
             mutate()
@@ -134,9 +128,7 @@ class ArtifactTests(unittest.TestCase):
         recipe.mkdir(parents=True)
         (recipe / "recipe.yaml").touch()
         report = json.loads(self.plan.read_text())
-        report["selected"].append(
-            {"recipe": "recipes/first", "bootstrap": False}
-        )
+        report["selected"].append({"recipe": "recipes/first", "bootstrap": False})
         report["ordinary_recipes"] = ["first"]
         self.plan.write_text(json.dumps(report))
         ARTIFACT.seal(self.channel, "dirty", self.plan, [])
@@ -148,9 +140,7 @@ class ArtifactTests(unittest.TestCase):
         ARTIFACT.seal(selfhost, "selfhost", self.plan, [("result", result)])
         ordinary = self.root / "ordinary"
         self.make_channel(ordinary)
-        (ordinary / "linux-64/pkg.conda").rename(
-            ordinary / "linux-64/first.conda"
-        )
+        (ordinary / "linux-64/pkg.conda").rename(ordinary / "linux-64/first.conda")
         (ordinary / "stage-packages.txt").write_text("linux-64/first.conda\n")
         ARTIFACT.seal(ordinary, "ordinary", self.plan, [("selfhost", selfhost)])
         # Each artifact is valid, but ordinary was built from a different attempt.
@@ -179,9 +169,7 @@ class PipelineTests(unittest.TestCase):
             "test-bootstrap-stage.sh",
         ):
             shutil.copy2(ROOT / "scripts" / name, self.root / "scripts" / name)
-        (self.root / "bootstrap-order.json").write_text(
-            '["llvm-libgcc", "cmake"]'
-        )
+        (self.root / "bootstrap-order.json").write_text('["llvm-libgcc", "cmake"]')
         (self.root / "seed-packages.tsv").write_text("fixed seed")
         for name in ("llvm-libgcc", "cmake", "first", "second"):
             path = self.root / "recipes" / name
@@ -227,9 +215,7 @@ root=Path(args[1]); subdir=args[args.index('--target-platform')+1]
 """,
         )
         for name in ("mamba", "curl"):
-            self.write_script(
-                self.bin / name, "#!/bin/sh\nprintf '%s\\n' '{}'\n"
-            )
+            self.write_script(self.bin / name, "#!/bin/sh\nprintf '%s\\n' '{}'\n")
         self.write_script(
             self.root / "scripts/fetch-seed.sh",
             """#!/bin/sh
@@ -285,14 +271,8 @@ PY
         )
 
     def set_plan(self, bootstrap, ordinary):
-        selected = (
-            [{"bootstrap": True, "recipe": "recipes/cmake"}]
-            if bootstrap
-            else []
-        )
-        selected += [
-            {"bootstrap": False, "recipe": "recipes/" + r} for r in ordinary
-        ]
+        selected = [{"bootstrap": True, "recipe": "recipes/cmake"}] if bootstrap else []
+        selected += [{"bootstrap": False, "recipe": "recipes/" + r} for r in ordinary]
         self.plan.write_text(
             json.dumps(
                 {
@@ -329,18 +309,12 @@ PY
             for c in self.calls()
             if c["tool"] == "rattler-build" and c["args"][0] == "build"
         ]
-        self.assertEqual(
-            [c["tests"] for c in builds], ["0", "0", "0", "0", "1", "1"]
-        )
+        self.assertEqual([c["tests"] for c in builds], ["0", "0", "0", "0", "1", "1"])
         for i, call in enumerate(builds):
             args = call["args"]
-            channels = [
-                args[j + 1] for j, a in enumerate(args) if a == "--channel"
-            ]
+            channels = [args[j + 1] for j, a in enumerate(args) if a == "--channel"]
             expected = (
-                ["dirty", "seed"]
-                if i < 2
-                else ["dirty"] if i < 4 else ["result"]
+                ["dirty", "seed"] if i < 2 else ["dirty"] if i < 4 else ["result"]
             )
             self.assertEqual(
                 channels, [str(self.root / "channels" / p) for p in expected]
@@ -365,9 +339,7 @@ PY
         output.mkdir()
         sentinel = output / "keep"
         sentinel.touch()
-        (self.root / "channels/dirty/linux-64/cmake.conda").write_text(
-            "corrupt"
-        )
+        (self.root / "channels/dirty/linux-64/cmake.conda").write_text("corrupt")
         before = len(self.calls())
         self.assertNotEqual(self.stage("result", check=False).returncode, 0)
         self.assertEqual(len(self.calls()), before)
@@ -384,9 +356,7 @@ PY
 
     def test_local_all_entry_promotes_only_after_tests(self):
         self.stage("all")
-        self.assertTrue(
-            (self.root / "channels/result/linux-64/cmake.conda").is_file()
-        )
+        self.assertTrue((self.root / "channels/result/linux-64/cmake.conda").is_file())
         self.assertTrue(
             (self.root / "channels/result/noarch/tzdata-test.conda").is_file()
         )
@@ -419,9 +389,7 @@ PY
         self.assertEqual(len(builds), 2)
         for call in builds:
             args = call["args"]
-            channels = [
-                args[j + 1] for j, a in enumerate(args) if a == "--channel"
-            ]
+            channels = [args[j + 1] for j, a in enumerate(args) if a == "--channel"]
             self.assertEqual(
                 channels,
                 [
@@ -444,9 +412,7 @@ PY
         before = state.read_bytes()
         self.run_cmd(["bash", "scripts/build-ordinary.sh"])
         self.assertEqual(state.read_bytes(), before)
-        args = [c for c in self.calls() if c["tool"] == "rattler-build"][-1][
-            "args"
-        ]
+        args = [c for c in self.calls() if c["tool"] == "rattler-build"][-1]["args"]
         self.assertEqual(
             [args[j + 1] for j, a in enumerate(args) if a == "--channel"],
             [
@@ -478,9 +444,7 @@ PY
         self.assertEqual(
             {
                 p.name
-                for p in (self.root / "channels/publication/linux-64").glob(
-                    "*.conda"
-                )
+                for p in (self.root / "channels/publication/linux-64").glob("*.conda")
             },
             {"llvm-libgcc.conda", "cmake.conda", "first.conda"},
         )
@@ -489,9 +453,7 @@ PY
     def plan_from_report(self, report):
         directory = self.root / "scripts/dependency-graph"
         directory.mkdir()
-        self.write_script(
-            directory / "graph", '#!/bin/sh\ncat "$PLANNER_REPORT"\n'
-        )
+        self.write_script(directory / "graph", '#!/bin/sh\ncat "$PLANNER_REPORT"\n')
         report_file = self.root / "report.json"
         report_file.write_text(json.dumps(report))
         output = self.root / "github-output"
@@ -552,9 +514,7 @@ PY
 class JobGateTests(unittest.TestCase):
     def setUp(self):
         workflow = (ROOT / ".github/workflows/packages.yml").read_text()
-        script = workflow.split("python3 - <<'PY'\n", 1)[1].rsplit(
-            "          PY", 1
-        )[0]
+        script = workflow.split("python3 - <<'PY'\n", 1)[1].rsplit("          PY", 1)[0]
         import textwrap
 
         self.script = textwrap.dedent(script)
