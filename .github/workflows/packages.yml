@@ -19,7 +19,7 @@ env:
 
 jobs:
   plan:
-    name: Plan affected package builds
+    name: Plan
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     outputs:
@@ -61,7 +61,7 @@ jobs:
           if-no-files-found: error
 
   dirty:
-    name: Bootstrap dirty
+    name: Dirty
     needs: [plan]
     if: needs.plan.outputs.bootstrap_required == 'true'
     runs-on: ubuntu-24.04
@@ -104,7 +104,7 @@ jobs:
           if-no-files-found: error
 
   result:
-    name: Bootstrap result
+    name: Result
     needs: [plan, dirty]
     if: needs.plan.outputs.bootstrap_required == 'true'
     runs-on: ubuntu-24.04
@@ -158,7 +158,7 @@ jobs:
           if-no-files-found: error
 
   selfhost:
-    name: Bootstrap selfhost
+    name: Selfhost
     needs: [plan, result]
     if: needs.plan.outputs.bootstrap_required == 'true'
     runs-on: ubuntu-24.04
@@ -212,7 +212,7 @@ jobs:
           if-no-files-found: error
 
   smoke:
-    name: Self-hosted package tests and smoke checks
+    name: Test
     needs: [plan, selfhost]
     if: needs.plan.outputs.bootstrap_required == 'true'
     runs-on: ubuntu-24.04
@@ -253,7 +253,7 @@ jobs:
         run: pixi run bash scripts/bootstrap.sh test
 
   ordinary:
-    name: Build affected ordinary packages
+    name: Build
     needs: [plan, smoke]
     if: >-
       !cancelled() && needs.plan.result == 'success' &&
@@ -312,7 +312,7 @@ jobs:
           if-no-files-found: error
 
   publish-packages:
-    name: Publish affected packages
+    name: Publish
     needs: [plan, packages-pass]
     if: >-
       !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
