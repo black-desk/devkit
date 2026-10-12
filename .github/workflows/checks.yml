@@ -54,6 +54,9 @@ jobs:
       - name: Run dependency graph tests
         run: pixi run graph-test
 
+      - name: Run package pipeline tests
+        run: pixi run pipeline-test
+
   checks-pass:
     name: checks-pass
     if: always()

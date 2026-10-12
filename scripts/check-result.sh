@@ -2,6 +2,11 @@
 set -euo pipefail
 unset LD_LIBRARY_PATH LD_PRELOAD
 ROOT="$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+CLOSURE_ONLY=0
+if [[ "${1:-}" == --closure-only ]]; then
+  CLOSURE_ONLY=1
+  shift
+fi
 CHANNEL="$(cd -- "${1:-$ROOT/channels/result}" && pwd)"
 for tool in mamba jq; do command -v "$tool" >/dev/null || { echo "error: required tool not found: $tool" >&2; exit 1; }; done
 for subdir in linux-64 noarch; do [[ -f "$CHANNEL/$subdir/repodata.json" ]] || { echo "error: missing $subdir repodata" >&2; exit 1; }; done
@@ -15,6 +20,7 @@ actual_names="$(jq -r '.actions.LINK[].name' "$tmp/result.json" | LC_ALL=C sort 
 [[ "$actual_names" == "$expected_names" ]] || { echo "error: expected package set [$expected_names], got [$actual_names]" >&2; exit 1; }
 while IFS=$'\t' read -r name channel_url; do channel_url="${channel_url%/}"; [[ "$channel_url" == "file://$CHANNEL" ]] || { echo "error: $name came from outside stage channel: $channel_url" >&2; exit 1; }; done < <(jq -r '.actions.LINK[] | [.name, (.channel // .url // "")] | @tsv' "$tmp/result.json")
 echo "stage-only tool interface solve: OK ($(jq '.actions.LINK | length' "$tmp/result.json") packages)"
+((CLOSURE_ONLY == 0)) || exit 0
 
 # Solver closure alone does not prove the installed compiler/runtime policy.
 CONDA_PKGS_DIRS="$tmp/pkgs" mamba create --yes --prefix "$tmp/prefix" \

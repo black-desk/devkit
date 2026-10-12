@@ -1267,10 +1267,11 @@ stage validation.
 ## CI experiment and compiler parallelism
 
 The maintainer approved opening a draft PR to exercise the existing package
-workflow. The single job and its six-hour timeout remain unchanged; disk and
-time-limit changes are deferred until an actual CI failure establishes a need.
-PR builds do not publish packages. Actions job logs are available through GitHub
-API or `gh run view RUN_ID --log`, so no log artifact is needed for inspection.
+workflow. The initial experiment used a single six-hour job. The later
+[package CI stage split](package-ci.md) supersedes that orchestration; package
+features and final upstream test workloads remain unchanged. PR builds do not
+publish packages. Actions job logs are available through GitHub API or
+`gh run view RUN_ID --log`, so no log artifact is needed for inspection.
 
 Clang compilation and its compiler-rt build now use the runner's full CPU_COUNT
 instead of capping it at eight. LLVM's separate link pool remains limited to two
@@ -1384,3 +1385,17 @@ installing the pinned toolchain. rustup run alone adds CARGO_HOME/bin to PATH,
 which need not contain rustc shims in a fresh recipe environment. Cargo
 therefore must not rely on a developer's host rustup installation. The existing
 scoped llvm-libgcc preload still applies only to upstream Rust invocations.
+
+## Independent CI stages
+
+Package orchestration now uses a single frozen plan, three bootstrap build jobs,
+a final package-test/smoke job and an ordinary-package job. bootstrap.sh
+supports dirty/result/selfhost/test entry points; its all mode retains local
+one-command bootstrap. Dirty/result keep their boundary checks, selfhost checks
+solver closure after full upstream suites, and test performs independent package
+tests and the full final policy/runtime/glibc checks. Stage manifests and
+commit/plan-linked checksums travel with channel archives. Ordinary output is a
+separate overlay; publication merges verified applicable artifacts. See
+[package CI](package-ci.md) for skip conditions, file protocol and local
+commands. No full local bootstrap is restarted to verify this orchestration
+change.
