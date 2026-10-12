@@ -4,14 +4,15 @@ set -euxo pipefail
 : "${SYSROOT_TRIPLET:?rattler-build must provide sysroot_triplet}"
 : "${LIBCXX_VERSION:?rattler-build must provide LIBCXX_VERSION}"
 SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
+CC="${BUILD_PREFIX}/bin/clang"
+CXX="${BUILD_PREFIX}/bin/clang++"
 if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
-  CC="${BUILD_PREFIX}/bin/clang-23"
-  CXX="${BUILD_PREFIX}/bin/clang++-23"
+  # Prepare the fresh seed build environment with unversioned driver names.
+  ln -sfn clang-23 "${BUILD_PREFIX}/bin/clang"
+  ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   GCC_INSTALL="${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0"
   COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${GCC_INSTALL} -O2 -fPIC --rtlib=compiler-rt"
 else
-  CC="${BUILD_PREFIX}/bin/clang"
-  CXX="${BUILD_PREFIX}/bin/clang++"
   # Building libc++ itself must not inherit clang.cfg's installed libc++
   # include path: C wrapper include_next would select the old wrappers.
   COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-toolchain=${BUILD_PREFIX}/share/devkit/no-gcc -O2 -fPIC --rtlib=compiler-rt"

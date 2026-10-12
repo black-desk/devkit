@@ -5,15 +5,16 @@ set -euxo pipefail
 SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
 test -d "${SYSROOT}"
 
+export CC="${BUILD_PREFIX}/bin/clang"
+export CXX="${BUILD_PREFIX}/bin/clang++"
 if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
-  export CC="${BUILD_PREFIX}/bin/clang-23"
-  export CXX="${BUILD_PREFIX}/bin/clang++-23"
+  # Prepare the fresh seed build environment with unversioned driver names.
+  ln -sfn clang-23 "${BUILD_PREFIX}/bin/clang"
+  ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   GCC_INSTALL="${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0"
   test -d "${GCC_INSTALL}"
   COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${GCC_INSTALL} -O2 -fPIC"
 else
-  export CC="${BUILD_PREFIX}/bin/clang"
-  export CXX="${BUILD_PREFIX}/bin/clang++"
   COMMON_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg -O2 -fPIC"
 fi
 test -x "${CC}"

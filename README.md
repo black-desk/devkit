@@ -138,6 +138,13 @@ conda-forge build configurations before claiming feature parity. Any necessary
 feature reduction must document its user-visible impact and be discussed with
 the maintainer before implementation.
 
+The [ordinary recipe feature audit](docs/ordinary-feature-audit.md) compares the
+post-bootstrap recipes against fixed conda-forge revisions. It records confirmed
+PCRE2, ripgrep, Git and B4 gaps, external-tool dependency differences, and
+settings that need targeted validation. The prebuilt Python and Rust
+distributions are excluded at the maintainer's request. Passing existing smoke
+tests does not establish full feature parity.
+
 The bootstrap is a self-hosting closure, including seed tools' runtime
 dependencies as well as their build dependencies. Reconstruct those dependencies
 from channel sources, or replace the corresponding tool with a verified
@@ -444,7 +451,13 @@ these packages as build dependencies and install that exact toolchain into
 build-local state:
 
 ```bash
-source "${BUILD_PREFIX}/share/devkit/rust-env.sh"
+export CC="${BUILD_PREFIX}/bin/clang"
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib"
+devkit_rustup() {
+  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/libgcc_s.so.1" \
+    "${BUILD_PREFIX}/bin/rustup" "$@"
+}
 
 export RUSTUP_HOME="${SRC_DIR}/.rustup"
 export CARGO_HOME="${SRC_DIR}/.cargo"
@@ -456,17 +469,20 @@ devkit_rustup toolchain install "${RUST_TOOLCHAIN}" \
   --profile minimal \
   --no-self-update
 
+export RUSTC="$(devkit_rustup which --toolchain "${RUST_TOOLCHAIN}" rustc)"
+export RUSTDOC="$(devkit_rustup which --toolchain "${RUST_TOOLCHAIN}" rustdoc)"
+
 devkit_rustup run "${RUST_TOOLCHAIN}" cargo build \
   --release \
   --locked
 ```
 
-`devkit_rustup` clears `LD_LIBRARY_PATH` and sets an absolute `LD_PRELOAD` for
-channel `libgcc_s.so.1` only while running upstream Rust tools during a Rust
-recipe build. Their subprocesses receive this scoped environment. Installed
-outputs and independent package tests use DT_RUNPATH without loader overrides.
-Packaged rustup has its own RUNPATH; user-downloaded toolchains retain upstream
-host requirements.
+Each Rust recipe defines its own local `devkit_rustup` function. It clears
+`LD_LIBRARY_PATH` and sets an absolute `LD_PRELOAD` for channel `libgcc_s.so.1`
+only while running upstream Rust tools during a Rust recipe build. Their
+subprocesses receive this scoped environment. Installed outputs and independent
+package tests use DT_RUNPATH without loader overrides. Packaged rustup has its
+own RUNPATH; user-downloaded toolchains retain upstream host requirements.
 
 Toolchain requests must be exact. Ambiguous requests such as `stable`,
 `nightly`, or a minor version without a patch are not accepted. Changing the
@@ -961,16 +977,31 @@ selects the Rocky sysroot, LLD, libc++, compiler-rt, and the LLVM unwinder. LLD
 is selected by its explicit `--ld-path`, avoiding Clang's deprecated
 absolute-path `-fuse-ld` form and failures in configure probes using `-Werror`.
 `<CFGDIR>`-relative paths make the configuration relocatable. Native recipes
-source `share/devkit/build-env.sh`; bootstrap recipes copy the helper sources in
-all stages and select the stage's compiler and sysroot variant. Seed builds
-explicitly select target libc++ headers. Later native stages use the config's
-single libc++ header root to avoid duplicate C wrappers breaking include_next;
-both prefixes select the same libc++ package from the completed input channel.
+declare their compiler, LLVM tool paths and build flags directly in each
+recipe's build script. No build/test/Rust environment scripts are installed by
+the compiler package. Bootstrap recipes select the stage's compiler policy and
+sysroot variant. When preparing each fresh seed build environment, the recipe
+creates relative `clang` and `clang++` symlinks to the seed's `clang-23` and
+`clang++-23` commands, so every stage uses the same driver names. These links
+exist only in the temporary build prefix; seed archives and the seed manifest
+remain unchanged. Seed builds explicitly select target libc++ headers. Later
+native stages use the config's single libc++ header root to avoid duplicate C
+wrappers breaking include_next; both prefixes select the same libc++ package
+from the completed input channel.
 
 Public C library headers remain version-isolated. Ordinary library interfaces
 are passed through exact pkg-config output or exact header/library paths. The
 runtime directory used by the compiler is a deliberate standard-library
 interface, not a generic header search path.
+
+Channel CMake defaults to host development discovery: its own prefix is excluded
+from implicit system and PATH-derived library/package searches, including
+symlinked paths. Program lookup remains unchanged. Explicit CMAKE_PREFIX_PATH
+and package roots/directories can select channel dependencies. Channel pkgconf
+defaults to host metadata directories; recipes opt in with PKG_CONFIG_LIBDIR.
+See
+[the discovery policy](docs/clang-bootstrap.md#default-host-development-discovery)
+for details and focused validation.
 
 ### Runtime policy
 

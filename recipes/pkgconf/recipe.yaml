@@ -14,7 +14,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -44,6 +44,7 @@ tests:
         - pkg-config
 
   - script:
+      - bash tests/discovery.sh
       - test "$(readlink "${PREFIX}/bin/pkg-config")" = pkgconf
       - version_output="$(${PREFIX}/bin/pkgconf --version)"
       - test "${version_output}" = "${{ version }}"
@@ -62,6 +63,9 @@ tests:
       - test "${cflags_output}" = "-I${PREFIX}/include/devkit-smoke"
       - libs_output="$(${PREFIX}/bin/pkg-config --libs devkit-smoke)"
       - test "${libs_output}" = "${PREFIX}/lib/libdevkit-smoke.so"
+    files:
+      recipe:
+        - tests/
 
 about:
   homepage: https://gitea.pkgconf.dev/pkgconf/pkgconf

@@ -73,8 +73,6 @@ tests:
         - lib/linux/liborc_rt-x86_64.a
         - lib/clang/23/include/sanitizer/asan_interface.h
         - share/devkit/clang.cfg
-        - share/devkit/build-env.sh
-        - share/devkit/rust-env.sh
         - share/devkit/finalize-elf.py
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD

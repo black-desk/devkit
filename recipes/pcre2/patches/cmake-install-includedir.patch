@@ -1,0 +1,12 @@
+# TODO: upstream respect for GNUInstallDirs in the generated helper/pkg-config files.
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1192,7 +1192,7 @@
+ set(prefix ${CMAKE_INSTALL_PREFIX})
+ set(exec_prefix "\${prefix}")
+ set(libdir "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
+-set(includedir "\${prefix}/include")
++set(includedir "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
+
+ set(LIB_POSTFIX "")
+ if(WIN32 AND (CMAKE_BUILD_TYPE MATCHES Debug))
