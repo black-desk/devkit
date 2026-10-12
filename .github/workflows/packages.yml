@@ -313,12 +313,10 @@ jobs:
 
   publish-packages:
     name: Publish affected packages
-    needs: [plan, smoke, ordinary]
+    needs: [plan, packages-pass]
     if: >-
       !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      needs.plan.result == 'success' && needs.plan.outputs.build_required == 'true' &&
-      (needs.plan.outputs.bootstrap_required == 'false' || needs.smoke.result == 'success') &&
-      (needs.plan.outputs.ordinary_required == 'false' || needs.ordinary.result == 'success')
+      needs.packages-pass.result == 'success' && needs.plan.outputs.build_required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
