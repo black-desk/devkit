@@ -26,9 +26,7 @@ def head():
 def validate_plan(path):
     plan = json.loads(path.read_text())
     if plan.get("head_sha") != head() or plan.get("valid") is not True:
-        raise ValueError(
-            "plan belongs to another commit or has invalid revisions"
-        )
+        raise ValueError("plan belongs to another commit or has invalid revisions")
     selected = plan["selected"]
     if any(item.get("error") is not None for item in selected):
         raise ValueError("plan contains invalid package revisions")
@@ -40,16 +38,10 @@ def validate_plan(path):
             if not item["bootstrap"]
         )
     )
-    if (
-        plan["bootstrap_required"] != bootstrap
-        or plan["ordinary_recipes"] != ordinary
-    ):
+    if plan["bootstrap_required"] != bootstrap or plan["ordinary_recipes"] != ordinary:
         raise ValueError("plan control fields disagree with selected packages")
     for recipe in ordinary:
-        if (
-            "/" in recipe
-            or not (ROOT / "recipes" / recipe / "recipe.yaml").is_file()
-        ):
+        if "/" in recipe or not (ROOT / "recipes" / recipe / "recipe.yaml").is_file():
             raise ValueError(f"invalid recipe in plan: {recipe}")
     return plan
 
@@ -75,9 +67,7 @@ def channel_files(channel):
     if not files[-1].is_file():
         raise ValueError("missing stage package manifest")
     if any(p.is_symlink() for p in files):
-        raise ValueError(
-            "channel artifacts must contain real files, not symlinks"
-        )
+        raise ValueError("channel artifacts must contain real files, not symlinks")
     return {
         str(p.relative_to(channel)): {
             "size": p.stat().st_size,
@@ -139,9 +129,7 @@ def seal(channel, stage, plan, inputs):
         "inputs": parents,
         "files": channel_files(channel),
     }
-    (channel / "stage-state.json").write_text(
-        json.dumps(state, indent=2) + "\n"
-    )
+    (channel / "stage-state.json").write_text(json.dumps(state, indent=2) + "\n")
 
 
 def merge(output, plan, inputs):
@@ -169,10 +157,7 @@ def merge(output, plan, inputs):
     for state in states.values():
         for parent, checksum in state["inputs"].items():
             for stage, channel in inputs:
-                if (
-                    stage == parent
-                    and digest(channel / "stage-state.json") != checksum
-                ):
+                if stage == parent and digest(channel / "stage-state.json") != checksum:
                     raise ValueError(
                         "publication inputs come from different stage attempts"
                     )
@@ -190,9 +175,7 @@ def merge(output, plan, inputs):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "action", choices=("validate-plan", "seal", "verify", "merge")
-    )
+    parser.add_argument("action", choices=("validate-plan", "seal", "verify", "merge"))
     parser.add_argument("--plan", type=Path, required=True)
     parser.add_argument("--channel", type=Path)
     parser.add_argument("--stage", choices=STAGES)
@@ -208,9 +191,7 @@ def main():
     if args.action == "validate-plan":
         validate_plan(args.plan)
     else:
-        if args.channel is None or (
-            args.action != "merge" and args.stage is None
-        ):
+        if args.channel is None or (args.action != "merge" and args.stage is None):
             parser.error("--channel and --stage are required for seal/verify")
         if args.action == "seal":
             seal(args.channel, args.stage, args.plan, inputs)
