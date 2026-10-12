@@ -32,6 +32,8 @@ Ordinary and publication use explicit conditions that permit planned dependency
 skips. Failure/cancellation of a required predecessor cannot enable a downstream
 job. packages-pass checks each execution job against the plan: expected skips
 are accepted, failure/cancellation or unexpected skips fail the gate.
+Publication depends on packages-pass succeeding and uses plan only to read
+build/artifact selection controls; it cannot start before the final gate passes.
 
 ## Portable handoffs
 
