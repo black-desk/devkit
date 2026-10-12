@@ -1,0 +1,67 @@
+schema_version: 1
+
+context:
+  version: "23.1.3"
+
+package:
+  name: libcxx
+  version: ${{ version }}
+
+source:
+  url: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ version }}/llvm-project-${{ version }}.src.tar.xz
+  sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
+
+build:
+  number: 4
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      SYSROOT_TRIPLET: ${{ sysroot_triplet }}
+      LIBCXX_VERSION: ${{ version }}
+
+requirements:
+  build:
+    - if: sysroot_triplet == 'x86_64-conda-linux-gnu'
+      then:
+        - clang-23 ==23.1.3
+        - llvm-tools ==23.1.3
+        - lld ==23.1.2
+        - libgcc-devel_linux-64 ==16.2.0
+      else:
+        - clang ==23.1.3
+    - cmake ==3.31.8
+    - ninja ==1.13.2
+    - sysroot_linux-64 ==2.28
+  host:
+    - llvm-libgcc ==23.1.3
+  run:
+    - llvm-libgcc ==23.1.3
+    - __glibc >=2.28
+
+tests:
+  - package_contents:
+      files:
+        - lib/libc++.so.1
+        - lib/libc++abi.so.1
+        - include/libcxx-${{ version }}/c++/v1/iostream
+  - script:
+      - ln -s "${PREFIX}/lib" runtime-lib
+      - readelf -d "${PREFIX}/lib/libc++.so.1" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/libc++abi.so.1" | grep -F '(RUNPATH)'
+      - env -u LD_LIBRARY_PATH -u LD_PRELOAD ./libcxx-probe "${PREFIX}"
+    files:
+      source:
+        - libcxx-probe
+
+about:
+  homepage: https://libcxx.llvm.org/
+  license: Apache-2.0 WITH LLVM-exception
+  license_file:
+    - libcxx/LICENSE.TXT
+    - libcxxabi/LICENSE.TXT
+  summary: LLVM C++ standard library and ABI runtime for explicit channel builds
+  description: libc++ and libc++abi using the channel llvm-libgcc unwinder, with version-isolated development headers.
+  repository: https://github.com/llvm/llvm-project

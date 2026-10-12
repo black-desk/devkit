@@ -34,7 +34,7 @@ source:
     file_name: kernel-headers.rpm
 
 build:
-  number: 0
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -51,6 +51,7 @@ requirements:
 
 tests:
   - script:
+      - test -d "${PREFIX}/x86_64-pc-linux-gnu/sysroot/lib64"
       - test -d "${PREFIX}/${{ sysroot_triplet }}/sysroot/lib64"
       - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/include/stdio.h"
       - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/include/linux/version.h"

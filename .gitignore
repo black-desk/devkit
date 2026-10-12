@@ -2,6 +2,7 @@
 channels/seed/*
 channels/dirty/*
 channels/result/*
+channels/result-rebuild/
 !channels/seed/.gitkeep
 !channels/dirty/.gitkeep
 !channels/result/.gitkeep

@@ -1,0 +1,84 @@
+schema_version: 1
+context:
+  version: "1.68.1"
+package:
+  name: libnghttp2
+  version: ${{ version }}
+source:
+  - url: https://github.com/nghttp2/nghttp2/releases/download/v${{ version }}/nghttp2-${{ version }}.tar.gz
+    sha256: ceb434c1f9dfe2a9d305b6b797786fb9227484dfa88508d14ca1c50263db55d3
+    patches:
+      - patches/clang-driver-link-policy.patch
+  - path: ../clang
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      LIBRARY_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: ${{ sysroot_triplet }}
+requirements:
+  build:
+    - if: sysroot_triplet == 'x86_64-conda-linux-gnu'
+      then:
+        - clang-23 ==23.1.3
+        - llvm-tools ==23.1.3
+        - lld ==23.1.2
+        - libgcc-devel_linux-64 ==16.2.0
+      else:
+        - clang ==23.1.3
+    - make ==4.4.1
+    - pkgconf ==3.0.7
+    - gnuconfig ==2025.07.09
+    - sysroot_linux-64 ==2.28
+  host:
+    - c-ares ==1.34.8
+    - libev ==4.33
+    - openssl ==3.5.9
+    - zlib ==1.3.2
+    - libcxx ==23.1.3
+    - llvm-libgcc ==23.1.3
+  run_exports:
+    strong:
+      - libnghttp2 >=1.68.1,<2
+  run:
+    - __glibc >=2.28
+    - c-ares >=1.34.8,<2
+    - libev >=4.33,<5
+    - openssl >=3.5.9,<4
+    - zlib >=1.3.2,<2
+    - libcxx ==23.1.3
+    - llvm-libgcc ==23.1.3
+tests:
+  - package_contents:
+      bin:
+        - nghttp
+        - nghttpd
+        - nghttpx
+        - h2load
+      files:
+        - include/libnghttp2-${{ version }}/nghttp2/*.h
+        - lib/libnghttp2.so
+        - lib/libnghttp2.so.*
+        - lib/pkgconfig/libnghttp2.pc
+  - script:
+      - unset LD_LIBRARY_PATH LD_PRELOAD
+      - ln -s "${PREFIX}/lib" runtime-lib
+      - ./library-probe
+      - nghttp --version
+      - nghttpd --version
+      - nghttpx --version
+      - h2load --version
+      - readelf -d "${PREFIX}/lib/libnghttp2.so" | grep -F '(RUNPATH)'
+    files:
+      source:
+        - library-probe
+about:
+  homepage: https://github.com/nghttp2/nghttp2
+  license: MIT
+  license_file: COPYING
+  summary: HTTP/2 library, client, server and proxy

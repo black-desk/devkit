@@ -1,0 +1,70 @@
+schema_version: 1
+context:
+  version: "1.0.8"
+package:
+  name: bzip2
+  version: ${{ version }}
+source:
+  - url: https://sourceware.org/pub/bzip2/bzip2-${{ version }}.tar.gz
+    sha256: ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269
+    patches:
+      - patches/shared-link-flags.patch
+  - path: ../clang
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      LIBRARY_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: ${{ sysroot_triplet }}
+requirements:
+  build:
+    - if: sysroot_triplet == 'x86_64-conda-linux-gnu'
+      then:
+        - clang-23 ==23.1.3
+        - llvm-tools ==23.1.3
+        - lld ==23.1.2
+        - libgcc-devel_linux-64 ==16.2.0
+      else:
+        - clang ==23.1.3
+    - make ==4.4.1
+    - sysroot_linux-64 ==2.28
+  run_exports:
+    strong:
+      - bzip2 >=1.0.8,<2
+  run:
+    - __glibc >=2.28
+tests:
+  - package_contents:
+      bin:
+        - bzip2
+        - bunzip2
+        - bzcat
+        - bzip2recover
+      files:
+        - include/bzip2-${{ version }}/bzlib.h
+        - lib/libbz2.a
+        - lib/libbz2.so
+        - lib/libbz2.so.1.0
+        - lib/libbz2.so.1.0.8
+        - share/man/man1/bzip2.1
+  - script:
+      - unset LD_LIBRARY_PATH LD_PRELOAD
+      - printf 'bootstrap bzip2 roundtrip\n' > original
+      - bzip2 -k original
+      - bzip2 -t original.bz2
+      - bzcat original.bz2 > restored
+      - cmp original restored
+      - bunzip2 -c original.bz2 > restored-again
+      - cmp original restored-again
+      - readelf -d "${PREFIX}/lib/libbz2.so.1.0" | grep -F '(RUNPATH)'
+      - test ! -e "${PREFIX}/include/bzlib.h"
+about:
+  homepage: https://sourceware.org/bzip2/
+  license: bzip2-1.0.6
+  license_file: LICENSE
+  summary: Block-sorting compression library and command-line tools

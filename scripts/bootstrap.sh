@@ -19,10 +19,7 @@ clean_build_outputs() {
   # Rattler-Build puts source caches below the output directory. Preserve
   # every src_cache directory, but remove package archives, logs, and build
   # directories outside those caches.
-  find "$BUILD_ROOT" -mindepth 1 -type d -name src_cache -prune -o \
-    ! -type d -exec rm -f -- {} +
-  find "$BUILD_ROOT" -mindepth 1 -depth -type d -name src_cache -prune -o \
-    -type d -empty -delete
+  python3 "$ROOT/scripts/clean-build-outputs.py" "$BUILD_ROOT"
 }
 
 clean_build_output() {
@@ -31,16 +28,13 @@ clean_build_output() {
 
   # Keep the source cache at a stable per-recipe path so each stage can reuse
   # downloaded sources while still compiling from a fresh build directory.
-  find "$output_dir" -mindepth 1 -type d -name src_cache -prune -o \
-    ! -type d -exec rm -f -- {} +
-  find "$output_dir" -mindepth 1 -depth -type d -name src_cache -prune -o \
-    -type d -empty -delete
+  python3 "$ROOT/scripts/clean-build-outputs.py" "$output_dir"
 }
 
 reset_generated_state() {
   # Seed archives are downloads and remain in place; fetch-seed.sh re-verifies
   # and re-indexes them. Compiled dirty/result outputs are rebuilt cleanly.
-  rm -rf -- "$ROOT/channels/dirty" "$ROOT/channels/result"
+  rm -rf -- "$ROOT/channels/dirty" "$ROOT/channels/result" "$ROOT/channels/result-rebuild"
   mkdir -p "$ROOT/channels/seed" "$ROOT/channels/dirty" \
     "$ROOT/channels/result" "$BUILD_ROOT"
   clean_build_outputs
@@ -96,10 +90,18 @@ build() {
   shift 3
   local -a variant_args=()
   [[ -z "$variant" ]] || variant_args=(--variant-config "$ROOT/variants/$variant.yaml")
+  if [[ "$recipe" == llvm-libgcc && "$variant" == dirty ]]; then
+    mkdir -p "$BUILD_ROOT/bootstrap"
+    python3 "$ROOT/scripts/seed-libgcc-variant.py" > "$BUILD_ROOT/bootstrap/seed-libgcc-variant.yaml"
+    variant_args+=(--variant-config "$BUILD_ROOT/bootstrap/seed-libgcc-variant.yaml")
+  fi
+  local recipe_file="$ROOT/recipes/$recipe/recipe.yaml"
   clean_build_output "$BUILD_ROOT/$output"
   "$RBT" build \
-    --recipe "$ROOT/recipes/$recipe/recipe.yaml" \
+    --recipe "$recipe_file" \
     --target-platform linux-64 \
+    --no-config \
+    --test skip \
     --channel-priority strict \
     "${variant_args[@]}" \
     --output-dir "$BUILD_ROOT/$output" \
@@ -120,7 +122,7 @@ publish() {
 recipe_variant() {
   local recipe="$1" stage_variant="$2"
   case "$recipe" in
-    sysroot|gcc-toolchain|binutils|make)
+    sysroot|llvm-libgcc|libcxx|clang|make|libxcrypt|perl|pkgconf|openssl|ninja|cmake|libuv|rhash|c-ares|keyutils|libev|libedit|bzip2|zlib|zstd|ncurses|libiconv|liblzma|icu|gettext|krb5|libssh2|libnghttp2|curl|expat|lzo|lz4-c|libarchive|jsoncpp|cppdap|libpsl|libxml2)
       printf '%s\n' "$stage_variant"
       ;;
     *)
@@ -130,16 +132,31 @@ recipe_variant() {
 }
 
 run_stage() {
-  local stage_variant="$1" channel="$2"
-  shift 2
+  local stage_variant="$1" channel="$2" input_channel="$3"
+  local manifest="$BUILD_ROOT/bootstrap/$channel-packages.txt"
+  mkdir -p "${manifest%/*}"
+  : > "$manifest"
 
   local recipe variant output
   for recipe in "${BOOTSTRAP_RECIPES[@]}"; do
     variant="$(recipe_variant "$recipe" "$stage_variant")"
     output="$recipe"
-    build "$recipe" "$variant" "$output" "$@"
+    if [[ "$stage_variant" == dirty ]]; then
+      build "$recipe" "$variant" "$output" --channel "$ROOT/channels/dirty" --channel "$ROOT/channels/seed"
+    else
+      build "$recipe" "$variant" "$output" --channel "$ROOT/channels/$input_channel"
+    fi
     publish "$output" "$channel"
+    local subdir archive
+    for subdir in linux-64 noarch; do
+      for archive in "$BUILD_ROOT/$output/$subdir/"*.conda; do
+        [[ -f "$archive" ]] || continue
+        printf '%s/%s\n' "$subdir" "${archive##*/}" >> "$manifest"
+      done
+    done
   done
+  bash "$ROOT/scripts/test-bootstrap-stage.sh" "$ROOT/channels/$channel" "$manifest"
+  bash "$ROOT/scripts/check-result.sh" "$ROOT/channels/$channel"
 }
 
 publish_seed_tzdata() {
@@ -149,11 +166,12 @@ publish_seed_tzdata() {
     printf 'error: seed channel does not contain tzdata\n' >&2
     exit 1
   }
-  mkdir -p "$ROOT/channels/dirty/noarch" "$ROOT/channels/result/noarch"
-  cp "${archives[0]}" "$ROOT/channels/dirty/noarch/"
-  cp "${archives[0]}" "$ROOT/channels/result/noarch/"
-  rattler-index fs "$ROOT/channels/dirty" --target-platform noarch >/dev/null
-  rattler-index fs "$ROOT/channels/result" --target-platform noarch >/dev/null
+  local channel
+  for channel in dirty result result-rebuild; do
+    mkdir -p "$ROOT/channels/$channel/noarch"
+    cp "${archives[0]}" "$ROOT/channels/$channel/noarch/"
+    rattler-index fs "$ROOT/channels/$channel" --target-platform noarch >/dev/null
+  done
 }
 
 read_bootstrap_order
@@ -162,27 +180,20 @@ read_bootstrap_order
 "$ROOT/scripts/check-seed.sh"
 publish_seed_tzdata
 
-# Dirty stage: build the local sysroot first, then use the seed compiler
-# interfaces with that sysroot to produce the first local toolchain stage.
-run_stage dirty dirty \
-  --channel "$ROOT/channels/dirty" \
-  --channel "$ROOT/channels/seed"
+# Dirty stage: both environments prefer already published dirty packages,
+# falling back to seed. Compatibility meta outputs bridge seed split names.
+run_stage dirty dirty seed
 
-# Result stage: rebuild the same order against the result sysroot and dirty
-# compiler interfaces.  The seed channel is deliberately not available here:
+# Result stage: rebuild the same order using dirty sysroot and compiler
+# interfaces. The seed channel is deliberately not available here:
 # result must not silently fall back to seed packages.
-run_stage result result \
-  --channel "$ROOT/channels/result" \
-  --channel "$ROOT/channels/dirty"
+run_stage result result dirty
 
-"$ROOT/scripts/check-result.sh"
-
-# Self-host stage: rebuild every result package using result as the bootstrap
-# channel.  Each package is published back into result immediately so later
-# packages consume the newly rebuilt interfaces.  No dirty or seed channel is
-# visible in this stage.
-run_stage result result \
-  --channel "$ROOT/channels/result"
-
-"$ROOT/scripts/check-result.sh"
+# Self-host stage: read only the completed result generation. New packages
+# go into a separate channel so subsequent builds cannot consume them.
+run_stage result result-rebuild result
+# Keep the input generation immutable throughout self-hosting and its tests.
+# Promote the rebuilt generation only after all stage checks pass.
+rm -rf -- "$ROOT/channels/result"
+mv "$ROOT/channels/result-rebuild" "$ROOT/channels/result"
 printf 'bootstrap complete: %s\n' "$ROOT/channels/result"

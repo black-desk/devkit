@@ -1,6 +1,6 @@
 --- a/curl-config.in
 +++ b/curl-config.in
-@@ -25,12 +25,14 @@
+@@ -25,12 +25,15 @@
 
  # shellcheck disable=SC2006
 
@@ -15,10 +15,11 @@
 -includedir="@includedir@"
 +includedir="${prefix}/include/curl-@CURLVERSION@"
 +libdir="${prefix}/lib"
++static_deps="${libdir}/libssl.so ${libdir}/libcrypto.so ${libdir}/libz.so ${libdir}/libnghttp2.so ${libdir}/libssh2.so ${libdir}/libgssapi_krb5.so ${libdir}/libkrb5.so ${libdir}/libk5crypto.so ${libdir}/libcom_err.so ${libdir}/libpsl.so ${libdir}/libzstd.so -ldl -pthread"
 
  usage()
  {
-@@ -70,11 +72,11 @@
+@@ -70,11 +73,11 @@
      ;;
 
    --ca)
@@ -28,11 +29,11 @@
 
    --cc)
 -    echo '@CC@'
-+    echo "${prefix}/bin/gcc"
++    echo "${prefix}/bin/clang"
      ;;
 
    --prefix)
-@@ -141,23 +143,19 @@
+@@ -141,23 +144,19 @@
      ;;
 
    --cflags)
@@ -50,24 +51,25 @@
    --libs)
 -    if test "@libdir@" != '/usr/lib' && test "@libdir@" != '/usr/lib64'; then
 -      curllibdir="-L@libdir@ "
--    else
++    if test '@ENABLE_SHARED@' = 'no'; then
++      echo "${libdir}/libcurl.a ${static_deps}"
+     else
 -      curllibdir=''
 -    fi
-     if test '@ENABLE_SHARED@' = 'no'; then
+-    if test '@ENABLE_SHARED@' = 'no'; then
 -      echo "${curllibdir}-lcurl @LIBCURL_PC_LIBS_PRIVATE@"
-+      echo "${libdir}/libcurl.a ${libdir}/libssl.a ${libdir}/libcrypto.a ${libdir}/libz.a -ldl -pthread"
-     else
+-    else
 -      echo "${curllibdir}-lcurl"
 +      echo "${libdir}/libcurl.so"
      fi
      ;;
 
-@@ -167,7 +165,7 @@
+@@ -167,7 +166,7 @@
 
    --static-libs)
      if test '@ENABLE_STATIC@' != 'no'; then
 -      echo "@libdir@/libcurl.@libext@ @LIBCURL_PC_LDFLAGS_PRIVATE@ @LIBCURL_PC_LIBS_PRIVATE@"
-+      echo "${libdir}/libcurl.a ${libdir}/libssl.a ${libdir}/libcrypto.a ${libdir}/libz.a -ldl -pthread"
++      echo "${libdir}/libcurl.a ${static_deps}"
      else
        echo 'curl was built with static libraries disabled' >&2
        exit 1

@@ -151,10 +151,7 @@ clean_recipe_output() {
 
   # Keep each recipe's source cache at its existing stable path. Package
   # archives, logs, and temporary build directories are recreated for this PR.
-  find "$output_dir" -mindepth 1 -type d -name src_cache -prune -o \
-    ! -type d -exec rm -f -- {} +
-  find "$output_dir" -mindepth 1 -depth -type d -name src_cache -prune -o \
-    -type d -empty -delete
+  python3 "$ROOT/scripts/clean-build-outputs.py" "$output_dir"
 }
 
 build_recipe() {
@@ -168,7 +165,7 @@ build_recipe() {
   done
 
   case "$recipe" in
-    sysroot | gcc-toolchain | binutils | make)
+    sysroot | llvm-libgcc | libcxx | clang | make | perl | pkgconf | openssl | ninja | cmake | zlib | zstd | ncurses | libiconv | liblzma | icu | libxml2)
       variant_args=(--variant-config "$ROOT/variants/result.yaml")
       ;;
   esac

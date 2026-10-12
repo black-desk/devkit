@@ -1,0 +1,16 @@
+std::bad_alloc requires <new>; avoid relying on transitive STL includes.
+
+--- a/c++/cursesf.cc
++++ b/c++/cursesf.cc
+@@ -35,3 +35,4 @@
+ #include "internal.h"
++#include <new>
+ #include "cursesf.h"
+ #include "cursesapp.h"
+--- a/c++/cursesm.cc
++++ b/c++/cursesm.cc
+@@ -35,3 +35,4 @@
+ #include "internal.h"
++#include <new>
+ #include "cursesm.h"
+ #include "cursesapp.h"

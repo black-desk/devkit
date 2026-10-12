@@ -16,6 +16,9 @@ mkdir -p "${binary_dir}" "${license_dir}" "${PREFIX}/bin"
 # The official artifact behaves as rustup-init when invoked by that name and as
 # the complete rustup manager when invoked as rustup.
 install -m 0755 "${SRC_DIR}/rustup-init" "${binary_dir}/rustup-init"
+# This is a channel-owned binary, so it finds the channel runtime itself.
+# Downloaded toolchains remain upstream artifacts and are handled build-locally.
+patchelf --set-rpath '$ORIGIN/../..' "${binary_dir}/rustup-init"
 ln -s "../lib/rustup/${RUSTUP_VERSION}/rustup-init" "${PREFIX}/bin/rustup"
 
 install -m 0644 \

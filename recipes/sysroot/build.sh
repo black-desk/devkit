@@ -3,7 +3,9 @@ set -euxo pipefail
 
 : "${SYSROOT_TRIPLET:?rattler-build must provide sysroot_triplet}"
 
-SYSROOT="${PREFIX}/${SYSROOT_TRIPLET}/sysroot"
+# Channel compiler configuration always uses this canonical layout. During
+# seed builds, retain the seed triplet as a relative compatibility alias.
+SYSROOT="${PREFIX}/x86_64-pc-linux-gnu/sysroot"
 mkdir -p "${SYSROOT}"
 
 extract_rpm() {
@@ -70,3 +72,7 @@ rm -rf usr/share/man usr/share/doc usr/lib/systemd
 
 mkdir -p usr/share
 ln -s ../../../../share/zoneinfo usr/share/zoneinfo
+
+if [[ "${SYSROOT_TRIPLET}" != x86_64-pc-linux-gnu ]]; then
+  ln -s x86_64-pc-linux-gnu "${PREFIX}/${SYSROOT_TRIPLET}"
+fi

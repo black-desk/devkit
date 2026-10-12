@@ -4,20 +4,10 @@ set -euxo pipefail
 : "${EXPAT_VERSION:?rattler-build must provide EXPAT_VERSION}"
 : "${SYSROOT_TRIPLET:?rattler-build must provide SYSROOT_TRIPLET}"
 
-test -x "${BUILD_PREFIX}/bin/gcc"
-test -x "${BUILD_PREFIX}/bin/as"
-test -x "${BUILD_PREFIX}/bin/ld"
-
-SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
-test -d "${SYSROOT}"
+source "${SRC_DIR}/devkit-build/build-env.sh"
 
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" conftools/config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" conftools/config.sub
-
-export PATH="${BUILD_PREFIX}/bin:${PATH}"
-export CC="${BUILD_PREFIX}/bin/gcc"
-export CFLAGS="--sysroot=${SYSROOT} -O2 -pipe"
-export LDFLAGS="--sysroot=${SYSROOT}"
 
 ./configure \
   --prefix="${PREFIX}" \
@@ -25,18 +15,24 @@ export LDFLAGS="--sysroot=${SYSROOT}"
   --includedir="${PREFIX}/include/expat-${EXPAT_VERSION}" \
   --enable-shared \
   --enable-static \
-  --without-examples \
-  --without-tests \
   --without-docbook
 
 make -j"${CPU_COUNT}"
+make check
 make install
 
 # Autotools' exported CMake target uses the shared include root even though
 # this package installed Expat beneath a version-specific directory.
-sed -i \
-  "s#INTERFACE_INCLUDE_DIRECTORIES \"\${_IMPORT_PREFIX}/include\"#INTERFACE_INCLUDE_DIRECTORIES \"\${_IMPORT_PREFIX}/include/expat-${EXPAT_VERSION}\"#" \
-  "${PREFIX}/lib/cmake/expat-${EXPAT_VERSION}/expat.cmake"
+python3 - <<'PYCODE'
+import os
+from pathlib import Path
+p = Path(os.environ['PREFIX']) / ('lib/cmake/expat-' + os.environ['EXPAT_VERSION']) / 'expat.cmake'
+s = p.read_text()
+old = 'INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"'
+new = 'INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include/expat-' + os.environ['EXPAT_VERSION'] + '"'
+assert old in s
+p.write_text(s.replace(old, new))
+PYCODE
 
 cat >"${PREFIX}/lib/pkgconfig/expat.pc" <<EOF
 prefix=\${pcfiledir}/../..
@@ -82,11 +78,16 @@ int main(void) {
 EOF
 
 "${CC}" \
-  ${CFLAGS} \
+  ${CFLAGS} ${LDFLAGS} \
   -I"${PREFIX}/include/expat-${EXPAT_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libexpat.so" \
   -Wl,-rpath-link,"${SYSROOT}/lib64" \
-  -o "${SRC_DIR}/devkit-consumer"
+  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' \
+  -o "${SRC_DIR}/library-probe"
 
-LD_LIBRARY_PATH="${PREFIX}/lib" "${SRC_DIR}/devkit-consumer"
+ln -s "${PREFIX}/lib" runtime-lib
+
+env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/library-probe"
+
+python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

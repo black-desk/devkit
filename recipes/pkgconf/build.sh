@@ -4,17 +4,7 @@ set -euxo pipefail
 : "${PKGCONF_VERSION:?rattler-build must provide PKGCONF_VERSION}"
 : "${SYSROOT_TRIPLET:?rattler-build must provide SYSROOT_TRIPLET}"
 
-test -x "${BUILD_PREFIX}/bin/gcc"
-test -x "${BUILD_PREFIX}/bin/as"
-test -x "${BUILD_PREFIX}/bin/ld"
-
-SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
-test -d "${SYSROOT}"
-
-export PATH="${BUILD_PREFIX}/bin:${PATH}"
-export CC="${BUILD_PREFIX}/bin/gcc"
-export CFLAGS="--sysroot=${SYSROOT} -O2 -pipe"
-export LDFLAGS="--sysroot=${SYSROOT}"
+source "${SRC_DIR}/devkit-build/build-env.sh"
 
 meson setup build \
   --buildtype=release \
@@ -33,3 +23,6 @@ meson test -C build --print-errorlogs
 install -d -m 0755 "${PREFIX}/bin"
 install -m 0755 build/pkgconf "${PREFIX}/bin/pkgconf"
 ln -s pkgconf "${PREFIX}/bin/pkg-config"
+
+# Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
+python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

@@ -1,0 +1,74 @@
+# Exclude compatibility-only symbols when obsolete APIs are disabled.
+# GNU ld tolerates absent version-script symbols; LLD rejects these five entries.
+# TODO: upstream this fix to https://github.com/besser82/libxcrypt.
+# FIXME: Makefile.in is updated manually; regenerate with automake 1.16.5.
+--- a/build-aux/scripts/gen-libcrypt-map
++++ b/build-aux/scripts/gen-libcrypt-map
+@@ -24,7 +24,7 @@
+ );
+
+ sub output {
+-    my ($symvers) = @_;
++    my ($symvers, $obsolete_api) = @_;
+     my $basemap = $symvers->basemap;
+     print "/* Generated from $basemap by ${FindBin::Script}.  "
+         . "DO NOT EDIT.  */\n";
+@@ -32,6 +32,7 @@
+     my %symbols_for_ver;
+     for my $sym (@{$symvers->symbols}) {
+         next if !$sym->included;
++        next if !$obsolete_api && $sym->compat_only;
+         for my $v (@{$sym->versions}) {
+             push @{$symbols_for_ver{$v}}, $sym->name;
+         }
+@@ -59,7 +60,23 @@
+ # Main
+ #
+ exit 0 if eval {
+-    output(parse_version_map_in(@ARGV));
++    my $obsolete_api = 1;
++    if (@ARGV && $ARGV[0] =~ /\A--config-h=(.+)\z/) {
++        my $config_h = $1;
++        shift @ARGV;
++        open my $fh, '<', $config_h or die "$config_h: $!\n";
++        my $found;
++        while (<$fh>) {
++            if (/^#define ENABLE_OBSOLETE_API ([01])\b/) {
++                $obsolete_api = $1;
++                $found = 1;
++                last;
++            }
++        }
++        close $fh or die "$config_h: $!\n";
++        die "$config_h: ENABLE_OBSOLETE_API missing\n" unless $found;
++    }
++    output(parse_version_map_in(@ARGV), $obsolete_api);
+     1;
+ };
+
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -201,8 +201,9 @@
+ libcrypt.map: libcrypt.map.stamp; @:
+ libcrypt.map.stamp: \
+ 		lib/libcrypt.map.in $(SCRIPTS_AUX)/gen-libcrypt-map \
+-		$(SCRIPTS_AUX)/BuildCommon.pm Makefile
++		$(SCRIPTS_AUX)/BuildCommon.pm Makefile config.h
+ 	$(AM_V_GENS)LC_ALL=C $(PERL) $(SCRIPTS_AUX)/gen-libcrypt-map \
++	  --config-h=config.h \
+ 	  SYMVER_MIN=$(SYMVER_MIN) \
+ 	  SYMVER_FLOOR=$(SYMVER_FLOOR) \
+ 	  COMPAT_ABI=$(COMPAT_ABI) \
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -3591,8 +3591,9 @@
+ libcrypt.map: libcrypt.map.stamp; @:
+ libcrypt.map.stamp: \
+ 		lib/libcrypt.map.in $(SCRIPTS_AUX)/gen-libcrypt-map \
+-		$(SCRIPTS_AUX)/BuildCommon.pm Makefile
++		$(SCRIPTS_AUX)/BuildCommon.pm Makefile config.h
+ 	$(AM_V_GENS)LC_ALL=C $(PERL) $(SCRIPTS_AUX)/gen-libcrypt-map \
++	  --config-h=config.h \
+ 	  SYMVER_MIN=$(SYMVER_MIN) \
+ 	  SYMVER_FLOOR=$(SYMVER_FLOOR) \
+ 	  COMPAT_ABI=$(COMPAT_ABI) \

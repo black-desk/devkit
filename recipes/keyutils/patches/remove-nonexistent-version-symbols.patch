@@ -1,0 +1,25 @@
+From: devkit maintainers
+Subject: [PATCH] Remove nonexistent symbols from the library version script
+
+TODO: Upstream this patch to keyutils. The two entries were introduced by
+a28ec81569084ad9254239af1f16aee35ef0d52b and
+badd34263aff2c53749774589310d232c31b8f4b, respectively, and remain in upstream
+master c076dff259e99d84d3822b4d2ad7f3f66532f411.
+
+Neither keyctl_restrict nor keyctl_dh_compute_kdf_alloc is declared or
+implemented. LLD rejects version-script assignments to undefined symbols.
+Remove only these invalid assignments, preserving the existing unversioned
+export of keyctl_restrict_keyring and all implemented functions' versions.
+
+diff --git a/version.lds b/version.lds
+--- a/version.lds
++++ b/version.lds
+@@ -76,8 +76,6 @@ KEYUTILS_1.6 {
+
+ KEYUTILS_1.7 {
+ 	/* management functions */
+-	keyctl_restrict;
+ 	keyctl_dh_compute_kdf;
+-	keyctl_dh_compute_kdf_alloc;
+
+ } KEYUTILS_1.6;

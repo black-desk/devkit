@@ -12,6 +12,8 @@ curl = "*"
 coreutils = "*"
 cpio = "*"
 rpm-tools = "*"
+patchelf = "0.19.1.*"
+meson = "1.10.*"
 uv = ">=0.12.20,<0.13"
 
 [tasks]

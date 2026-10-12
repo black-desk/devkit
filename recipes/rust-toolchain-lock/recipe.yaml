@@ -12,7 +12,7 @@ source:
 
 build:
   noarch: generic
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   script:
     - mkdir -p "${PREFIX}/share/rust-toolchain"

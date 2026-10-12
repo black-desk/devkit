@@ -1,0 +1,64 @@
+From: devkit maintainers
+Subject: Allow clean compiler flags for compiler-rt's private libc++ builds
+
+An externally installed libc++ include path in CMAKE_CXX_FLAGS (or in a
+Clang config) must not enter the private libc++ build. Otherwise its C wrapper
+headers include_next the installed wrappers instead of the actual C headers.
+Preserve the default behavior but allow distributors to override the base
+flags for this internal build. TODO: propose this override upstream.
+
+--- a/compiler-rt/cmake/Modules/AddCompilerRT.cmake
++++ b/compiler-rt/cmake/Modules/AddCompilerRT.cmake
+@@ -700,10 +700,16 @@
+
+   string(REPLACE ";" " " LIBCXX_C_FLAGS "${LIBCXX_CFLAGS}")
+   get_property(C_FLAGS CACHE CMAKE_C_FLAGS PROPERTY VALUE)
++  if(DEFINED COMPILER_RT_LIBCXX_C_FLAGS)
++    set(C_FLAGS "${COMPILER_RT_LIBCXX_C_FLAGS}")
++  endif()
+   set(LIBCXX_C_FLAGS "${LIBCXX_C_FLAGS} ${C_FLAGS}")
+
+   string(REPLACE ";" " " LIBCXX_CXX_FLAGS "${LIBCXX_CFLAGS}")
+   get_property(CXX_FLAGS CACHE CMAKE_CXX_FLAGS PROPERTY VALUE)
++  if(DEFINED COMPILER_RT_LIBCXX_CXX_FLAGS)
++    set(CXX_FLAGS "${COMPILER_RT_LIBCXX_CXX_FLAGS}")
++  endif()
+   set(LIBCXX_CXX_FLAGS "${LIBCXX_CXX_FLAGS} ${CXX_FLAGS}")
+
+   if(CMAKE_VERBOSE_MAKEFILE)
+--- a/compiler-rt/lib/fuzzer/CMakeLists.txt
++++ b/compiler-rt/lib/fuzzer/CMakeLists.txt
+@@ -1,3 +1,11 @@
++# Fuzzer itself uses the private libc++ headers and ABI namespace too. Keep
++# installed C++ wrapper headers out of its include_next search chain.
++if(COMPILER_RT_LIBCXX_PATH AND COMPILER_RT_LIBCXXABI_PATH AND
++   DEFINED COMPILER_RT_LIBCXX_CXX_FLAGS)
++  set(CMAKE_CXX_FLAGS "${COMPILER_RT_LIBCXX_CXX_FLAGS}")
++endif()
++
++
+ set(LIBFUZZER_SOURCES
+   FuzzerCrossOver.cpp
+   FuzzerDataFlowTrace.cpp
+@@ -138,6 +146,12 @@
+ if(OS_NAME MATCHES "Android|Linux|Fuchsia" AND
+    COMPILER_RT_LIBCXX_PATH AND
+    COMPILER_RT_LIBCXXABI_PATH)
++  # Partial links must also respect the configured compiler/linker. In
++  # particular, bypass recipe configs that add installed libc++ headers.
++  separate_arguments(FUZZER_MERGE_FLAGS NATIVE_COMMAND "${CMAKE_CXX_FLAGS}")
++  if(CMAKE_CXX_COMPILER_ID MATCHES Clang AND CMAKE_LINKER)
++    list(APPEND FUZZER_MERGE_FLAGS "--ld-path=${CMAKE_LINKER}")
++  endif()
+   macro(partially_link_libcxx name dir arch)
+     get_target_flags_for_arch(${arch} target_cflags)
+     if(CMAKE_CXX_COMPILER_ID MATCHES Clang)
+@@ -147,7 +161,7 @@
+     set(cxx_${arch}_merge_dir "${CMAKE_CURRENT_BINARY_DIR}/cxx_${arch}_merge.dir")
+     file(MAKE_DIRECTORY ${cxx_${arch}_merge_dir})
+     add_custom_command(TARGET clang_rt.${name}-${arch} POST_BUILD
+-      COMMAND ${CMAKE_CXX_COMPILER} ${target_cflags} -Wl,--whole-archive "$<TARGET_LINKER_FILE:clang_rt.${name}-${arch}>" -Wl,--no-whole-archive ${dir}/lib/libc++.a -r -o ${name}.o
++      COMMAND ${CMAKE_CXX_COMPILER} ${target_cflags} ${FUZZER_MERGE_FLAGS} -Wl,--whole-archive "$<TARGET_LINKER_FILE:clang_rt.${name}-${arch}>" -Wl,--no-whole-archive ${dir}/lib/libc++.a -r -o ${name}.o
+       COMMAND ${CMAKE_OBJCOPY} --localize-hidden ${name}.o
+       COMMAND ${CMAKE_COMMAND} -E remove "$<TARGET_LINKER_FILE:clang_rt.${name}-${arch}>"
+       COMMAND ${CMAKE_AR} qcs "$<TARGET_LINKER_FILE:clang_rt.${name}-${arch}>" ${name}.o

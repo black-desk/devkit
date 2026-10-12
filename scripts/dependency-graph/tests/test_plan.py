@@ -94,6 +94,43 @@ class PlanTests(unittest.TestCase):
         with self.assertRaisesRegex(RenderError, "deletion"):
             self.plan([output("a")], [], ["recipes/a"])
 
+    def test_explicit_retirement_drops_old_edges_from_schedule(self):
+        old = [output("gcc"), output("app", requirements={"build": ["gcc"]})]
+        new = [replace(output("app"), version="2")]
+        report = calculate_plan(
+            build_graph(old),
+            build_graph(new),
+            {"recipes/app"},
+            True,
+            [],
+            frozenset({"gcc"}),
+        )
+        self.assertTrue(report["valid"])
+        self.assertEqual(report["retired"], ["gcc"])
+        self.assertEqual([item["package"] for item in report["selected"]], ["app"])
+
+    def test_retirement_does_not_allow_unlisted_deletion(self):
+        with self.assertRaisesRegex(RenderError, "deletion"):
+            calculate_plan(
+                build_graph([output("a"), output("b")]),
+                build_graph([]),
+                set(),
+                True,
+                [],
+                frozenset({"a"}),
+            )
+
+    def test_retired_output_must_be_absent(self):
+        with self.assertRaisesRegex(RenderError, "still present"):
+            calculate_plan(
+                build_graph([output("a")]),
+                build_graph([output("a")]),
+                set(),
+                True,
+                [],
+                frozenset({"a"}),
+            )
+
     def test_unsolved_requirements_include_tests_pins_exports(self):
         reqs = _requirements(
             {

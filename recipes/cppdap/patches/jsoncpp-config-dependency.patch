@@ -1,0 +1,14 @@
+From: devkit maintainers
+Subject: Resolve exported static JsonCpp dependency for installed consumers
+
+TODO: upstream this missing dependency alongside the other JSON backends.
+
+--- a/cmake/Config.cmake.in
++++ b/cmake/Config.cmake.in
+@@ -26,4 +26,6 @@
+     find_dependency(nlohmann_json CONFIG)
+ elseif( @CPPDAP_USE_EXTERNAL_RAPIDJSON_PACKAGE@ )
+     find_dependency(RapidJSON CONFIG)
++elseif( @CPPDAP_USE_EXTERNAL_JSONCPP_PACKAGE@ )
++    find_dependency(jsoncpp CONFIG)
+ endif()

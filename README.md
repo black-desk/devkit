@@ -1,63 +1,50 @@
 # Devkit channel workspace
 
-This repository currently contains a reproducible `linux-64` GCC bootstrap and
-is the seed of a small, independently maintained conda channel for development
-tools. The intended platforms are:
-
-```text
-linux-64
-osx-arm64
-```
+This repository builds an independent development-tool conda channel. Linux is
+being migrated to Clang/LLVM; `osx-arm64` is planned. See
+[the experiment notes](docs/clang-bootstrap.md) for validation completed on
+`experiment/clang-bootstrap` and work still pending.
 
 The project is not a conda-forge overlay. Existing and future packages use
-canonical names such as `gcc`, `gxx`, `go`, `python`, and `rustup`, and the
-channel does not attempt to make its toolchain packages co-installable with
+canonical names such as `clang`, `go`, `python`, and `rustup`, and the channel
+does not attempt to make its toolchain packages co-installable with
 conda-forge's toolchain stack in the same environment.
 
 ## Current status
 
-The Linux bootstrap is working end-to-end:
+The seed-built Clang carrier, libcxx, llvm-libgcc, Ninja, Make, and pkgconf have
+passed their package tests. A fresh installation containing no GCC compiler or
+development packages has passed both compiler integration checks: default C++
+compilation uses host GCC development files and host libstdc++, and explicit
+channel builds use the Rocky sysroot, libc++, and llvm-libgcc. Full result-stage
+self-hosting and ordinary-package builds remain in progress. The
+[bootstrap closure inventory](docs/bootstrap-closure.md) records all seed
+members, missing recipes, feature gaps and unresolved file ownership.
 
-1. A fixed conda-forge-derived seed is downloaded and verified from
-   `seed-packages.tsv`.
-2. A Rocky Linux 8.10-derived `sysroot_linux-64` is built first in the dirty
-   stage, using the seed-compatible `x86_64-conda-linux-gnu` layout.
-3. A dirty GCC carrier is built with the seed compiler interfaces and the dirty
-   sysroot, then exposed through local `gcc` and `gxx` interface packages.
-4. Local binutils, GNU Make, and gnuconfig are built through those interfaces.
-5. The same recipe order is rebuilt as the result generation against the result
-   sysroot and dirty compiler interfaces.
-6. A result-only fixed-point rebuild passes the embedded GCC tests and produces
-   a compiler installation that no longer depends on the seed channel.
+The intended stages are seed → dirty → result → result-only rebuild. Each
+executes `bootstrap-order.json`, covering the sysroot, LLVM runtimes, Clang, GNU
+config scripts, Make, Perl, pkgconf, CA certificates, OpenSSL, Ninja, and CMake.
+Its library/build-tool closure now also schedules bzip2, libuv, RHash, c-ares,
+libev, keyutils, libedit, zlib, zstd, ncurses, libiconv, liblzma, ICU, libpsl,
+gettext (with a file-free gettext-tools alias), libxml2, Kerberos, libssh2,
+libnghttp2, curl (with a file-free libcurl alias), libxcrypt, and expat (with a
+file-free libexpat alias), LZO, LZ4, libarchive with LZO support, jsoncpp, and
+cppdap. Validation status and the remaining dependencies are recorded in the
+inventory. The result-only closure includes those outputs and imported `tzdata`;
+it contains no GNU compiler, binutils, libgcc, or libstdcxx package. llvm-libgcc
+provides the `libgcc_s.so.1` interface with LLVM sources.
 
-Installing the current result interface:
+`seed-packages.tsv` pins 47 conda-forge archives, including Clang/LLVM 23.1.3,
+LLD 23.1.2, CMake, Ninja, gettext-tools 0.25.1, GNU runtime/development files,
+Perl 5.44.0, libxcrypt 4.4.38, and the glibc 2.28 sysroot. There is no GCC
+compiler or GNU binutils in the seed. Dirty builds prefer dirty packages and
+fall back to seed in both environments. Dirty-only libgcc and library meta
+aliases resolve the observed mixed GNU/LLVM and seed-library file overlaps.
+Rebuilding the complete tool dependency closure is intended to make result
+independent of seed.
 
-```text
-gcc gxx binutils make gnuconfig sysroot_linux-64
-```
-
-resolves eight packages from the local result channel:
-
-```text
-gcc
-gxx
-gcc-toolchain
-binutils
-make
-gnuconfig
-sysroot_linux-64
-tzdata
-```
-
-`tzdata` is currently the one imported conda-forge package in that closure. It
-is an explicitly retained data-only exception while the bootstrap is being
-developed; it should either be documented as permanent or replaced by a local
-package before the first public stable channel.
-
-The current seed contains 22 archives, principally GCC/G++ 14.4.0, binutils
-2.46.1, glibc 2.28 bootstrap interfaces, GNU Make 4.4.1, Linux 4.18 kernel
-headers, gnuconfig, and their metadata dependencies. Exact URLs, sizes, and
-SHA-256 hashes are recorded in `seed-packages.tsv`.
+`tzdata` is an explicitly retained data-only seed exception. Its permanent
+status or replacement remains a release decision.
 
 The first ordinary toolchain input is a version-pinned repack of the official
 Linux/amd64 Go distribution. Its official GOROOT layout is retained below
@@ -97,14 +84,14 @@ telemetry is disabled, without changing user telemetry settings.
 
 The `uv` recipe builds uv 0.12.22 and its `uvx` launcher from source, with Bash,
 Fish, and Zsh completions. It uses the locked Rust toolchain and local
-GCC/binutils/Make/sysroot for its native dependencies. The release build keeps
-the upstream performance allocator, uses thin LTO to reduce build memory, and
+Clang/LLVM/Make/sysroot for its native dependencies. The release build keeps the
+upstream performance allocator, uses thin LTO to reduce build memory, and
 disables self-update so upgrades remain owned by the channel. The package does
 not include a Python interpreter. Its offline package tests cover both
 executables, custom installation directories, project initialization, and the
-bundled Python download metadata. The Linux binaries use the host glibc and
-`libgcc_s.so.1`; their required symbol versions are no newer than `GLIBC_2.28`
-and `GCC_4.2.0`.
+bundled Python download metadata. The migrated Linux builds select host glibc
+and channel llvm-libgcc through RUNPATH; their complete rebuild and runtime
+audit remain pending.
 
 The `python` recipe packages CPython 3.14.8 from the `python-build-standalone`
 20261001 release. Rattler-Build verifies the pinned archive, then uv 0.12.22
@@ -144,13 +131,20 @@ and SMTP delivery with `git send-email`, require additional modules not
 currently packaged here. Installing `lazygit` also installs this Git package;
 its package tests check Git's path and basic repository initialization.
 
-During channel bring-up, recipes favor completing the applications that the
-channel is intended to provide over exhaustively enabling every upstream
-optional feature. Library recipes select the smallest explicit dependency set
-needed by those applications and disable unsupported extras. A later release
-line will review each library's build options individually; that review must
-record the chosen options and use the normal version/build-number and affected
-rebuild process.
+Recipe feature configuration uses conda-forge as the baseline. Preserve features
+that conda-forge enables wherever possible; reducing the bootstrap dependency
+count is not sufficient reason to disable them. Compare the actual upstream and
+conda-forge build configurations before claiming feature parity. Any necessary
+feature reduction must document its user-visible impact and be discussed with
+the maintainer before implementation.
+
+The bootstrap is a self-hosting closure, including seed tools' runtime
+dependencies as well as their build dependencies. Reconstruct those dependencies
+from channel sources, or replace the corresponding tool with a verified
+implementation/configuration that no longer needs them. An ordered list of tool
+recipes alone does not establish closure. Validate a complete seed-free rebuild,
+including all required libraries. The current bootstrap membership is
+provisional pending this dependency and feature audit.
 
 ## Design goals
 
@@ -178,12 +172,37 @@ rebuild process.
 .github/dependabot.yaml Dependency-update policy used by repository checks
 
 bootstrap-order.json    Ordered bootstrap recipe membership
+retired-packages.json    Explicitly retired package outputs
 
 recipes/
-  gcc-toolchain/        Coarse single-package GCC/G++ carrier
-  gcc-aliases/          gcc and gxx interface outputs
-  libstdcxx/            C++ runtime alias selecting the complete GCC carrier
-  binutils/             Native assembler, linker, and binary tools
+  clang/                Clang, LLVM tools, LLD, compiler-rt, build helpers
+  libcxx/               libc++ and libc++abi, with isolated headers
+  llvm-libgcc/          LLVM unwinder and compiler-rt runtime interfaces
+  cmake/                CMake/ccmake using external channel libraries
+  ninja/                Ninja build executor
+  bzip2/                Bzip2 compression library and tools
+  c-ares/               Asynchronous DNS resolver
+  cppdap/               Debug Adapter Protocol library using jsoncpp
+  gettext/              Gettext libraries/tools and gettext-tools meta alias
+  icu/                  ICU with release-provided data
+  jsoncpp/              C++ JSON reader/writer
+  keyutils/             Linux kernel keyring API
+  krb5/                 MIT Kerberos with NLS
+  libarchive/           Archive library/tools with LZO and LZ4 support
+  libedit/              Command-line editing library
+  libev/                Event-loop library
+  libiconv/             Character-set conversion library
+  liblzma/              XZ compression library and tools
+  libnghttp2/           HTTP/2 library and tools
+  libpsl/               Public suffix list library
+  libssh2/              SSH/SCP/SFTP client library
+  libuv/                Portable asynchronous I/O
+  libxml2/              XML library and libxml2-16 meta alias
+  lz4-c/                LZ4 library and CLI
+  lzo/                  LZO compression library
+  ncurses/              Narrow/wide ncurses and split tinfo/form
+  rhash/                Hashing library and CLI
+  zstd/                 Zstandard library, CLI and pzstd
   ca-certificates/      Pinned Mozilla CA certificate bundle
   expat/                Stream-oriented XML parser library
   make/                 GNU Make carrier
@@ -191,6 +210,7 @@ recipes/
   gnuconfig/            Pinned config.guess and config.sub
   openssl/              TLS and cryptography library
   pcre2/                Perl-compatible regular expression library
+  libxcrypt/            Password hashing library used by Perl
   perl/                 Perl interpreter and core modules
   sysroot/              Rocky Linux 8.10-derived Linux sysroot
   go/                    Official Go linux-amd64 distribution repack
@@ -214,6 +234,7 @@ variants/
 
 scripts/
   bootstrap.sh          Reset build outputs, fetch, build, index, and verify
+  clean-build-outputs.py Preserve source caches while removing generated output
   affected-build.sh     Build the recipes affected by a pull request or push
   dependency-graph/     Rendered recipe graph and affected-closure calculator
   publish-result.sh     Upload generated result archives to prefix.dev
@@ -240,22 +261,24 @@ and local channel contents are deliberately ignored.
 
 The long-term organization remains a single recipe monorepo, but recipes are not
 divided into bootstrap, toolchain, and tool directories. Those categories are
-frequently ambiguous—`gcc` is both a bootstrap artifact and the public compiler
-interface, while `python` is both a language runtime and a build input—and they
-must not become inputs to build scheduling.
+frequently ambiguous—`clang` is both a bootstrap artifact and the public
+compiler interface, while `python` is both a language runtime and a build
+input—and they must not become inputs to build scheduling.
 
 The intended layout is:
 
 ```text
 recipes/
   aerc/
-  binutils/
+  clang/
+  cmake/
   ca-certificates/
   difftastic/
   expat/
   fd/
-  gcc-aliases/
-  gcc-toolchain/
+  libcxx/
+  llvm-libgcc/
+  ninja/
   git/
   gnuconfig/
   go/
@@ -265,6 +288,7 @@ recipes/
   notmuch/
   openssl/
   pcre2/
+  libxcrypt/
   perl/
   pkgconf/
   python/
@@ -289,9 +313,8 @@ releases/
 
 Recipe directories are navigation and source-layout names only. Package names
 remain canonical: the recipe in `recipes/go/` produces `go`, and the recipe in
-`recipes/python/` produces `python`. Bootstrap-only names such as
-`gcc-toolchain` exist to support staged self-hosting and compatibility with the
-imported seed; they are not a general naming convention.
+`recipes/python/` produces `python`. The seed compiler names are used only by
+dirty-stage conditional build requirements; they do not become result outputs.
 
 For ordinary packages, the build graph is derived from rendered recipes. Each
 package output is a graph node, so a multi-output recipe contributes its actual
@@ -306,9 +329,10 @@ membership. Stage-specific variants and channel boundaries remain part of the
 bootstrap and graph entry points rather than the recipe namespace.
 
 The bootstrap recipes are special. Collapsing their staged package names can
-produce cycles between GCC, binutils, and Make. They are therefore handled as a
-bootstrap generation supernode rather than fed directly to the ordinary
-topological scheduler. Outside bootstrap, SCCs should be rejected.
+produce cycles between Clang, LLVM runtimes, CMake, and Ninja. They are
+therefore handled as a bootstrap generation supernode rather than fed directly
+to the ordinary topological scheduler. Outside bootstrap, SCCs should be
+rejected.
 
 ## Dependency graph tooling
 
@@ -351,7 +375,7 @@ The existing explicit-root and audit commands remain available:
 
 ```bash
 pixi run graph-audit
-pixi run bash scripts/dependency-graph/graph affected recipes/gcc-toolchain
+pixi run bash scripts/dependency-graph/graph affected recipes/clang
 ```
 
 All graph commands accept `--json`. The tool's Python environment is managed
@@ -361,31 +385,23 @@ dependencies.
 
 ## Migration plan
 
-The intended migration is incremental:
+The current migration first validates the LLVM bootstrap closure, then its
+result-only rebuild, and then all ordinary recipes and affected-build CI.
+Default compiler behavior and explicit channel behavior are checked separately.
+Unexpected design constraints are discussed before broadening the
+implementation.
 
-1. Preserve the verified Linux bootstrap, its flat recipe layout, and its
-   explicit `bootstrap-order.json` stage ordering.
-2. Harden the recipe renderer and dependency graph as ordinary packages are
-   added.
-3. Introduce canonical `go`, `rustup`, `rust-toolchain-lock`, `python`, and `uv`
-   toolchain packages with build-local caches and exact version inputs.
-4. Add ordinary tool recipes on top of the rendered graph and affected-build CI.
-5. Add `osx-arm64`; its platform and compiler strategy is still to be designed.
-6. Add candidate and stable release channels, manifests, and promotion checks.
-
-The next ordinary-package work is the mail toolchain: `notmuch`, `aerc`, `lei`,
-and `lieer`. These remain planned and are not yet packaged.
-
-At every step, the existing Linux bootstrap remains the reference fixed point
-until a new bootstrap generation has completed the same verification.
+macOS, release manifests, promotion, and the future mail toolchain remain later
+work. A completed seed build does not establish a verified self-hosting fixed
+point.
 
 ## Platform and compiler policy
 
 ### Linux
 
-Linux continues with the local GCC/binutils/sysroot bootstrap:
+Linux uses Clang, LLVM binary tools, LLD, and the Rocky sysroot:
 
-- GCC and binutils are self-hosted from the fixed seed.
+- Clang and the LLVM runtimes are bootstrapped from the fixed seed.
 - The normal compiler interface integrates with the host distribution by default
   and does not embed a sysroot.
 - Channel builds explicitly request the local sysroot, assembler, and linker.
@@ -428,20 +444,29 @@ these packages as build dependencies and install that exact toolchain into
 build-local state:
 
 ```bash
+source "${BUILD_PREFIX}/share/devkit/rust-env.sh"
+
 export RUSTUP_HOME="${SRC_DIR}/.rustup"
 export CARGO_HOME="${SRC_DIR}/.cargo"
 export CARGO_TARGET_DIR="${SRC_DIR}/target"
 
 RUST_TOOLCHAIN="$(cat "${BUILD_PREFIX}/share/rust-toolchain/version")"
 
-rustup toolchain install "${RUST_TOOLCHAIN}" \
+devkit_rustup toolchain install "${RUST_TOOLCHAIN}" \
   --profile minimal \
   --no-self-update
 
-rustup run "${RUST_TOOLCHAIN}" cargo build \
+devkit_rustup run "${RUST_TOOLCHAIN}" cargo build \
   --release \
   --locked
 ```
+
+`devkit_rustup` clears `LD_LIBRARY_PATH` and sets an absolute `LD_PRELOAD` for
+channel `libgcc_s.so.1` only while running upstream Rust tools during a Rust
+recipe build. Their subprocesses receive this scoped environment. Installed
+outputs and independent package tests use DT_RUNPATH without loader overrides.
+Packaged rustup has its own RUNPATH; user-downloaded toolchains retain upstream
+host requirements.
 
 Toolchain requests must be exact. Ambiguous requests such as `stable`,
 `nightly`, or a minor version without a patch are not accepted. Changing the
@@ -682,7 +707,9 @@ The initial rebuild roots are the package outputs changed by a commit. A change
 under a recipe directory initially selects all outputs of that recipe. Changes
 to explicit global bootstrap inputs select every recipe; workflow and
 documentation changes do not schedule package builds. Refinement to individual
-outputs can be added only when the mapping is explicit and auditable.
+outputs can be added only when the mapping is explicit and auditable. The
+completed-stage test runner and shared build-output cleanup helper are global
+bootstrap inputs as well.
 
 The scheduler traverses reverse dependency edges from those roots. Every direct
 and transitive build-time, runtime, and constraint consumer will be selected.
@@ -798,7 +825,8 @@ should consume a release manifest and a successful verification run.
 
 ## Running the bootstrap
 
-After installing Pixi, run:
+The new full bootstrap driver is implemented but its complete fixed point is
+still under validation. After installing Pixi, its entry point is:
 
 ```bash
 pixi run bootstrap
@@ -811,8 +839,10 @@ all bootstrap stages, so later stages reuse its downloaded sources but still
 compile in a freshly cleaned build directory. Package-manager caches use their
 tool defaults. The bootstrap verifies and indexes the seed, builds and publishes
 the dirty and result stages, reruns the result-only fixed point, and executes
-the result checks. Every stage follows `bootstrap-order.json`; only its visible
-channels and variant configuration change between stages.
+the result checks, including an actual result-only installation and both
+compiler-policy probes. These probes require host GCC development files. Every
+stage follows `bootstrap-order.json`; only its visible channels and variant
+configuration change between stages.
 
 The Pixi environment provides `rattler-build`, `rattler-index`, mamba, and the
 archive tools required by the scripts. The direct script is also available when
@@ -877,84 +907,93 @@ result, and produced archives to the GitHub Actions job summary. After a push to
 
 ## Package roles in the current bootstrap
 
-- `gcc-toolchain` is the coarse compiler carrier. It owns the complete GCC/G++
-  installation, compiler runtime libraries, development symlinks, and compiler
-  drivers.
-- `gcc` and `gxx` are interface packages selecting the carrier. They permit the
-  same carrier recipe to operate against seed, dirty, and self-hosted channel
-  stages.
-- `libstdcxx` is an ordinary, metadata-only runtime interface, pinned to
-  `gcc-toolchain ==16.2.0`. Installing it intentionally installs the complete
-  compiler carrier. The package name uses `xx` because conda package names
-  cannot contain `+`; the library remains `libstdc++.so.6`. Its separate recipe
-  keeps this consumer interface outside the bootstrap generation.
-- `binutils` is one native output owning the assembler, linker, and binary
-  inspection tools. It deliberately does not reproduce conda-forge's `ld_impl` /
-  `binutils_impl` split.
-- `make` is a native build tool, not a compiler runtime component.
-- `gnuconfig` is a noarch carrier for pinned `config.guess` and `config.sub`.
-- `sysroot_linux-64` is a build-time deployment baseline, not a default runtime
-  sysroot for interactive compiler use.
+- `clang` owns Clang, LLVM tools, LLD, and the explicit channel build helpers.
+  Compilation uses the runner's full CPU count; at most two LLVM links run
+  concurrently.
+- `libcxx` owns libc++ and libc++abi, including version-isolated headers.
+- `llvm-libgcc` owns compiler-rt builtins, CRT objects, and the LLVM unwinder.
+  Its canonical SONAME is `libgcc_s.so.1`; libunwind aliases select that ELF.
+- `make`, `perl`, `pkgconf`, `openssl`, `ca-certificates`, `ninja`, and `cmake`
+  complete the build-tool closure.
+- `libxcrypt` provides Perl password hashing. Each stage uses the previous
+  generation's Perl to build libxcrypt, then builds its own Perl against the
+  library supplied by that stage's dependency channels. Seed includes both
+  packages to start this cycle.
+- `gnuconfig` owns pinned platform-detection scripts.
+- `sysroot_linux-64` supplies the glibc 2.28 build baseline. It is not a runtime
+  dependency of the public compiler.
 
-Content-bearing packages use the normal `h<variant-hash>_<build-number>` build
-string form. Metadata-only interface packages add a `meta_` prefix.
+`retired-packages.json` records the removed GCC, G++, GNU binutils, and
+libstdcxx package outputs. The planner permits these deliberate removals and
+still rejects unlisted output deletion or rename.
+
+## Package splits and compatibility names
+
+Content-bearing packages own complete upstream installations; we do not
+reproduce conda-forge's file splits solely to match package names. Where a seed
+or consumer requires a split name, provide a metadata-only compatibility package
+that depends on the matching content-bearing package. Compatibility packages own
+no library or header files and must not cause file collisions. Content-bearing
+build strings use `h<variant-hash>_<build-number>`; metadata-only interfaces use
+the `meta_` prefix. The temporary dirty-stage `libgcc` interface is an explicit
+exception: its version and build string match seed libstdcxx’s exact dependency,
+while its only runtime dependency is our LLVM-libgcc. It owns no files and is
+omitted from result/self-host outputs.
+
+For example, `zlib` owns the shared/static libraries and version-isolated
+headers. `libzlib` is a noarch metadata-only output of the same recipe, with an
+exact dependency on its sibling `zlib` output. This satisfies seed CMake's
+`libzlib` dependency without installing conda-forge's split runtime package.
 
 ## Compiler modes
 
 ### Host-integrating default
 
-By default, installed `gcc` and `g++` behave like newer distribution-provided
-compilers. They do not embed a conda sysroot and can compile against the host's
-native glibc, kernel headers, `/usr/local`, and user-installed libraries.
+`bin/clang.cfg` and `bin/clang++.cfg` select `--gcc-toolchain=/usr`. Normal
+compiler invocations use host GCC's matching C++ headers, libstdc++, and libgcc,
+plus the host linker. The compiler itself uses channel libc++ and llvm-libgcc;
+that is independent of the runtime selected for its outputs.
 
 ### Explicit channel-build mode
 
-Recipes building channel packages explicitly select the local sysroot and tools.
-There is no `gcc-buildenv` wrapper package. A recipe sets flags such as:
+Channel recipes load `share/devkit/clang.cfg` with `--no-default-config`. It
+selects the Rocky sysroot, LLD, libc++, compiler-rt, and the LLVM unwinder. LLD
+is selected by its explicit `--ld-path`, avoiding Clang's deprecated
+absolute-path `-fuse-ld` form and failures in configure probes using `-Werror`.
+`<CFGDIR>`-relative paths make the configuration relocatable. Native recipes
+source `share/devkit/build-env.sh`; bootstrap recipes copy the helper sources in
+all stages and select the stage's compiler and sysroot variant. Seed builds
+explicitly select target libc++ headers. Later native stages use the config's
+single libc++ header root to avoid duplicate C wrappers breaking include_next;
+both prefixes select the same libc++ package from the completed input channel.
 
-```bash
-SYSROOT="${BUILD_PREFIX}/${sysroot_triplet}/sysroot"
+Public C library headers remain version-isolated. Ordinary library interfaces
+are passed through exact pkg-config output or exact header/library paths. The
+runtime directory used by the compiler is a deliberate standard-library
+interface, not a generic header search path.
 
-export CFLAGS="--sysroot=${SYSROOT}"
-export CXXFLAGS="--sysroot=${SYSROOT}"
-export CPPFLAGS="--sysroot=${SYSROOT}"
-export LDFLAGS="--sysroot=${SYSROOT}"
-```
+### Runtime policy
 
-It must also put the intended assembler and linker ahead of host tools in `PATH`
-or pass an equivalent GCC `-B` prefix.
+Each locally built dynamic ELF receives relative DT_RUNPATH entries selecting
+its package prefix's libraries. `finalize-elf.py` adjusts newly installed ELF
+files and preserves host dependency files and installed permissions. These
+recipes disable Rattler-Build's automatic binary relinking because it converts
+RUNPATH to RPATH. Text and symlink relocation remain enabled.
 
-C library headers and linker inputs are then added only through package-specific
-pkg-config output or exact paths such as `${PREFIX}/include/<library>-<version>`
-and `${PREFIX}/lib/lib<library>.so`. The shared `${PREFIX}/include` and
-`${PREFIX}/lib` directories are not search interfaces for ordinary C libraries.
+Ordinary builds and package tests do not use loader overrides. Only upstream
+Rust tool invocations in Rust recipe builds receive scoped preload. RUNPATH is a
+search policy, not hard host-library isolation: glibc remains supplied by the
+host, and strict loader isolation is deferred.
 
-`sysroot_linux-64` is therefore not a direct runtime dependency of
-`gcc-toolchain`, `gcc`, `gxx`, or `binutils`.
-
-### C++ runtime policy
-
-Channel packages that dynamically use libstdc++ declare a runtime dependency on
-`libstdcxx` compatible with the GCC version used to build them. The metapackage
-selects the existing `gcc-toolchain` carrier; runtime files retain that single
-owner, and installing the full compiler is an accepted cost.
-
-Consumers must set relocatable RPATH/RUNPATH entries so their executables and
-shared libraries load the prefix's `libstdc++.so.6`. A conda dependency ensures
-the file is installed, but does not by itself change the dynamic loader search
-path. This policy does not add a global `LD_LIBRARY_PATH` or change the
-host-integrating default behavior of `g++`. The metapackage test compiles and
-runs a C++ consumer and verifies the loaded runtime's path.
-
-The glibc deployment baseline and the libstdc++ symbol requirements are separate
-checks. Existing C++ outputs still need an audit for this runtime dependency and
-loader policy; adding the interface does not retroactively change their linkage.
+llvm-libgcc is an LLVM implementation of the libgcc interface, not a guarantee
+of every GNU runtime symbol/version. Controlled channel dependencies and their
+runtime tests must validate the required interface.
 
 ## Known gaps before stable promotion
 
 - Design and add `osx-arm64` builds; the compiler and SDK strategy is pending.
-- Design release semantics for recipe/output deletion and rename (currently
-  rejected by the planner).
+- Define remote retirement/publication semantics beyond the explicit local
+  retirement manifest. Unlisted deletion and rename remain rejected.
 - Extend graph rendering to multiple platforms and multiple variants per output.
 - Add channel-wide filename collision checks and release promotion.
 - Add release manifests and promotion scripts.
@@ -963,157 +1002,55 @@ loader policy; adding the interface does not retroactively change their linkage.
 - Replace current Rocky Linux mirror URLs with immutable vault URLs if archive
   stability requires it.
 - Pin Pixi in CI and run the workflow in locked mode.
-- Audit existing C++ outputs against the `libstdcxx` dependency and loader
-  policy, including execution on hosts with older system runtimes.
+- Complete LLVM self-hosting and ordinary-package runtime audits, including
+  execution on hosts with older system runtimes.
 - Define and test the oldest supported host glibc baseline.
 
 ## Bootstrap-stage command reference
 
-The canonical workflow is `pixi run bootstrap`. The following commands are
-useful when intentionally reproducing one stage manually. They must preserve the
-same channel boundaries and publish/index each output before dependent recipes
-are solved.
-
-### Dirty stage
-
-Use the seed-compatible variant:
-
-```text
---variant-config ./variants/dirty.yaml
-```
-
-Build the GCC carrier:
+For individual experiments use `rattler-build build --no-config`, the dirty or
+result variant file, and explicit local channels. Dirty uses dirty then seed;
+result uses completed dirty only; the final rebuild uses completed result only.
+Index each output before a dependent build and avoid stale generation archives.
+For the dirty LLVM-libgcc recipe, also pass the seed-derived variant:
 
 ```bash
-rattler-build build \
-  --recipe ./recipes/gcc-toolchain/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/seed \
-  --channel-priority strict \
-  --variant-config ./variants/dirty.yaml \
-  --output-dir ./output/dirty-toolchain
+mkdir -p output/bootstrap
+python3 scripts/seed-libgcc-variant.py > output/bootstrap/seed-libgcc-variant.yaml
+# Add both --variant-config variants/dirty.yaml and
+# --variant-config output/bootstrap/seed-libgcc-variant.yaml to the build.
 ```
 
-Publish it into `channels/dirty`, then build the `gcc` and `gxx` interfaces:
+The bootstrap driver generates this file automatically after seed verification.
+The compatibility experiment replaces GNU libgcc with the file-free meta
+interface and retains seed GNU libstdcxx. Seed runtime probes pass, but linking
+new GNU-libstdc++ programs exposes six missing GCC_4.3.0 quad-precision symbols.
+Only the dirty LLVM-libgcc build permits those unresolved seed-library
+references; result and self-host builds retain strict linking and use channel
+libc++. The focused check is
+`bash scripts/check-seed-llvm-runtime.sh INSTALL_PREFIX`.
+
+After installing a complete compiler/runtime/sysroot environment, run:
 
 ```bash
-rattler-build build \
-  --recipe ./recipes/gcc-aliases/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/dirty \
-  --channel ./channels/seed \
-  --channel-priority strict \
-  --output-dir ./output/dirty-aliases
+bash scripts/check-clang-policy.sh INSTALL_PREFIX
+bash scripts/check-clang-channel.sh INSTALL_PREFIX
 ```
 
-After publishing those outputs, build binutils, gnuconfig, and Make against the
-dirty interfaces:
+The first check requires host GCC development files. The second verifies the
+explicit channel configuration without loader overrides.
 
-```bash
-rattler-build build \
-  --recipe ./recipes/binutils/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/dirty \
-  --channel ./channels/seed \
-  --channel-priority strict \
-  --variant-config ./variants/dirty.yaml \
-  --output-dir ./output/dirty-binutils
-
-rattler-build build \
-  --recipe ./recipes/gnuconfig/recipe.yaml \
-  --target-platform linux-64 \
-  --output-dir ./output/dirty-gnuconfig
-
-rattler-build build \
-  --recipe ./recipes/make/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/dirty \
-  --channel ./channels/seed \
-  --channel-priority strict \
-  --variant-config ./variants/dirty.yaml \
-  --output-dir ./output/dirty-make
-```
-
-Publish each output into `channels/dirty` and regenerate its `linux-64` and
-`noarch` indexes before moving to the result stage.
-
-### Result stage
-
-The result channel must contain the imported seed `tzdata` archive before the
-first result solve, because `sysroot_linux-64` declares it as a runtime
-dependency and the result stage cannot fall back to the seed channel. Copy the
-single verified `channels/seed/noarch/tzdata-*.conda` archive into
-`channels/result/noarch/` and index that platform before building the sysroot.
-`scripts/bootstrap.sh` performs this explicit data-only import.
-
-Then build and publish `sysroot_linux-64`:
-
-```bash
-rattler-build build \
-  --recipe ./recipes/sysroot/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/result \
-  --channel-priority strict \
-  --variant-config ./variants/result.yaml \
-  --output-dir ./output/result-sysroot
-```
-
-Result-stage solves use `channels/dirty` for bootstrap interfaces and
-`channels/result` for already-built result outputs. They must not include
-`channels/seed`; a missing result dependency is an error rather than an
-invitation to fall back to the seed.
-
-All result-stage hermetic recipes use:
-
-```text
---variant-config ./variants/result.yaml
-```
-
-Build the carrier and interface packages in this order:
-
-```bash
-rattler-build build \
-  --recipe ./recipes/gcc-toolchain/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/dirty \
-  --channel ./channels/result \
-  --channel-priority strict \
-  --variant-config ./variants/result.yaml \
-  --output-dir ./output/result-toolchain
-
-rattler-build build \
-  --recipe ./recipes/gcc-aliases/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/result \
-  --channel ./channels/dirty \
-  --channel-priority strict \
-  --output-dir ./output/result-aliases
-
-rattler-build build \
-  --recipe ./recipes/binutils/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/result \
-  --channel ./channels/dirty \
-  --channel-priority strict \
-  --variant-config ./variants/result.yaml \
-  --output-dir ./output/result-binutils
-
-rattler-build build \
-  --recipe ./recipes/gnuconfig/recipe.yaml \
-  --target-platform linux-64 \
-  --output-dir ./output/result-gnuconfig
-
-rattler-build build \
-  --recipe ./recipes/make/recipe.yaml \
-  --target-platform linux-64 \
-  --channel ./channels/result \
-  --channel ./channels/dirty \
-  --channel-priority strict \
-  --variant-config ./variants/result.yaml \
-  --output-dir ./output/result-make
-```
-
-Publish and index each output immediately after it is built. Finally, rerun all
-result recipes with `channels/result` as the only dependency channel into fresh
-`./output/result-selfhost/` directories and publish those artifacts. This is the
-fixed-point verification performed by `pixi run bootstrap`.
+Bootstrap stage boundaries: dirty build and host environments prefer already
+built dirty packages and fall back to seed. Result uses completed dirty only;
+self-hosting uses completed result only. Package builds use `--test skip`; after
+the whole stage completes, `scripts/test-bootstrap-stage.sh` executes the
+packaged recipe tests using only that stage channel, followed by the
+channel-wide closure/compiler checks. Self-hosting reads the completed result
+and writes `channels/result-rebuild`; it replaces result only after all checks
+pass. Source-level build tests remain inside recipes. The generated per-stage
+package manifests live in output/. The expanded closure still needs validation;
+this infrastructure change does not establish a successful bootstrap. Stage
+checks also inspect installed ELF symbol versions against the glibc 2.28 sysroot
+baseline. Autotools recipes patch bundled libtool to retain explicit Clang
+configuration and linker flags during shared-library links; otherwise libtool
+can silently reload the default host policy.

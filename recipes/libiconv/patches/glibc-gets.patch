@@ -1,0 +1,13 @@
+Carry conda-forge/libiconv-feedstock's glibc.patch: gets was removed in glibc 2.16.
+https://github.com/conda-forge/libiconv-feedstock/blob/c7fdcb1b68d6579a08d0c5dc5f34cbbf38780538/recipe/glibc.patch
+
+--- a/srclib/stdio.in.h
++++ b/srclib/stdio.in.h
+@@ -1096,4 +1096,6 @@
+ #undef gets
+ #if HAVE_RAW_DECL_GETS && !defined __cplusplus
+-_GL_WARN_ON_USE (gets, "gets is a security hole - use fgets instead");
++#if defined(__GLIBC__) && !defined(__UCLIBC__) && (!defined(__GLIBC_PREREQ) || !__GLIBC_PREREQ(2, 16))
++ _GL_WARN_ON_USE (gets, "gets is a security hole - use fgets instead");
++#endif
+ #endif

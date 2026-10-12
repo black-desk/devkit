@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 import tempfile
 from dataclasses import replace
@@ -18,11 +19,35 @@ from .rattler import (
 GLOBAL_INPUTS = {
     "bootstrap-order.json",
     "seed-packages.tsv",
+    "retired-packages.json",
     "scripts/bootstrap.sh",
+    "scripts/clean-build-outputs.py",
+    "scripts/test-bootstrap-stage.sh",
+    "scripts/seed-libgcc-variant.py",
     "scripts/fetch-seed.sh",
     "scripts/check-seed.sh",
     "scripts/check-result.sh",
+    "scripts/check-glibc-baseline.py",
+    "scripts/check-clang-policy.sh",
+    "scripts/check-clang-channel.sh",
 }
+
+
+def load_retired_packages(root: str) -> frozenset[str]:
+    path = Path(root) / "retired-packages.json"
+    if not path.exists():
+        return frozenset()
+    try:
+        names = json.loads(path.read_text())
+    except (OSError, ValueError) as exc:
+        raise RenderError(f"cannot load {path}: {exc}") from exc
+    if (
+        not isinstance(names, list)
+        or not all(isinstance(name, str) and name for name in names)
+        or len(names) != len(set(names))
+    ):
+        raise RenderError(f"{path} must contain unique package names")
+    return frozenset(names)
 
 
 def git(root: str, *args: str) -> str:
@@ -46,6 +71,7 @@ def calculate_plan(
     changed: set[str],
     full: bool,
     bootstrap_order: list[str],
+    retired: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     cycles = non_bootstrap_cycles(current)
     if cycles:
@@ -54,15 +80,35 @@ def calculate_plan(
         node.output.recipe for node in current.nodes.values()
     }
     removed = set(before.nodes) - set(current.nodes)
-    if missing or removed:
+    still_present = retired & set(current.nodes)
+    if still_present:
+        raise RenderError(
+            "retired outputs are still present: " + ", ".join(sorted(still_present))
+        )
+    unsupported_recipes = {
+        recipe
+        for recipe in missing
+        if any(
+            name not in retired
+            for name, node in before.nodes.items()
+            if node.output.recipe == recipe
+        )
+    }
+    unsupported_outputs = removed - retired
+    if unsupported_recipes or unsupported_outputs:
         raise RenderError(
             "recipe/output deletion or rename is unsupported: "
-            + ", ".join(sorted(missing | removed))
+            + ", ".join(sorted(unsupported_recipes | unsupported_outputs))
         )
     # Old edges participate only in impact analysis. Scheduling uses the new
     # graph, so changing dependency direction cannot create an artificial cycle.
     merged = DependencyGraph(
-        nodes=current.nodes, edges=list(set(before.edges + current.edges))
+        nodes=current.nodes,
+        edges=[
+            edge
+            for edge in set(before.edges + current.edges)
+            if edge.provider in current.nodes and edge.consumer in current.nodes
+        ],
     )
     roots = {
         name
@@ -93,6 +139,7 @@ def calculate_plan(
         )
     return {
         "schema": "devkit-affected-build-plan-v2",
+        "retired": sorted(removed),
         "roots": sorted(roots),
         "global_change": full,
         "changed_recipes": sorted(changed),
@@ -129,11 +176,8 @@ def repository_plan(options: RenderOptions, base: str) -> dict[str, Any]:
             "selected": [],
             "valid": True,
         }
-    for recipe in changed:
-        if not (Path(options.root) / recipe / "recipe.yaml").is_file():
-            raise RenderError(
-                f"changed recipe missing: {recipe}; deletion/rename unsupported"
-            )
+    # Compare missing recipes against baseline outputs below, where the
+    # explicit retirement manifest can authorize removal of every output.
     current = build_graph(render_outputs(options)[0])
     with tempfile.TemporaryDirectory(prefix="devkit-plan-base-") as directory:
         archive = subprocess.run(
@@ -159,7 +203,12 @@ def repository_plan(options: RenderOptions, base: str) -> dict[str, Any]:
         )
         before = build_graph(render_outputs(previous_options)[0])
     report = calculate_plan(
-        before, current, changed, full, load_bootstrap_order(options.root)
+        before,
+        current,
+        changed,
+        full,
+        load_bootstrap_order(options.root),
+        load_retired_packages(options.root),
     )
     report["base"] = baseline
     return report

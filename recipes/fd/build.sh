@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
+source "${BUILD_PREFIX}/share/devkit/rust-env.sh"
+
 test -x "${BUILD_PREFIX}/bin/rustup"
 test -f "${BUILD_PREFIX}/share/rust-toolchain/version"
 
@@ -21,11 +23,11 @@ mkdir -p \
   "${PREFIX}/share/man/man1" \
   "${PREFIX}/share/zsh/site-functions"
 
-"${BUILD_PREFIX}/bin/rustup" toolchain install "${RUST_TOOLCHAIN}" \
+devkit_rustup toolchain install "${RUST_TOOLCHAIN}" \
   --profile minimal \
   --no-self-update
 
-"${BUILD_PREFIX}/bin/rustup" run "${RUST_TOOLCHAIN}" cargo build \
+devkit_rustup run "${RUST_TOOLCHAIN}" cargo build \
   --locked \
   --release
 
@@ -37,3 +39,5 @@ install -m 0755 "${binary}" "${PREFIX}/bin/fd"
 "${binary}" --gen-completions fish >"${PREFIX}/share/fish/vendor_completions.d/fd.fish"
 install -m 0644 contrib/completion/_fd "${PREFIX}/share/zsh/site-functions/_fd"
 install -m 0644 doc/fd.1 "${PREFIX}/share/man/man1/fd.1"
+
+python3 "${BUILD_PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"

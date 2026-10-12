@@ -4,17 +4,12 @@ set -euxo pipefail
 : "${PERL_VERSION:?rattler-build must provide PERL_VERSION}"
 : "${SYSROOT_TRIPLET:?rattler-build must provide SYSROOT_TRIPLET}"
 
-test -x "${BUILD_PREFIX}/bin/gcc"
-test -x "${BUILD_PREFIX}/bin/ar"
-test -x "${BUILD_PREFIX}/bin/ld"
-test -x "${BUILD_PREFIX}/bin/make"
+source "${SRC_DIR}/devkit-build/build-env.sh"
+# Linux hints otherwise query /usr/bin/gcc and may discover host DB/crypt.
+# Set the supported discovery overrides explicitly for both compiler variants.
+PERL_LIBRARY_PATH="${PREFIX}/lib ${SYSROOT}/lib64"
+COMMON_CFLAGS="${CFLAGS} -I${PREFIX}/include/libxcrypt-4.4.38"
 
-SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
-test -d "${SYSROOT}"
-
-export PATH="${BUILD_PREFIX}/bin:${PATH}"
-CC="${BUILD_PREFIX}/bin/gcc"
-COMMON_CFLAGS="--sysroot=${SYSROOT} -O2 -pipe"
 PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-aliasing -fstack-protector-strong -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 
 ./Configure \
@@ -26,14 +21,23 @@ PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-ali
   -Dusethreads \
   -Dinc_version_list=none \
   -Dcc="${CC}" \
+  -Dcppstdin="${CC} ${PERL_CFLAGS} -E" \
+  -Dcppminus=- \
+  -Dcpprun="${CC} ${PERL_CFLAGS} -E" \
+  -Dcpplast=- \
   -Dld="${CC}" \
-  -Dar="${BUILD_PREFIX}/bin/ar" \
-  -Dranlib="${BUILD_PREFIX}/bin/ranlib" \
+  -Dar="${AR}" \
+  -Dranlib="${RANLIB}" \
   -Dccflags="${PERL_CFLAGS}" \
-  -Dldflags="${COMMON_CFLAGS}" \
-  -Dlddlflags="-shared ${COMMON_CFLAGS}" \
+  -Dldflags="${LDFLAGS}" \
+  -Dlddlflags="-shared ${LDFLAGS}" \
   -Dcccdlflags="-fPIC" \
   -Dsysroot="${SYSROOT}" \
+  -Dlibpth="${PERL_LIBRARY_PATH}" \
+  -Dplibpth="${PERL_LIBRARY_PATH}" \
+  -Dglibpth="${PERL_LIBRARY_PATH}" \
+  -Dloclibpth="${PREFIX}/lib" \
+  -Dxlibpth=" " \
   -Dmalloctype='void *' \
   -Dfreetype=void \
   -Dmyhostname=devkit \
@@ -67,6 +71,24 @@ test -f "${config_heavy}"
 test -f "${config_pm}"
 
 chmod u+w "${config_heavy}" "${config_pm}"
+
+# Installed XS metadata describes the final channel toolchain, even when this
+# interpreter was bootstrapped with seed Clang and seed GCC development files.
+export DEVKIT_FLAGS
+python3 - "${config_heavy}" "${config_pm}" <<'PYCODE'
+import os
+from pathlib import Path
+import sys
+for filename in sys.argv[1:]:
+    path = Path(filename)
+    text = path.read_text().replace(
+        os.environ["DEVKIT_FLAGS"],
+        "--no-default-config --config=" + os.environ["BUILD_PREFIX"] + "/share/devkit/clang.cfg",
+    )
+    text = text.replace("/bin/clang-23", "/bin/clang")
+    text = text.replace("x86_64-conda-linux-gnu/sysroot", "x86_64-pc-linux-gnu/sysroot")
+    path.write_text(text)
+PYCODE
 sed -i "s|${BUILD_PREFIX}|__PERL_BUILD_PREFIX__|g" "${config_heavy}" "${config_pm}"
 
 python3 - "${config_heavy}" <<'PY'
@@ -112,8 +134,8 @@ if needle not in text:
     raise SystemExit("Config.pm insertion point not found")
 text = text.replace(needle, insert, 1)
 text = text.replace(
-    "cc => '__PERL_BUILD_PREFIX__/bin/gcc'",
-    "cc => $perl_build_prefix . '/bin/gcc'",
+    "cc => '__PERL_BUILD_PREFIX__/bin/clang'",
+    "cc => $perl_build_prefix . '/bin/clang'",
 )
 text = text.replace(
     "libpth => '__PERL_BUILD_PREFIX__/lib "
@@ -123,3 +145,6 @@ text = text.replace(
 )
 path.write_text(text)
 PY
+
+# Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
+python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
