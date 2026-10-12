@@ -22,7 +22,7 @@ cmake -S . -B build -G Ninja \
   -DCPPDAP_BUILD_TESTS=ON -DCPPDAP_USE_EXTERNAL_GTEST_PACKAGE=ON \
   -DGTest_DIR="${SRC_DIR}/gtest-install/lib/cmake/GTest"
 cmake --build build --parallel "${CPU_COUNT}"
-ctest --test-dir build --output-on-failure
+devkit_test ctest --test-dir build --output-on-failure
 cmake --install build
 cmake -S . -B static-build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \

@@ -16,7 +16,7 @@ meson setup build \
   -Dwith-system-includedir=/usr/include
 
 meson compile -C build
-meson test -C build --print-errorlogs
+devkit_test meson test -C build --print-errorlogs
 
 # This package intentionally exposes the command-line interface only. Keeping
 # libpkgconf private avoids publishing another ordinary C library interface.

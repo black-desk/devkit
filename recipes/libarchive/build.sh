@@ -35,7 +35,7 @@ for feature in HAVE_LIBLZO2 HAVE_LIBLZ4 HAVE_LIBLZMA HAVE_LIBZSTD HAVE_LIBZ HAVE
   grep -q "^#define ${feature} 1" build/config.h
  done
 cmake --build build --parallel "${CPU_COUNT}"
-ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}"
+devkit_test ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}"
 cmake --install build
 python3 - <<'PY'
 import os

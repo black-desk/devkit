@@ -13,7 +13,7 @@ source "${SRC_DIR}/devkit-build/build-env.sh"
 
 # GNU Make's source tree can bootstrap itself without an existing make.
 bash build.sh
-./make check
+devkit_test ./make check
 ./make install
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.

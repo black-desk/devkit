@@ -25,6 +25,7 @@ build:
   script:
     file: build.sh
     env:
+      DEVKIT_RUN_TESTS: ${{ env.get("DEVKIT_RUN_TESTS", default="1") }}
       SYSROOT_TRIPLET: ${{ sysroot_triplet }}
 
 requirements:

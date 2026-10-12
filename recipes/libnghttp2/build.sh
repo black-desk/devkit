@@ -20,7 +20,7 @@ export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC
   --includedir="${PREFIX}/include/libnghttp2-${LIBRARY_VERSION}" \
   --disable-static --enable-app --with-zlib --with-openssl --with-libev --with-libcares
 make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
-make check AM_LDFLAGS=-no-install
+devkit_test make check AM_LDFLAGS=-no-install
 make install AM_LDFLAGS=-no-install
 find "${PREFIX}" -name '*.la' -delete
 python3 - <<'PY'

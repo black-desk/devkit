@@ -9,7 +9,7 @@ done
 ./configure --prefix="${PREFIX}" --enable-static --disable-rpath \
   --enable-extra-encodings
 make -j"${CPU_COUNT}"
-make check
+devkit_test make check
 # Match conda-forge's library package: retain all encodings and static libraries,
 # install library headers only, without the separately licensed CLI/docs.
 make install-lib libdir="${PREFIX}/lib" includedir="${PREFIX}/include/libiconv-1.18"

@@ -16,6 +16,6 @@ cmake -S . -B build -G Ninja \
   -DFETCHCONTENT_SOURCE_DIR_GOOGLETEST="${SRC_DIR}/test-googletest" \
   -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DINSTALL_GTEST=OFF -DBUILD_GMOCK=OFF
 cmake --build build --parallel "${CPU_COUNT}"
-ctest --test-dir build --output-on-failure
+devkit_test ctest --test-dir build --output-on-failure
 cmake --install build
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

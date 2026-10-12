@@ -10,7 +10,7 @@ cmake -S . -B build -G Ninja \
   '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
   -DENABLE_SHARED=ON -DENABLE_STATIC=ON
 cmake --build build --parallel "${CPU_COUNT}"
-ctest --test-dir build --output-on-failure
+devkit_test ctest --test-dir build --output-on-failure
 cmake --install build
 python3 - <<'PY'
 import os

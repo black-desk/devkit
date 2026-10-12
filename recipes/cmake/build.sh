@@ -44,7 +44,7 @@ for feature in CMAKE_USE_SYSTEM_LIBARCHIVE CMAKE_USE_SYSTEM_JSONCPP CMAKE_USE_SY
 done
 cmake --build build --parallel "${CPU_COUNT}"
 # Match the forge smoke subset; broader tests exercise absent developer tools.
-ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}" -R 'CTestTestParallel|DOWNLOAD'
+devkit_test ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}" -R 'CTestTestParallel|DOWNLOAD'
 cmake --install build
 "${STRIP}" --strip-unneeded "${PREFIX}/bin/"{cmake,ctest,cpack,ccmake}
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

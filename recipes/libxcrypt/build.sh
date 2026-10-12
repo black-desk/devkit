@@ -10,7 +10,7 @@ test -x "${PERL}"
   --disable-static --enable-hashes=strong,glibc \
   --enable-obsolete-api=no --disable-failure-tokens
 make -j"${CPU_COUNT}"
-make check -j"${CPU_COUNT}"
+devkit_test make check -j"${CPU_COUNT}"
 make install -j"${CPU_COUNT}"
 rm -f "${PREFIX}/lib/libcrypt.la"
 "${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libxcrypt-${LIBRARY_VERSION}" \

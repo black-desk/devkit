@@ -54,7 +54,7 @@ make -j"${CPU_COUNT}"
 # environment tests expect the traditional raw format. Prefer the runner's
 # /usr/bin/env for the selected tests while retaining channel compiler tools.
 TEST_PATH="${BUILD_PREFIX}/bin:/usr/bin:/bin"
-PATH="${TEST_PATH}" make test_harness \
+PATH="${TEST_PATH}" devkit_test make test_harness \
   HARNESS_OPTIONS="j${CPU_COUNT}" \
   TEST_ARGS='op/magic.t op/tie.t ../lib/perl5db.t'
 

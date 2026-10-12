@@ -23,6 +23,7 @@ build:
   script:
     file: build.sh
     env:
+      DEVKIT_RUN_TESTS: ${{ env.get("DEVKIT_RUN_TESTS", default="1") }}
       CMAKE_VERSION: ${{ version }}
       OPENSSL_VERSION: ${{ openssl_version }}
       SYSROOT_TRIPLET: ${{ sysroot_triplet }}

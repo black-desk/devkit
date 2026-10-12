@@ -1042,15 +1042,23 @@ explicit channel configuration without loader overrides.
 
 Bootstrap stage boundaries: dirty build and host environments prefer already
 built dirty packages and fall back to seed. Result uses completed dirty only;
-self-hosting uses completed result only. Package builds use `--test skip`; after
-the whole stage completes, `scripts/test-bootstrap-stage.sh` executes the
-packaged recipe tests using only that stage channel, followed by the
-channel-wide closure/compiler checks. Self-hosting reads the completed result
-and writes `channels/result-rebuild`; it replaces result only after all checks
-pass. Source-level build tests remain inside recipes. The generated per-stage
-package manifests live in output/. The expanded closure still needs validation;
-this infrastructure change does not establish a successful bootstrap. Stage
-checks also inspect installed ELF symbol versions against the glibc 2.28 sysroot
-baseline. Autotools recipes patch bundled libtool to retain explicit Clang
-configuration and linker flags during shared-library links; otherwise libtool
-can silently reload the default host policy.
+self-hosting uses completed result only. Both local and CI bootstrap skip
+upstream suites and independent package tests in dirty and result. Final
+self-hosting runs upstream suites during builds, then
+`scripts/test-bootstrap-stage.sh` executes the packaged recipe tests using only
+the completed stage channel. Channel-wide closure/compiler/runtime/glibc checks
+still run at every stage boundary. Package builds use `--test skip` to defer
+independent package tests until the full stage is available. Self-hosting reads
+the completed result and writes `channels/result-rebuild`; it replaces result
+only after all checks pass. Recipes read `DEVKIT_RUN_TESTS` through the
+supported script environment interface: `0` skips upstream suites and `1` runs
+them. Standalone recipe builds default to `1`; this setting does not add a stage
+variant or alter package hashes. Cheap build smoke probes remain enabled
+throughout. Final-stage suites retain their full workloads, including Zstd's
+30,000-round fuzzer. The generated per-stage package manifests live in output/.
+The expanded closure still needs validation; this infrastructure change does not
+establish a successful bootstrap. Stage checks also inspect installed ELF symbol
+versions against the glibc 2.28 sysroot baseline. Autotools recipes patch
+bundled libtool to retain explicit Clang configuration and linker flags during
+shared-library links; otherwise libtool can silently reload the default host
+policy.

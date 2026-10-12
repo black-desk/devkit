@@ -21,7 +21,7 @@ cmake -S build/cmake -B devkit-build-tree -G Ninja \
   -DZLIB_LIBRARY="${PREFIX}/lib/libz.so" \
   -DZSTD_BUILD_TESTS=ON
 cmake --build devkit-build-tree --parallel "${CPU_COUNT}"
-ctest --test-dir devkit-build-tree --output-on-failure --parallel "${CPU_COUNT}"
+devkit_test ctest --test-dir devkit-build-tree --output-on-failure --parallel "${CPU_COUNT}"
 cmake --install devkit-build-tree
 make -C contrib/pzstd -j"${CPU_COUNT}" all
 install -m 0755 contrib/pzstd/pzstd "${PREFIX}/bin/pzstd"

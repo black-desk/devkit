@@ -23,7 +23,7 @@ cd "${BUILD_DIR}"
   --includedir="${PREFIX}/include/zlib-${ZLIB_VERSION}"
 
 make -j"${CPU_COUNT}"
-make test
+devkit_test make test
 make install
 
 cat >"${PREFIX}/lib/pkgconfig/zlib.pc" <<EOF

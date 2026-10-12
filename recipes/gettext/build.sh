@@ -15,7 +15,7 @@ export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC
 make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
 # The build already embeds build-tree RUNPATH. Do not propagate the Libtool-only
 # option into autopoint's generated ordinary C example through MAKEFLAGS.
-make check
+devkit_test make check
 make install AM_LDFLAGS=-no-install
 rm -f "${PREFIX}/share/info/dir"
 find "${PREFIX}" -name '*.la' -delete

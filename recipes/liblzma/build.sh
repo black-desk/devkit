@@ -7,7 +7,7 @@ cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" build-aux/config.sub
 # Preserve conda-forge's default codec/filter/threading configuration.
 ./configure --prefix="${PREFIX}"
 make -j"${CPU_COUNT}"
-make check
+devkit_test make check
 # This seed dependency is the library; test the tools upstream but install
 # only the library/development files in the channel package.
 make -C src/liblzma install

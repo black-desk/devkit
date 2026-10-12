@@ -23,6 +23,7 @@ outputs:
       script:
         file: build.sh
         env:
+          DEVKIT_RUN_TESTS: ${{ env.get("DEVKIT_RUN_TESTS", default="1") }}
           ZLIB_VERSION: ${{ version }}
           SYSROOT_TRIPLET: ${{ sysroot_triplet }}
 

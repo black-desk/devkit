@@ -18,7 +18,7 @@ cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" conftools/config.sub
   --without-docbook
 
 make -j"${CPU_COUNT}"
-make check
+devkit_test make check
 make install
 
 # Autotools' exported CMake target uses the shared include root even though

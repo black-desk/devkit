@@ -7,7 +7,7 @@ export LDFLAGS="${LDFLAGS} -Wl,-rpath,${SRC_DIR}/src/.libs"
 # Match the seed's shared-only library configuration.
 ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/libedit-${LIBRARY_VERSION}" --disable-static
 make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
-make check AM_LDFLAGS=-no-install
+devkit_test make check AM_LDFLAGS=-no-install
 make install AM_LDFLAGS=-no-install
 # The seed also avoids the manual-page name shared with readline.
 rm -f "${PREFIX}/share/man/man3/history.3" "${PREFIX}/lib/libedit.la"

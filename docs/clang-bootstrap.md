@@ -1297,3 +1297,18 @@ names. Both lists are now normalized with LC_ALL=C sort -u before comparison;
 strict channel provenance and compiler/runtime audits remain in place. Local
 bootstrap was cancelled at the maintainer's request and is not resumed. Result
 and self-host validation remain pending the next CI run.
+
+## Bootstrap test execution policy
+
+Local and CI bootstrap now use the same policy: dirty and result skip upstream
+suites and independent package tests; final self-hosting runs both. Every stage
+still runs closure, compiler, runtime and glibc compatibility audits. Cheap
+source smoke probes are retained. The final Zstd suite keeps all 30,000 fuzzer
+rounds. Ordinary package builds and standalone recipe builds retain their tests.
+
+Recipes explicitly read DEVKIT_RUN_TESTS through rattler-build's supported
+script.env interface, defaulting to 1. Bootstrap supplies 0 for the first two
+stages and 1 for result-rebuild. No stage variant or package hash is added.
+Independent package tests run only after result-rebuild is complete, before
+promotion. This reduces repeated suite execution without changing build features
+or the final acceptance tests. Local bootstrap remains cancelled.
