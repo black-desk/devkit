@@ -1,0 +1,59 @@
+schema_version: 1
+context:
+  version: "6.6"
+package:
+  name: ncurses
+  version: ${{ version }}
+source:
+  - url: https://invisible-island.net/archives/ncurses/ncurses-${{ version }}.tar.gz
+    sha256: 355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11
+    patches:
+      - patches/include-new.patch
+  - path: ../clang
+    target_directory: devkit-build
+build:
+  number: 1
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      SYSROOT_TRIPLET: ${{ sysroot_triplet }}
+      LIBRARY_VERSION: ${{ version }}
+requirements:
+  build:
+    - if: sysroot_triplet == 'x86_64-conda-linux-gnu'
+      then:
+        - clang-23 ==23.1.3
+        - llvm-tools ==23.1.3
+        - lld ==23.1.2
+        - libgcc-devel_linux-64 ==16.2.0
+      else:
+        - clang ==23.1.3
+    - make ==4.4.1
+    - pkgconf ==3.0.7
+    - sysroot_linux-64 ==2.28
+    - gnuconfig ==2025.07.09
+  host:
+    - libcxx ==23.1.3
+    - llvm-libgcc ==23.1.3
+  run:
+    - libcxx ==23.1.3
+    - llvm-libgcc ==23.1.3
+tests:
+  - script:
+      - unset LD_LIBRARY_PATH LD_PRELOAD
+      - infocmp -A "${PREFIX}/share/terminfo" xterm
+      - test -f "${PREFIX}/include/ncurses-${{ version }}/ncursesw/curses.h"
+      - test -d "$(ncursesw6-config --includedir)"
+      - '! ncursesw6-config --libs | grep -E "build_env|gcc-install-dir|undefined-version"'
+      - '! grep -E "build_env|gcc-install-dir|undefined-version" "${PREFIX}/lib/pkgconfig/"*.pc'
+      - for name in ncurses tinfo form menu panel ncursesw tinfow formw menuw panelw; do test -f
+        "${PREFIX}/lib/lib${name}.so.6"; readelf -d "${PREFIX}/lib/lib${name}.so.6" | grep -F
+        "(RUNPATH)"; done
+about:
+  homepage: https://invisible-island.net/ncurses/
+  license: MIT
+  license_file: COPYING
+  summary: Terminal interface libraries with narrow and wide-character interfaces

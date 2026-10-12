@@ -20,7 +20,49 @@ from .rattler import (
     render_outputs,
 )
 
-DEFAULT_VARIANT_RECIPES = frozenset({"sysroot", "gcc-toolchain", "binutils", "make"})
+DEFAULT_VARIANT_RECIPES = frozenset(
+    {
+        "sysroot",
+        "gcc-toolchain",
+        "binutils",
+        "make",
+        "clang",
+        "llvm-libgcc",
+        "libcxx",
+        "ninja",
+        "perl",
+        "pkgconf",
+        "openssl",
+        "cmake",
+        "libuv",
+        "rhash",
+        "c-ares",
+        "keyutils",
+        "libev",
+        "libxcrypt",
+        "libedit",
+        "bzip2",
+        "zlib",
+        "zstd",
+        "ncurses",
+        "libiconv",
+        "liblzma",
+        "icu",
+        "gettext",
+        "libpsl",
+        "krb5",
+        "libssh2",
+        "libnghttp2",
+        "curl",
+        "expat",
+        "lzo",
+        "lz4-c",
+        "libarchive",
+        "jsoncpp",
+        "cppdap",
+        "libxml2",
+    }
+)
 
 
 def repository_root() -> Path:

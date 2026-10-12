@@ -1,0 +1,68 @@
+schema_version: 1
+context:
+  version: "4.4.38"
+package:
+  name: libxcrypt
+  version: ${{ version }}
+source:
+  - url: https://github.com/besser82/libxcrypt/releases/download/v${{ version }}/libxcrypt-${{ version }}.tar.xz
+    sha256: 80304b9c306ea799327f01d9a7549bdb28317789182631f1b54f4511b4206dd6
+    patches:
+      - patches/clang-driver-link-policy.patch
+      - patches/disabled-obsolete-api-symbol-map.patch
+  - path: ../clang
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      LIBRARY_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: ${{ sysroot_triplet }}
+requirements:
+  build:
+    - if: sysroot_triplet == 'x86_64-conda-linux-gnu'
+      then:
+        - clang-23 ==23.1.3
+        - llvm-tools ==23.1.3
+        - lld ==23.1.2
+        - libgcc-devel_linux-64 ==16.2.0
+      else:
+        - clang ==23.1.3
+    - make ==4.4.1
+    - pkgconf ==3.0.7
+    - gnuconfig ==2025.07.09
+    # A completed input generation supplies Perl, breaking the bootstrap cycle.
+    - perl ==5.44.0
+    - sysroot_linux-64 ==2.28
+  run_exports:
+    strong:
+      - libxcrypt >=4.4.38,<5
+  run:
+    - __glibc >=2.28
+tests:
+  - package_contents:
+      files:
+        - include/libxcrypt-${{ version }}/crypt.h
+        - lib/libcrypt.so
+        - lib/libcrypt.so.2
+        - lib/pkgconfig/libxcrypt.pc
+  - script:
+      - unset LD_LIBRARY_PATH LD_PRELOAD
+      - ln -s "${PREFIX}/lib" runtime-lib
+      - ./library-probe
+      - test ! -e "${PREFIX}/lib/libcrypt.so.1"
+      - readelf -d "${PREFIX}/lib/libcrypt.so.2" | grep -F '(RUNPATH)'
+    files:
+      source:
+        - library-probe
+about:
+  homepage: https://github.com/besser82/libxcrypt
+  license: LGPL-2.1-or-later
+  license_file:
+    - COPYING.LIB
+    - LICENSING
+  summary: Extended password hashing library used by Perl

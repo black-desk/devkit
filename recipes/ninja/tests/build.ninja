@@ -1,0 +1,3 @@
+rule copy
+  command = cp $in $out
+build copied.txt: copy tests/input.txt

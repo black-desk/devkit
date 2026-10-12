@@ -12,20 +12,24 @@ source:
   sha256: 056ef9a33d6812a51153799ce5b35b08f02f4f37b32a26d22e99245a1f16b77c
 
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
 
+  dynamic_linking:
+    binary_relocation: false
 requirements:
   build:
-    - gcc ==16.2.0
-    - binutils ==2.46.1
+    - clang ==23.1.3
     - make ==4.4.1
-    - sysroot_linux-64 ==2.28 h8204064_0
+    - sysroot_linux-64 ==2.28
     - rustup ==1.29.1
     - rust-toolchain-lock ==1.98.1
-
+  host:
+    - llvm-libgcc ==23.1.3
+  run:
+    - llvm-libgcc ==23.1.3
 tests:
   - package_contents:
       bin:
@@ -47,6 +51,12 @@ tests:
       recipe:
         - tests/
 
+  - script:
+      - unset LD_LIBRARY_PATH LD_PRELOAD
+      - readelf -d "${PREFIX}/bin/uv" | grep -F "(RUNPATH)"
+      - ldd "${PREFIX}/bin/uv" | grep -F "libgcc_s.so.1 =>" | grep -F "${PREFIX}/"
+      - readelf -d "${PREFIX}/bin/uvx" | grep -F "(RUNPATH)"
+      - ldd "${PREFIX}/bin/uvx" | grep -F "libgcc_s.so.1 =>" | grep -F "${PREFIX}/"
 about:
   homepage: https://docs.astral.sh/uv/
   license: Apache-2.0 OR MIT

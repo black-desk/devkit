@@ -1,0 +1,34 @@
+--- a/llvm-libgcc/CMakeLists.txt
++++ b/llvm-libgcc/CMakeLists.txt
+@@ -108,6 +108,9 @@
+ set(LIBUNWIND_HAS_GCC_S_LIB OFF)
+ add_subdirectory(${LLVM_LIBGCC_LIBUNWIND_PATH} ${LLVM_LIBGCC_LIBUNWIND_BINARY_DIR})
+
++# Advertise the identity requested by glibc, retaining libunwind aliases.
++set_target_properties(unwind_shared PROPERTIES OUTPUT_NAME "gcc_s")
++
+ add_custom_target(gcc_s.ver
+   SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/gcc_s.ver.in
+   COMMAND ${CMAKE_C_COMPILER} -E
+@@ -146,9 +149,9 @@
+   DEPENDS unwind_shared unwind_static clang_rt.builtins-${COMPILER_RT_DEFAULT_TARGET_ARCH}
+   COMMAND ${CMAKE_COMMAND} -E create_symlink ${LLVM_LIBGCC_COMPILER_RT} libgcc.a
+   COMMAND ${CMAKE_COMMAND} -E create_symlink libunwind.a libgcc_eh.a
+-  COMMAND ${CMAKE_COMMAND} -E create_symlink libunwind.so libgcc_s.so.1.0
+-  COMMAND ${CMAKE_COMMAND} -E create_symlink libgcc_s.so.1.0 libgcc_s.so.1
+-  COMMAND ${CMAKE_COMMAND} -E create_symlink libgcc_s.so.1 libgcc_s.so
++  COMMAND ${CMAKE_COMMAND} -E create_symlink libgcc_s.so.1.0 libunwind.so.1.0
++  COMMAND ${CMAKE_COMMAND} -E create_symlink libgcc_s.so.1 libunwind.so.1
++  COMMAND ${CMAKE_COMMAND} -E create_symlink libgcc_s.so libunwind.so
+ )
+
+ install(TARGETS unwind_shared unwind_static
+@@ -161,7 +164,7 @@
+   ARCHIVE DESTINATION ${LLVM_LIBGCC_INSTALL_LIBRARY_DIR}/${install_dir_builtins} COMPONENT llvm-libgcc
+   RUNTIME DESTINATION ${LLVM_LIBGCC_INSTALL_RUNTIME_DIR}/${install_dir_builtins} COMPONENT llvm-libgcc)
+
+-foreach(VAR libgcc.a libgcc_eh.a libgcc_s.so.1.0 libgcc_s.so.1 libgcc_s.so)
++foreach(VAR libgcc.a libgcc_eh.a libunwind.so.1.0 libunwind.so.1 libunwind.so)
+   install(FILES ${CMAKE_CURRENT_BINARY_DIR}/${VAR}
+     DESTINATION ${LLVM_LIBGCC_INSTALL_LIBRARY_DIR}
+     COMPONENT llvm-libgcc)

@@ -1,0 +1,17 @@
+From: devkit maintainers
+Subject: Give shared cppdap a versioned SONAME
+
+TODO: upstream shared-library versioning. Restrict channel run exports to the
+same minor protocol version until upstream documents ABI compatibility.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -229,5 +229,8 @@
+ # dap
+ add_library(cppdap ${CPPDAP_LIST})
+ set_target_properties(cppdap PROPERTIES POSITION_INDEPENDENT_CODE 1)
++set_target_properties(cppdap PROPERTIES
++    VERSION ${PROJECT_VERSION}
++    SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
+
+ cppdap_set_target_options(cppdap)

@@ -1,0 +1,16 @@
+# Preserve explicit Clang driver policy in shared-library links.
+# TODO: submit this flag support to GNU libtool upstream.
+--- a/ltmain.sh
++++ b/ltmain.sh
+@@ -7715,6 +7715,11 @@
+       # -f{file|debug|macro|profile}-prefix-map=* needed for lto linking
+       # -Wa,*                Pass flags directly to the assembler
+       # -Werror, -Werror=*   Report (specified) warnings as errors
++      # TODO: upstream Clang config/runtime/linker flag support to libtool.
++      # Preserve the compilation policy when composing shared-library links.
++      --config=*|--no-default-config|--ld-path=*|--gcc-install-dir=*|\
++      --gcc-toolchain=*|--rtlib=*|--unwindlib=*|\
++      --start-no-unused-arguments|--end-no-unused-arguments|\
+       -64|-mips[0-9]|-r[0-9][0-9]*|-xarch=*|-xtarget=*|+DA*|+DD*|-q*|-m*| \
+       -t[45]*|-txscale*|-p|-pg|--coverage|-fprofile-*|-F*|@*|-tp=*|--sysroot=*| \
+       -O*|-g*|-flto*|-fwhopr*|-fuse-linker-plugin|-fstack-protector*|-no-canonical-prefixes| \

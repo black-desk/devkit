@@ -1,0 +1,16 @@
+# Preserve explicit Clang driver policy in shared-library links.
+# TODO: submit this flag support to GNU libtool upstream.
+--- a/ltmain.sh
++++ b/ltmain.sh
+@@ -7552,6 +7552,11 @@
+       # -static-*            direct GCC to link specific libraries statically
+       # -fcilkplus           Cilk Plus language extension features for C/C++
+       # -Wa,*                Pass flags directly to the assembler
++      # TODO: upstream Clang config/runtime/linker flag support to libtool.
++      # Preserve the compilation policy when composing shared-library links.
++      --config=*|--no-default-config|--ld-path=*|--gcc-install-dir=*|\
++      --gcc-toolchain=*|--rtlib=*|--unwindlib=*|\
++      --start-no-unused-arguments|--end-no-unused-arguments|\
+       -64|-mips[0-9]|-r[0-9][0-9]*|-xarch=*|-xtarget=*|+DA*|+DD*|-q*|-m*| \
+       -t[45]*|-txscale*|-p|-pg|--coverage|-fprofile-*|-F*|@*|-tp=*|--sysroot=*| \
+       -O*|-g*|-flto*|-fwhopr*|-fuse-linker-plugin|-fstack-protector*|-stdlib=*| \

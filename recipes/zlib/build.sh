@@ -4,17 +4,14 @@ set -euxo pipefail
 : "${ZLIB_VERSION:?rattler-build must provide ZLIB_VERSION}"
 : "${SYSROOT_TRIPLET:?rattler-build must provide SYSROOT_TRIPLET}"
 
-test -x "${BUILD_PREFIX}/bin/gcc"
-test -x "${BUILD_PREFIX}/bin/as"
-test -x "${BUILD_PREFIX}/bin/ld"
+source "${SRC_DIR}/devkit-build/build-env.sh"
 
-SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
-test -d "${SYSROOT}"
-
-export PATH="${BUILD_PREFIX}/bin:${PATH}"
-export CC="${BUILD_PREFIX}/bin/gcc"
-export CFLAGS="--sysroot=${SYSROOT} -O2 -pipe -fPIC"
-export LDFLAGS="--sysroot=${SYSROOT}"
+# TODO: Remove this recipe-local workaround when zlib fixes its shared-library
+# configure probe, which applies zlib.map to an object lacking its symbols.
+# Follow the workaround merged in https://github.com/NixOS/nixpkgs/pull/307540.
+# Upstream: https://github.com/madler/zlib/issues/960
+# Upstream: https://github.com/madler/zlib/issues/1318
+export LDFLAGS="${LDFLAGS} -Wl,--undefined-version"
 
 BUILD_DIR="${SRC_DIR}/build"
 mkdir -p "${BUILD_DIR}"
@@ -60,10 +57,12 @@ int main(void) {
 EOF
 
 "${CC}" \
-  ${CFLAGS} \
+  ${CFLAGS} ${LDFLAGS} \
   -I"${PREFIX}/include/zlib-${ZLIB_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libz.so" \
   -o "${SRC_DIR}/devkit-consumer"
 
-LD_LIBRARY_PATH="${PREFIX}/lib" "${SRC_DIR}/devkit-consumer"
+env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
+
+python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

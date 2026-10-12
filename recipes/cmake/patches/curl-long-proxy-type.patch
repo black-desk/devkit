@@ -1,0 +1,16 @@
+From: devkit maintainers
+Upstream: https://github.com/Kitware/CMake/blob/master/Source/CTest/cmCTestCurl.h
+Subject: Store CURLOPT_PROXYTYPE as long for current libcurl
+
+New libcurl exposes CURLPROXY_* as long constants. CURLOPT_PROXYTYPE already
+expects a long argument; an enum member rejects these constants in C++ and
+also passed the wrong type to the variadic curl_easy_setopt. This works with
+older enum constants through their standard conversion to long as well.
+
+--- a/Source/CTest/cmCTestCurl.h
++++ b/Source/CTest/cmCTestCurl.h
+@@ -54,3 +54,3 @@
+   std::string HTTPProxy;
+-  curl_proxytype HTTPProxyType;
++  long HTTPProxyType;
+   bool UseHttp10 = false;

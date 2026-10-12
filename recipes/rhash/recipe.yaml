@@ -1,0 +1,61 @@
+schema_version: 1
+context:
+  version: "1.4.6"
+package:
+  name: rhash
+  version: ${{ version }}
+source:
+  - url: https://github.com/rhash/RHash/archive/refs/tags/v${{ version }}.tar.gz
+    sha256: 9f6019cfeeae8ace7067ad22da4e4f857bb2cfa6c2deaa2258f55b2227ec937a
+  - path: ../clang
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+    env:
+      LIBRARY_VERSION: ${{ version }}
+      SYSROOT_TRIPLET: ${{ sysroot_triplet }}
+requirements:
+  build:
+    - if: sysroot_triplet == 'x86_64-conda-linux-gnu'
+      then:
+        - clang-23 ==23.1.3
+        - llvm-tools ==23.1.3
+        - lld ==23.1.2
+        - libgcc-devel_linux-64 ==16.2.0
+      else:
+        - clang ==23.1.3
+    - make ==4.4.1
+    - sysroot_linux-64 ==2.28
+  run_exports:
+    strong:
+      - rhash >=1.4.6,<2
+  run:
+    - __glibc >=2.28
+tests:
+  - package_contents:
+      bin:
+        - rhash
+      files:
+        - include/rhash-${{ version }}/rhash.h
+        - include/rhash-${{ version }}/rhash_torrent.h
+        - lib/librhash.so
+        - lib/librhash.so.1
+        - lib/librhash.a
+        - lib/pkgconfig/librhash.pc
+  - script:
+      - unset LD_LIBRARY_PATH LD_PRELOAD
+      - rhash --version
+      - printf abc > input
+      - rhash --sha256 --simple input | grep -F ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+      - readelf -d "${PREFIX}/lib/librhash.so.1" | grep -F '(RUNPATH)'
+      - test ! -e "${PREFIX}/include/rhash.h"
+about:
+  homepage: https://github.com/rhash/RHash
+  license: MIT
+  license_file: COPYING
+  summary: Hash calculation and verification library and command-line utility

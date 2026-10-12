@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-test -x "${BUILD_PREFIX}/bin/gcc"
+source "${BUILD_PREFIX}/share/devkit/rust-env.sh"
+
 test -x "${BUILD_PREFIX}/bin/rustup"
 test -f "${BUILD_PREFIX}/share/rust-toolchain/version"
 
@@ -19,11 +20,11 @@ mkdir -p \
   "${PREFIX}/bin" \
   "${PREFIX}/share/man/man1"
 
-"${BUILD_PREFIX}/bin/rustup" toolchain install "${RUST_TOOLCHAIN}" \
+devkit_rustup toolchain install "${RUST_TOOLCHAIN}" \
   --profile minimal \
   --no-self-update
 
-"${BUILD_PREFIX}/bin/rustup" run "${RUST_TOOLCHAIN}" cargo build \
+devkit_rustup run "${RUST_TOOLCHAIN}" cargo build \
   --locked \
   --release
 
@@ -31,3 +32,5 @@ binary="${CARGO_TARGET_DIR}/release/difft"
 test -x "${binary}"
 install -m 0755 "${binary}" "${PREFIX}/bin/difft"
 install -m 0644 difft.1 "${PREFIX}/share/man/man1/difft.1"
+
+python3 "${BUILD_PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"

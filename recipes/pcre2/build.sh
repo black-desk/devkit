@@ -4,20 +4,10 @@ set -euxo pipefail
 : "${PCRE2_VERSION:?rattler-build must provide PCRE2_VERSION}"
 : "${SYSROOT_TRIPLET:?rattler-build must provide SYSROOT_TRIPLET}"
 
-test -x "${BUILD_PREFIX}/bin/gcc"
-test -x "${BUILD_PREFIX}/bin/as"
-test -x "${BUILD_PREFIX}/bin/ld"
-
-SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
-test -d "${SYSROOT}"
+source "${BUILD_PREFIX}/share/devkit/build-env.sh"
 
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
-
-export PATH="${BUILD_PREFIX}/bin:${PATH}"
-export CC="${BUILD_PREFIX}/bin/gcc"
-export CFLAGS="--sysroot=${SYSROOT} -O2 -pipe"
-export LDFLAGS="--sysroot=${SYSROOT}"
 
 ./configure \
   --prefix="${PREFIX}" \
@@ -98,10 +88,12 @@ int main(void) {
 EOF
 
 "${CC}" \
-  ${CFLAGS} \
+  ${CFLAGS} ${LDFLAGS} \
   -I"${PREFIX}/include/pcre2-${PCRE2_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libpcre2-8.so" \
   -o "${SRC_DIR}/devkit-consumer"
 
-LD_LIBRARY_PATH="${PREFIX}/lib" "${SRC_DIR}/devkit-consumer"
+env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
+
+python3 "${BUILD_PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"

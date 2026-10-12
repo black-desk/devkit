@@ -4,18 +4,7 @@ set -euxo pipefail
 : "${OPENSSL_VERSION:?rattler-build must provide OPENSSL_VERSION}"
 : "${SYSROOT_TRIPLET:?rattler-build must provide SYSROOT_TRIPLET}"
 
-test -x "${BUILD_PREFIX}/bin/gcc"
-test -x "${BUILD_PREFIX}/bin/as"
-test -x "${BUILD_PREFIX}/bin/ld"
-test -x "${BUILD_PREFIX}/bin/perl"
-
-SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET}/sysroot"
-test -d "${SYSROOT}"
-
-export PATH="${BUILD_PREFIX}/bin:${PATH}"
-export CC="${BUILD_PREFIX}/bin/gcc"
-export CFLAGS="--sysroot=${SYSROOT} -O2 -pipe"
-export LDFLAGS="--sysroot=${SYSROOT}"
+source "${SRC_DIR}/devkit-build/build-env.sh"
 
 # OpenSSL's Configure and build machinery is Perl-based.
 "${BUILD_PREFIX}/bin/perl" ./Configure \
@@ -123,7 +112,7 @@ int main(void) {
 EOF
 
 "${CC}" \
-  ${CFLAGS} \
+  ${CFLAGS} ${LDFLAGS} \
   -I"${PREFIX}/include/openssl-${OPENSSL_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libssl.so" \
@@ -132,4 +121,7 @@ EOF
   -pthread \
   -o "${SRC_DIR}/devkit-consumer"
 
-LD_LIBRARY_PATH="${PREFIX}/lib" "${SRC_DIR}/devkit-consumer"
+env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
+
+# Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
+python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
