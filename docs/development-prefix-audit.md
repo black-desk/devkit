@@ -123,6 +123,19 @@ Make installed its hidden extension header and passed the layout audit. A
 regression test accepts archived test inputs but rejects the same invalid
 RUNPATH in an installed executable; all 26 pipeline/layout tests passed.
 
+## CI follow-up: CMake build-tree tools
+
+Dirty and result generations passed. Selfhost built CMake successfully but its
+tests could not start the newly linked cmake/ctest: upstream defaults
+`CMAKE_BUILD_WITH_INSTALL_RPATH` to ON, overriding the intended build RUNPATH.
+The recipe now explicitly disables that option. Build-tree tools find public
+input libraries, while native installation still writes `$ORIGIN/../lib`. A
+focused target configured inside the exact CMake source reproduced the missing
+JsonCpp failure with the upstream default. With the option OFF, the build-tree
+executable ran; native installation replaced the build RUNPATH with
+`$ORIGIN/../lib`, and the installed executable also ran. This verifies the
+upstream property and relinking behavior without rebuilding all CMake targets.
+
 ## What remains for CI
 
 These checks do not establish that every new recipe builds successfully or that

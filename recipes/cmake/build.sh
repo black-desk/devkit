@@ -52,11 +52,14 @@ export LDFLAGS="${LDFLAGS} -pthread -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgc
 export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
 export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH
+# CMake itself defaults BUILD_WITH_INSTALL_RPATH to ON. Keep the build-tree
+# tools on public input libraries; native installation writes relative paths.
 # Use the previous-stage CMake, like the forge recipe. "System" libraries here
 # mean explicit channel host inputs, confined to PREFIX and the glibc sysroot.
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
+  -DCMAKE_BUILD_WITH_INSTALL_RPATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
