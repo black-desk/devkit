@@ -53,6 +53,7 @@ test -x "${CC}"
 
 ./configure \
   --prefix="${PREFIX}" \
+  --includedir="${PREFIX}/include/make-${LIBRARY_VERSION}" \
   --disable-dependency-tracking
 
 # GNU Make's source tree can bootstrap itself without an existing make.
@@ -65,3 +66,6 @@ mv make bootstrap-make
 ./make install
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
+
+# GNU Make exposes gnumake.h for dynamically loaded extensions.
+python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all
