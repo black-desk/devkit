@@ -17,7 +17,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -56,15 +56,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/cppdap-${{ version }}/dap/*.h
-        - lib/libcppdap.so
+        - lib/devkit/include/cppdap-${{ version }}/dap/*.h
+        - lib/devkit/lib/libcppdap.so
         - lib/libcppdap.so.*
-        - lib/libcppdap.a
+        - lib/devkit/lib/libcppdap.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libcppdap.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libcppdap.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

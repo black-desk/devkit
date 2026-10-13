@@ -12,7 +12,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -68,11 +68,11 @@ tests:
         - bsdcat
         - bsdunzip
       files:
-        - include/libarchive-${{ version }}/*.h
-        - lib/libarchive.so
+        - lib/devkit/include/libarchive-${{ version }}/*.h
+        - lib/devkit/lib/libarchive.so
         - lib/libarchive.so.*
-        - lib/libarchive.a
-        - lib/pkgconfig/libarchive.pc
+        - lib/devkit/lib/libarchive.a
+        - lib/devkit/lib/pkgconfig/libarchive.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
@@ -81,7 +81,7 @@ tests:
       - bsdcpio --version
       - bsdcat --version
       - bsdunzip --version
-      - readelf -d "${PREFIX}/lib/libarchive.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libarchive.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

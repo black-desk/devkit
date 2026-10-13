@@ -14,12 +14,11 @@ source:
     patches:
       - patches/bootstrap-exclude-ghs-generator.patch
       - patches/curl-long-proxy-type.patch
-      - patches/default-host-discovery.patch
 
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -41,20 +41,20 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/libuv-${{ version }}/uv.h
-        - include/libuv-${{ version }}/uv/unix.h
-        - lib/libuv.so
+        - lib/devkit/include/libuv-${{ version }}/uv.h
+        - lib/devkit/include/libuv-${{ version }}/uv/unix.h
+        - lib/devkit/lib/libuv.so
         - lib/libuv.so.1
-        - lib/libuv.a
-        - lib/pkgconfig/libuv.pc
-        - lib/cmake/libuv/libuvConfig.cmake
+        - lib/devkit/lib/libuv.a
+        - lib/devkit/lib/pkgconfig/libuv.pc
+        - lib/devkit/lib/cmake/libuv/libuvConfig.cmake
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./uv-probe "${{ version }}"
       - readelf -d "${PREFIX}/lib/libuv.so.1" | grep -F '(RUNPATH)'
       - test ! -e "${PREFIX}/include/uv.h"
-      - export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+      - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
       - pkg-config --cflags libuv | grep -F '/include/libuv-${{ version }}'
       - pkg-config --libs libuv | grep -F '/lib/libuv.so'
     requirements:

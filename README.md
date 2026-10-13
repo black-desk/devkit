@@ -584,13 +584,14 @@ their public headers through a package- and version-specific include root. A
 library named `foo` at version `1.2.3` installs its headers below:
 
 ```text
-${PREFIX}/include/foo-1.2.3/
+${PREFIX}/lib/devkit/include/foo-1.2.3/
 ```
 
-It must not install public headers directly below `${PREFIX}/include`. That rule
-is intentional: a broad `-I${PREFIX}/include` must never make channel headers
-for an unrelated library visible while building against another package.
-Consumers use the exact root selected by the library's pkg-config entry:
+It must not install public headers directly below
+`${PREFIX}/lib/devkit/include`. That rule is intentional: a broad
+`-I${PREFIX}/include` must never make channel headers for an unrelated library
+visible while building against another package. Consumers use the exact root
+selected by the library's pkg-config entry:
 
 ```bash
 CFLAGS="$(pkg-config --cflags foo)"
@@ -599,7 +600,7 @@ CFLAGS="$(pkg-config --cflags foo)"
 or an explicit equivalent:
 
 ```bash
--I${PREFIX}/include/foo-1.2.3
+-I${PREFIX}/lib/devkit/include/foo-1.2.3
 ```
 
 Recipes therefore do not add a generic `-I${PREFIX}/include` to `CPPFLAGS` or
@@ -619,7 +620,7 @@ patches that metadata. In particular:
 - upstream `foo-config` helpers are corrected rather than deleted, but they are
   package-private build metadata programs rather than user commands.
 - tests must compile and run a small consumer without adding the shared
-  `${PREFIX}/include` directory to the compiler command line.
+  `${PREFIX}/lib/devkit/include` directory to the compiler command line.
 
 Package metadata tests use the channel-owned `pkgconf` package through its
 `pkg-config` compatibility name; they do not rely on a `pkg-config` executable
@@ -662,6 +663,11 @@ channel-owned build tooling exists.
 The compiler's internal headers and `sysroot_linux-64` are exceptions to this
 layout: they implement the compiler/sysroot interface rather than ordinary
 channel libraries.
+
+Development archives, linker interfaces and metadata live under
+`${PREFIX}/lib/devkit`; runtime libraries and modules remain under
+`${PREFIX}/lib`. See
+[the development layout policy](docs/development-layout.md).
 
 ## Rebuild and release policy
 
@@ -995,22 +1001,25 @@ are passed through exact pkg-config output or exact header/library paths. The
 runtime directory used by the compiler is a deliberate standard-library
 interface, not a generic header search path.
 
-Channel CMake defaults to host development discovery: its own prefix is excluded
-from implicit system and PATH-derived library/package searches, including
-symlinked paths. Program lookup remains unchanged. Explicit CMAKE_PREFIX_PATH
-and package roots/directories can select channel dependencies. Channel pkgconf
-defaults to host metadata directories; recipes opt in with PKG_CONFIG_LIBDIR.
-See
-[the discovery policy](docs/clang-bootstrap.md#default-host-development-discovery)
-for details and focused validation.
+Channel CMake uses upstream discovery rules. Channel development files are
+hidden under `lib/devkit`, outside the ordinary installation prefix search
+locations. Recipes explicitly set CMAKE_PREFIX_PATH and PKG_CONFIG_LIBDIR to
+that development prefix. Versioned include paths still need upstream CONFIG
+metadata, pkg-config or explicit Find-module variables. Channel pkgconf defaults
+to host metadata directories. See
+[the layout policy](docs/development-layout.md).
 
 ### Runtime policy
 
-Each locally built dynamic ELF receives relative DT_RUNPATH entries selecting
-its package prefix's libraries. `finalize-elf.py` adjusts newly installed ELF
-files and preserves host dependency files and installed permissions. These
-recipes disable Rattler-Build's automatic binary relinking because it converts
-RUNPATH to RPATH. Text and symlink relocation remain enabled.
+Build systems write relative installed DT_RUNPATH natively wherever supported:
+CMake handles build/install paths separately, Cargo uses linker arguments, Meson
+links pkgconf with its installed tool path, and ordinary Make projects receive
+escaped linker flags. Build/test binaries search public runtime libraries rather
+than hidden development aliases. `finalize-elf.py` remains for explicitly
+annotated Libtool/mixed-depth install exceptions and repacked upstream binaries.
+It preserves input dependency files and installed permissions. Recipes disable
+Rattler-Build's automatic binary relinking because it converts RUNPATH to RPATH.
+Text and symlink relocation remain enabled.
 
 Ordinary builds and package tests do not use loader overrides. Only upstream
 Rust tool invocations in Rust recipe builds receive scoped preload. RUNPATH is a

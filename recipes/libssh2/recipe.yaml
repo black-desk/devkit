@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -46,14 +46,14 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/libssh2-${{ version }}/*.h
-        - lib/libssh2.so
+        - lib/devkit/include/libssh2-${{ version }}/*.h
+        - lib/devkit/lib/libssh2.so
         - lib/libssh2.so.*
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libssh2.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libssh2.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

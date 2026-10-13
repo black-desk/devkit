@@ -33,7 +33,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -41,12 +41,12 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 cp "${BUILD_PREFIX}/share/gnuconfig/"config.* .
 export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
-export PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH PYTHON
 # AM_PATH_PYTHON's supported interpreter-absent branch is sufficient for release
 # builds: installed man pages are shipped, Python only regenerates Sphinx API docs.
@@ -56,9 +56,9 @@ export am_cv_pathless_PYTHON=none
 # adding the host prefix's second header tree breaks libc++ include_next.
 export CXX="${CXX} ${CXXFLAGS}"
 export CXXFLAGS="-O2 -fPIC"
-export LIBEV_CFLAGS="-I${PREFIX}/include/libev-4.33"
-export LIBEV_LIBS="${PREFIX}/lib/libev.so"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/lib/.libs"
+export LIBEV_CFLAGS="-I${PREFIX}/lib/devkit/include/libev-4.33"
+export LIBEV_LIBS="${PREFIX}/lib/devkit/lib/libev.so"
+export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/lib/.libs"
 # Preserve the seed's native applications and dependencies. Release scripts
 # are pre-generated; Python bindings are absent from this upstream version.
 ./configure --prefix="${PREFIX}" \
@@ -88,4 +88,9 @@ PY
 mkdir runtime-lib
 ln -s "${PREFIX}/lib/libnghttp2.so.14" runtime-lib/libnghttp2.so.14
 ./library-probe
+# Post-link exception: Libtool -no-install preserves build-tree RUNPATH in installed native applications.
+# TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+
+# Stage only this package's development interfaces; preserve runtime libraries.
+python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

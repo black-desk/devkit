@@ -13,7 +13,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -47,10 +47,10 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/libxcrypt-${{ version }}/crypt.h
-        - lib/libcrypt.so
+        - lib/devkit/include/libxcrypt-${{ version }}/crypt.h
+        - lib/devkit/lib/libcrypt.so
         - lib/libcrypt.so.2
-        - lib/pkgconfig/libxcrypt.pc
+        - lib/devkit/lib/pkgconfig/libxcrypt.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib

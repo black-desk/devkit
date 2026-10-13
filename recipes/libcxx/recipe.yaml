@@ -8,11 +8,13 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ version }}/llvm-project-${{ version }}.src.tar.xz
-  sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
+  - url: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ version }}/llvm-project-${{ version }}.src.tar.xz
+    sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
+  - path: ../clang
+    target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -46,7 +48,7 @@ tests:
       files:
         - lib/libc++.so.1
         - lib/libc++abi.so.1
-        - include/libcxx-${{ version }}/c++/v1/iostream
+        - lib/devkit/include/libcxx-${{ version }}/c++/v1/iostream
   - script:
       - ln -s "${PREFIX}/lib" runtime-lib
       - readelf -d "${PREFIX}/lib/libc++.so.1" | grep -F '(RUNPATH)'

@@ -24,7 +24,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -32,14 +32,14 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 unset LD_LIBRARY_PATH LD_PRELOAD ICU_DATA
 export CXXFLAGS="${CXXFLAGS} -std=c++17"
 # ICU invokes its newly built tools before installing them. Their dependencies
 # live in the build tree; use RUNPATH rather than ICU's loader-env wrappers.
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/source/lib -Wl,-rpath,${SRC_DIR}/source/stubdata -Wl,-rpath,${SRC_DIR}/source/tools/ctestfw"
+export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/source/lib -Wl,-rpath,${SRC_DIR}/source/stubdata -Wl,-rpath,${SRC_DIR}/source/tools/ctestfw"
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" source/config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" source/config.sub
 cd source
@@ -97,8 +97,13 @@ for line in path.read_text().splitlines():
     lines.append(line)
 path.write_text('\n'.join(lines) + '\n')
 PY
+# Post-link exception: ICU installs its build-tree tools without a separate install-time RUNPATH rewrite; pkgdata also invokes tools before installation.
+# TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
 "${CXX}" ${CXXFLAGS} "${SRC_DIR}/devkit-tests/runtime.cpp" \
   -I"${PREFIX}/include/icu-${LIBRARY_VERSION}" ${LDFLAGS} \
   -licui18n -licuuc -licudata -o "${SRC_DIR}/icu-runtime-probe"
 patchelf --set-rpath '$ORIGIN/runtime-lib' "${SRC_DIR}/icu-runtime-probe"
+
+# Stage only this package's development interfaces; preserve runtime libraries.
+python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

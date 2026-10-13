@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -56,9 +56,9 @@ tests:
         - klist
         - krb5-config
       files:
-        - include/krb5-${{ version }}/krb5.h
-        - lib/libkrb5.so
-        - lib/libgssapi_krb5.so
+        - lib/devkit/include/krb5-${{ version }}/krb5.h
+        - lib/devkit/lib/libkrb5.so
+        - lib/devkit/lib/libgssapi_krb5.so
         - share/locale/de/LC_MESSAGES/mit-krb5.mo
         - share/locale/ka/LC_MESSAGES/mit-krb5.mo
   - script:
@@ -66,7 +66,7 @@ tests:
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
       - krb5-config --version | grep -F '1.22.2'
-      - readelf -d "${PREFIX}/lib/libkrb5.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libkrb5.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

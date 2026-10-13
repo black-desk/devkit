@@ -19,12 +19,12 @@ export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 export CXXFLAGS="${CFLAGS}"
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
-export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,--enable-new-dtags,-rpath,\$ORIGIN/../lib"
 devkit_rustup() {
   env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/libgcc_s.so.1" \
     "${BUILD_PREFIX}/bin/rustup" "$@"
@@ -76,5 +76,3 @@ for binary in yazi ya; do
   install -m 0644 "${completion_dir}/${binary}.fish" "${PREFIX}/share/fish/vendor_completions.d/${binary}.fish"
   install -m 0644 "${completion_dir}/_${binary}" "${PREFIX}/share/zsh/site-functions/_${binary}"
 done
-
-python3 "${BUILD_PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"

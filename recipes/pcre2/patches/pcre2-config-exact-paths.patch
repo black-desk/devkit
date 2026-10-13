@@ -13,11 +13,11 @@
 +# bin. Resolve the installation prefix from that location so its output is
 +# relocatable. The configured paths remain as a fallback for in-tree use.
 +devkit_prefix=$(CDPATH= cd -- "$(dirname -- "$0")/../../.." && pwd) || devkit_prefix=
-+if test -n "$devkit_prefix" && test -f "$devkit_prefix/include/pcre2-@PACKAGE_VERSION@/pcre2.h"; then
++if test -n "$devkit_prefix" && test -f "$devkit_prefix/lib/devkit/include/pcre2-@PACKAGE_VERSION@/pcre2.h"; then
 +  prefix=$devkit_prefix
 +  exec_prefix=$devkit_prefix
-+  includedir=$prefix/include/pcre2-@PACKAGE_VERSION@
-+  libdir=$exec_prefix/lib
++  includedir=$prefix/lib/devkit/include/pcre2-@PACKAGE_VERSION@
++  libdir=$exec_prefix/lib/devkit/lib
 +fi
 
  cflags="[--cflags]"

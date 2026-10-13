@@ -12,7 +12,7 @@ source:
   sha256: c8a36e6e9397f2fdfcb0cc246fcdb790b52a784f3c8cabc0d8baeb031852a148
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

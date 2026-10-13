@@ -15,7 +15,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -44,15 +44,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/keyutils-${{ version }}/*.h
-        - lib/libkeyutils.so
+        - lib/devkit/include/keyutils-${{ version }}/*.h
+        - lib/devkit/lib/libkeyutils.so
         - lib/libkeyutils.so.*
-        - lib/pkgconfig/libkeyutils.pc
+        - lib/devkit/lib/pkgconfig/libkeyutils.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libkeyutils.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libkeyutils.so" | grep -F '(RUNPATH)'
       - keyctl --version | grep -F 1.6.3
     files:
       source:

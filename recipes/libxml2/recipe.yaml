@@ -15,7 +15,7 @@ outputs:
   - package:
       name: libxml2
     build:
-      number: 1
+      number: 2
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         binary_relocation: false
@@ -58,13 +58,21 @@ outputs:
           - grep -F Schematron features.txt
           - printf '<root>bootstrap</root>\n' > input.xml
           - test "$(xmllint --xpath 'string(/root)' input.xml)" = bootstrap
-          - test -f "${PREFIX}/include/libxml2-${{ version }}/libxml/parser.h"
-          - readelf -d "${PREFIX}/lib/libxml2.so" | grep -F '(RUNPATH)'
+          - test -f "${PREFIX}/lib/devkit/include/libxml2-${{ version }}/libxml/parser.h"
+          - readelf -d "${PREFIX}/lib/devkit/lib/libxml2.so" | grep -F '(RUNPATH)'
+          - >-
+            readelf -d "${PREFIX}/lib/libxml2.so.16" |
+            grep -F 'Shared library: [libz.so.1]'
+          - ln -s "${PREFIX}/lib" runtime-lib
+          - ./library-probe
+        files:
+          source:
+            - library-probe
 
   - package:
       name: libxml2-16
     build:
-      number: 1
+      number: 2
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

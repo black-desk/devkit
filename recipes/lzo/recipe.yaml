@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -42,15 +42,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/lzo-${{ version }}/lzo/*.h
-        - lib/liblzo2.so
+        - lib/devkit/include/lzo-${{ version }}/lzo/*.h
+        - lib/devkit/lib/liblzo2.so
         - lib/liblzo2.so.*
-        - lib/liblzo2.a
+        - lib/devkit/lib/liblzo2.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/liblzo2.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/liblzo2.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

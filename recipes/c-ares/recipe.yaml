@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -40,15 +40,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/c-ares-${{ version }}/*.h
-        - lib/libcares.so
+        - lib/devkit/include/c-ares-${{ version }}/*.h
+        - lib/devkit/lib/libcares.so
         - lib/libcares.so.*
-        - lib/libcares.a
+        - lib/devkit/lib/libcares.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libcares.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libcares.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

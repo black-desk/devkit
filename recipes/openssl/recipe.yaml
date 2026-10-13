@@ -14,7 +14,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -48,18 +48,18 @@ tests:
   - package_contents:
       files:
         - bin/openssl
-        - include/openssl-${{ version }}/openssl/ssl.h
-        - include/openssl-${{ version }}/openssl/crypto.h
-        - include/openssl-${{ version }}/openssl/opensslv.h
+        - lib/devkit/include/openssl-${{ version }}/openssl/ssl.h
+        - lib/devkit/include/openssl-${{ version }}/openssl/crypto.h
+        - lib/devkit/include/openssl-${{ version }}/openssl/opensslv.h
         - etc/ssl/openssl.cnf
-        - lib/libssl.so
+        - lib/devkit/lib/libssl.so
         - lib/libssl.so.3
-        - lib/libcrypto.so
+        - lib/devkit/lib/libcrypto.so
         - lib/libcrypto.so.3
-        - lib/pkgconfig/openssl.pc
-        - lib/pkgconfig/libssl.pc
-        - lib/pkgconfig/libcrypto.pc
-        - lib/cmake/OpenSSL/OpenSSLConfig.cmake
+        - lib/devkit/lib/pkgconfig/openssl.pc
+        - lib/devkit/lib/pkgconfig/libssl.pc
+        - lib/devkit/lib/pkgconfig/libcrypto.pc
+        - lib/devkit/lib/cmake/OpenSSL/OpenSSLConfig.cmake
         - lib/ossl-modules/legacy.so
 
   - script:
@@ -83,7 +83,7 @@ tests:
       - >-
         "${PREFIX}/bin/openssl" list -providers -provider legacy |
         grep -F legacy
-      - export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+      - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
       - pc_path="$("${PREFIX}/bin/pkg-config" --path libssl)"
       - cflags="$("${PREFIX}/bin/pkg-config" --cflags libssl)"
       - cflags="${cflags% }"
@@ -102,8 +102,8 @@ tests:
       - test ! -e "${PREFIX}/include/openssl"
       - test ! -e "${PREFIX}/bin/c_rehash"
       - >-
-        grep -F 'set(OPENSSL_INCLUDE_DIR "${_ossl_prefix}/include/openssl-${{
-        version }}")' "${PREFIX}/lib/cmake/OpenSSL/OpenSSLConfig.cmake"
+        grep -F 'set(OPENSSL_INCLUDE_DIR "${_ossl_prefix}/lib/devkit/include/openssl-${{
+        version }}")' "${PREFIX}/lib/devkit/lib/cmake/OpenSSL/OpenSSLConfig.cmake"
     requirements:
       run:
         - pkgconf ==3.0.7

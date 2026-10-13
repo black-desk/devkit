@@ -12,7 +12,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -43,15 +43,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/libev-${{ version }}/*.h
-        - lib/libev.so
+        - lib/devkit/include/libev-${{ version }}/*.h
+        - lib/devkit/lib/libev.so
         - lib/libev.so.*
-        - lib/libev.a
+        - lib/devkit/lib/libev.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libev.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libev.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

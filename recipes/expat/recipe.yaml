@@ -17,7 +17,7 @@ outputs:
   - package:
       name: expat
     build:
-      number: 2
+      number: 3
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -59,16 +59,16 @@ outputs:
           bin:
             - xmlwf
           files:
-            - include/expat-${{ version }}/expat.h
-            - include/expat-${{ version }}/expat_external.h
-            - include/expat-${{ version }}/expat_config.h
-            - lib/libexpat.so
+            - lib/devkit/include/expat-${{ version }}/expat.h
+            - lib/devkit/include/expat-${{ version }}/expat_external.h
+            - lib/devkit/include/expat-${{ version }}/expat_config.h
+            - lib/devkit/lib/libexpat.so
             - lib/libexpat.so.1
             - lib/libexpat.so.1.12.5
-            - lib/libexpat.a
+            - lib/devkit/lib/libexpat.a
             - share/man/man1/xmlwf.1
-            - lib/pkgconfig/expat.pc
-            - lib/cmake/expat-2.8.5/expat.cmake
+            - lib/devkit/lib/pkgconfig/expat.pc
+            - lib/devkit/lib/cmake/expat-2.8.5/expat.cmake
 
       - script:
           - unset LD_LIBRARY_PATH LD_PRELOAD
@@ -79,8 +79,8 @@ outputs:
           - xmlwf valid.xml
           - printf '<devkit>\n' > invalid.xml
           - if xmlwf invalid.xml; then exit 1; fi
-          - readelf -d "${PREFIX}/lib/libexpat.so" | grep -F '(RUNPATH)'
-          - export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+          - readelf -d "${PREFIX}/lib/devkit/lib/libexpat.so" | grep -F '(RUNPATH)'
+          - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
           - test "$(command -v pkg-config)" = "${PREFIX}/bin/pkg-config"
           - pc_path="$("${PREFIX}/bin/pkg-config" --path expat)"
           - cflags="$("${PREFIX}/bin/pkg-config" --cflags expat)"
@@ -95,7 +95,7 @@ outputs:
           - test ! -e "${PREFIX}/include/expat.h"
           - >-
             grep -F 'INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include/expat-${{ version }}"'
-            "${PREFIX}/lib/cmake/expat-${{ version }}/expat.cmake"
+            "${PREFIX}/lib/devkit/lib/cmake/expat-${{ version }}/expat.cmake"
         files:
           source:
             - library-probe
@@ -105,7 +105,7 @@ outputs:
   - package:
       name: libexpat
     build:
-      number: 2
+      number: 3
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

@@ -34,7 +34,7 @@ source:
     file_name: kernel-headers.rpm
 
 build:
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

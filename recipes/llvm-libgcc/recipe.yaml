@@ -8,16 +8,18 @@ recipe:
   version: ${{ version }}
 
 source:
-  url: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ version }}/llvm-project-${{ version }}.src.tar.xz
-  sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
-  patches:
-    - patches/libgcc-soname.patch
+  - url: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ version }}/llvm-project-${{ version }}.src.tar.xz
+    sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
+    patches:
+      - patches/libgcc-soname.patch
+  - path: ../clang
+    target_directory: devkit-build
 
 outputs:
   - package:
       name: llvm-libgcc
     build:
-      number: 5
+      number: 6
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         # CMake installs $ORIGIN RUNPATH; automatic relinking converts it to RPATH.
@@ -47,9 +49,9 @@ outputs:
     tests:
       - package_contents:
           files:
-            - lib/libgcc.a
-            - lib/libgcc_eh.a
-            - lib/libgcc_s.so
+            - lib/devkit/lib/libgcc.a
+            - lib/devkit/lib/libgcc_eh.a
+            - lib/devkit/lib/libgcc_s.so
             - lib/libgcc_s.so.1
             - lib/libunwind.so.1
             - lib/linux/clang_rt.crtbegin-x86_64.o
