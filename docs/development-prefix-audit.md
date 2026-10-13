@@ -54,7 +54,7 @@ than adding zlib to the consumer's own link command.
 | libxcrypt   | Existing password-hashing probe                                           |
 | libxml2     | Corrected source build, zlib DT_NEEDED, independent parser consumer       |
 | llvm-libgcc | Actual seed-mode package build and runtime tests; fresh-cache meta test   |
-| lz4-c       | Existing compression probe                                                |
+| lz4-c       | Source-built multithreaded CLI, native RUNPATH and compression round trip |
 | lzo         | Existing compression probe through both supported include roots           |
 | make        | Bootstrap/relink flags and install depth review                           |
 | ncurses     | Header nesting, tinfo linkage and config-helper flags                     |
@@ -77,6 +77,10 @@ revision bumps; their unchanged installation methods were not rebuilt locally.
 ## Problems fixed by this review
 
 - Missing helper sources in llvm-libgcc and libcxx.
+- lz4 command-line LDFLAGS overriding upstream target-specific `-pthread`;
+  export native RUNPATH flags through the environment instead. A focused build
+  with channel Clang/LLD confirmed `-pthread`, literal `$ORIGIN` RUNPATH and
+  compression/decompression without loader environment overrides.
 - Missing native RUNPATH in zstd's separate pzstd Make build.
 - Unmoved jsoncpp object files, which also broke cppdap configuration.
 - Exported executable paths pointing into a nonexistent hidden bin directory.

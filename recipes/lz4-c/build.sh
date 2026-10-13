@@ -45,10 +45,12 @@ export CPPFLAGS="${DEVKIT_FLAGS}"
 export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
+# Keep flags in the environment: command-line LDFLAGS suppress upstream
+# target-specific additions, including -pthread for the multithreaded CLI.
 NATIVE_LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN:\$\$ORIGIN/../lib'"
-make -j"${CPU_COUNT}" LDFLAGS="${NATIVE_LDFLAGS}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
+LDFLAGS="${NATIVE_LDFLAGS}" make -j"${CPU_COUNT}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
-  make -C tests datagen
+  LDFLAGS="${NATIVE_LDFLAGS}" make -C tests datagen
   # Preserve conda-forge's corpus, including large and linked blocks.
   tests/datagen -g0 | ./lz4 -v | ./lz4 -t
   tests/datagen -g16KB | ./lz4 -9 | ./lz4 -t
@@ -58,7 +60,7 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   tests/datagen -g33M | ./lz4 --no-frame-crc | ./lz4 -t
   tests/datagen -g256MB | ./lz4 -vqB4D | ./lz4 -t
 fi
-make install LDFLAGS="${NATIVE_LDFLAGS}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
+LDFLAGS="${NATIVE_LDFLAGS}" make install PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
 python3 - <<'PY'
 import os
 from pathlib import Path
