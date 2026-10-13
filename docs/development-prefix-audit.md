@@ -111,6 +111,18 @@ into the hidden prefix, and consumed by a successful libedit configure/build,
 `make check` and history/tokenization probe. The 25 pipeline/layout tests
 passed.
 
+## CI follow-up: completed dirty generation
+
+CI built every dirty package, including ncurses, libedit, Clang and CMake. The
+final layout check caught GNU Make's public extension header; its recipe now
+versions and stages `gnumake.h`. The check also incorrectly audited Rattler's
+archived test inputs under `etc/conda/test-files` as installed runtime programs.
+Exclude that precise test-data tree while retaining checks on every other ELF,
+including installed binaries, libraries and runtime plugins. A source-built GNU
+Make installed its hidden extension header and passed the layout audit. A
+regression test accepts archived test inputs but rejects the same invalid
+RUNPATH in an installed executable; all 26 pipeline/layout tests passed.
+
 ## What remains for CI
 
 These checks do not establish that every new recipe builds successfully or that

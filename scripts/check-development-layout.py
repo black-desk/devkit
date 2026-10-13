@@ -19,6 +19,10 @@ for path in (prefix / "lib").glob("lib*"):
         errors.append(f"public link-time interface: {path}")
 
 for path in prefix.rglob("*"):
+    # Rattler installs archived test inputs here. Their build/test RUNPATHs
+    # are not installed runtime interfaces; audit all actual payload ELFs.
+    if path.is_relative_to(prefix / "etc/conda/test-files"):
+        continue
     if path.is_symlink() or not path.is_file():
         continue
     with path.open("rb") as stream:

@@ -19,6 +19,7 @@ build:
   script:
     file: build.sh
     env:
+      LIBRARY_VERSION: ${{ version }}
       DEVKIT_RUN_TESTS: ${{ env.get("DEVKIT_RUN_TESTS", default="1") }}
       SYSROOT_TRIPLET: "${{ sysroot_triplet }}"
 
@@ -40,6 +41,8 @@ tests:
   - package_contents:
       bin:
         - make
+      files:
+        - lib/devkit/include/make-${{ version }}/gnumake.h
 
   - script:
       - make --version
