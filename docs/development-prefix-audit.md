@@ -97,6 +97,20 @@ libgcc tests from an existing cache. Testing the built meta with a separate
 RATTLER_CACHE_DIR passed. Dirty-stage package tests are already deferred by the
 bootstrap design, and this does not change stage channel selection.
 
+## CI follow-up: ncurses header search roots
+
+Passing a versioned `--includedir` to ncurses unexpectedly disables its separate
+ncurses/ncursesw header layout. Both installs then overwrite the same flat tree,
+and `headers.sh` qualifies internal includes with the version basename. This
+broke libedit's header checks. Configure with the conventional
+`<prefix>/include`, preserve upstream's narrow/wide subdirectories, then move
+both together into the versioned root before staging. Existing consumer paths,
+pkg-config flags, config helpers and package tests retain their intended layout.
+Both header modes were generated and installed from the exact source, staged
+into the hidden prefix, and consumed by a successful libedit configure/build,
+`make check` and history/tokenization probe. The 25 pipeline/layout tests
+passed.
+
 ## What remains for CI
 
 These checks do not establish that every new recipe builds successfully or that

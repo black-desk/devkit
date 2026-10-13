@@ -46,7 +46,7 @@ cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
 for mode in narrow wide; do
   wide_option=--disable-widec
   [[ "$mode" == narrow ]] || wide_option=--enable-widec
-  ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/ncurses-${LIBRARY_VERSION}" \
+  ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include" \
     --without-debug --without-ada --with-shared \
     --with-pkg-config --with-pkg-config-libdir="${PREFIX}/lib/pkgconfig" \
     --disable-overwrite --enable-symlinks --enable-termcap --enable-pc-files \
@@ -55,6 +55,14 @@ for mode in narrow wide; do
   make -j"${CPU_COUNT}"
   make install
   make distclean
+done
+# Upstream only preserves separate ncurses/ncursesw header trees when the
+# configured include directory ends in /include. A versioned --includedir
+# flattens both trees and rewrites internal includes to the version basename.
+# Install using the upstream layout, then isolate both trees together.
+mkdir -p "${PREFIX}/include/ncurses-${LIBRARY_VERSION}"
+for headers in ncurses ncursesw; do
+  mv "${PREFIX}/include/${headers}" "${PREFIX}/include/ncurses-${LIBRARY_VERSION}/"
 done
 # Normalize generated consumer metadata, without leaking seed compiler flags.
 python3 - <<'PY'
