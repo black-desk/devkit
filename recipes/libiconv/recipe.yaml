@@ -13,7 +13,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -42,11 +42,11 @@ requirements:
 tests:
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
-      - test -f "${PREFIX}/include/libiconv-1.18/iconv.h"
-      - test -f "${PREFIX}/lib/libiconv.so"
-      - test -f "${PREFIX}/lib/libcharset.so"
+      - test -f "${PREFIX}/lib/devkit/include/libiconv-1.18/iconv.h"
+      - test -f "${PREFIX}/lib/devkit/lib/libiconv.so"
+      - test -f "${PREFIX}/lib/devkit/lib/libcharset.so"
       - test ! -f "${PREFIX}/bin/iconv"
-      - readelf -d "${PREFIX}/lib/libiconv.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libiconv.so" | grep -F '(RUNPATH)'
 about:
   homepage: https://www.gnu.org/software/libiconv/
   license: LGPL-2.1-only

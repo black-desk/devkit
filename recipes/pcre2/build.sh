@@ -22,13 +22,16 @@ export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 export CXXFLAGS="${CFLAGS}"
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
 # Match forge's complete interfaces and use upstream's relocatable CMake exports.
 # libedit supplies pcre2test's readline interface without another readline library.
 cmake -S . -B build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_INSTALL_LIBDIR=lib \
@@ -48,12 +51,12 @@ cmake -S . -B build -G Ninja \
   -DPCRE2_BUILD_PCRE2GREP=ON -DPCRE2_BUILD_TESTS=ON \
   -DPCRE2_SUPPORT_LIBZ=ON -DPCRE2_SUPPORT_LIBBZ2=ON \
   -DPCRE2_SUPPORT_LIBEDIT=ON -DPCRE2_SUPPORT_LIBREADLINE=OFF \
-  -DZLIB_INCLUDE_DIR="${PREFIX}/include/zlib-1.3.2" \
-  -DZLIB_LIBRARY="${PREFIX}/lib/libz.so" \
-  -DBZIP2_INCLUDE_DIR="${PREFIX}/include/bzip2-1.0.8" \
-  -DBZIP2_LIBRARY_RELEASE="${PREFIX}/lib/libbz2.so" \
-  -DEDITLINE_INCLUDE_DIR="${PREFIX}/include/libedit-3.1.20260512/editline" \
-  -DEDITLINE_LIBRARY="${PREFIX}/lib/libedit.so"
+  -DZLIB_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zlib-1.3.2" \
+  -DZLIB_LIBRARY="${PREFIX}/lib/devkit/lib/libz.so" \
+  -DBZIP2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/bzip2-1.0.8" \
+  -DBZIP2_LIBRARY_RELEASE="${PREFIX}/lib/devkit/lib/libbz2.so" \
+  -DEDITLINE_INCLUDE_DIR="${PREFIX}/lib/devkit/include/libedit-3.1.20260512/editline" \
+  -DEDITLINE_LIBRARY="${PREFIX}/lib/devkit/lib/libedit.so"
 cmake --build build --parallel "${CPU_COUNT}"
 ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}"
 cmake --install build
@@ -66,13 +69,13 @@ mv "${PREFIX}/bin/pcre2-config" \
   "${PREFIX}/libexec/pcre2/bin/pcre2-config"
 
 for width in 8 16 32; do
-cat >"${PREFIX}/lib/pkgconfig/libpcre2-${width}.pc" <<EOF
+  cat >"${PREFIX}/lib/pkgconfig/libpcre2-${width}.pc" <<EOF
 prefix=\${pcfiledir}/../..
 exec_prefix=\${prefix}
 libdir=\${prefix}/lib
 includedir=\${prefix}/include
 
-Name: libpcre2-8
+Name: libpcre2-${width}
 Description: PCRE2 - Perl compatible regular expressions C library (2nd API) with ${width} bit character support
 Version: ${PCRE2_VERSION}
 License: BSD-3-Clause WITH PCRE2-exception
@@ -122,7 +125,7 @@ int main(void) {
 EOF
 
 "${CC}" \
-  ${CFLAGS} ${LDFLAGS} \
+  ${CFLAGS} ${LDFLAGS} -Wl,-rpath,"${PREFIX}/lib" \
   -I"${PREFIX}/include/pcre2-${PCRE2_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libpcre2-8.so" \
@@ -130,4 +133,5 @@ EOF
 
 env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
 
-python3 "${BUILD_PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"
+# Stage only this package's development interfaces; preserve runtime libraries.
+python3 "${BUILD_PREFIX}/share/devkit/stage-development.py" "${PREFIX}" --all

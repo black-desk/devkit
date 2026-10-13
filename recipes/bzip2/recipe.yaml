@@ -12,7 +12,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -47,9 +47,9 @@ tests:
         - bzcat
         - bzip2recover
       files:
-        - include/bzip2-${{ version }}/bzlib.h
-        - lib/libbz2.a
-        - lib/libbz2.so
+        - lib/devkit/include/bzip2-${{ version }}/bzlib.h
+        - lib/devkit/lib/libbz2.a
+        - lib/devkit/lib/libbz2.so
         - lib/libbz2.so.1.0
         - lib/libbz2.so.1.0.8
         - share/man/man1/bzip2.1

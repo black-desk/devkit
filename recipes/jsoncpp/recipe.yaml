@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -47,15 +47,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/jsoncpp-${{ version }}/json/*.h
-        - lib/libjsoncpp.so
+        - lib/devkit/include/jsoncpp-${{ version }}/json/*.h
+        - lib/devkit/lib/libjsoncpp.so
         - lib/libjsoncpp.so.*
-        - lib/libjsoncpp.a
+        - lib/devkit/lib/libjsoncpp.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libjsoncpp.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libjsoncpp.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

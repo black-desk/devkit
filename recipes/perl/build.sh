@@ -3,8 +3,11 @@ set -euxo pipefail
 
 # Bootstrap skips suites in dirty/result; standalone builds run them by default.
 case "${DEVKIT_RUN_TESTS:-1}" in
-  0|1) ;;
-  *) printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2; exit 1 ;;
+  0 | 1) ;;
+  *)
+    printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2
+    exit 1
+    ;;
 esac
 
 : "${PERL_VERSION:?rattler-build must provide PERL_VERSION}"
@@ -34,7 +37,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -42,13 +45,13 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 # Linux hints otherwise query /usr/bin/gcc and may discover host DB/crypt.
 # Set the supported discovery overrides explicitly for both compiler variants.
-PERL_LIBRARY_PATH="${PREFIX}/lib ${SYSROOT}/lib64"
-COMMON_CFLAGS="${CFLAGS} -I${PREFIX}/include/libxcrypt-4.4.38"
+PERL_LIBRARY_PATH="${PREFIX}/lib/devkit/lib ${PREFIX}/lib ${SYSROOT}/lib64"
+COMMON_CFLAGS="${CFLAGS} -I${PREFIX}/lib/devkit/include/libxcrypt-4.4.38"
 
 PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-aliasing -fstack-protector-strong -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 
@@ -76,7 +79,7 @@ PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-ali
   -Dlibpth="${PERL_LIBRARY_PATH}" \
   -Dplibpth="${PERL_LIBRARY_PATH}" \
   -Dglibpth="${PERL_LIBRARY_PATH}" \
-  -Dloclibpth="${PREFIX}/lib" \
+  -Dloclibpth="${PREFIX}/lib/devkit/lib ${PREFIX}/lib" \
   -Dxlibpth=" " \
   -Dmalloctype='void *' \
   -Dfreetype=void \
@@ -189,4 +192,6 @@ path.write_text(text)
 PY
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
+# Post-link exception: Perl applies one lddlflags value to XS modules installed at different depths; its relocatable-inc support does not compute per-module RUNPATH.
+# TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

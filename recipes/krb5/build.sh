@@ -24,7 +24,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -32,15 +32,15 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 cp "${BUILD_PREFIX}/share/gnuconfig/"config.* src/config/
 export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
-export PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH
-export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/include/openssl-3.5.9 -I${PREFIX}/include/keyutils-1.6.3"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/src/lib"
+export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/lib/devkit/include/openssl-3.5.9 -I${PREFIX}/lib/devkit/include/keyutils-1.6.3"
+export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/src/lib"
 cd src
 # MIT's official release includes configure; unlike the Git snapshot used by
 # forge, it does not require autoreconf. Keep forge's native feature baseline.
@@ -57,4 +57,9 @@ cd ..
 mkdir runtime-lib
 ln -s "${PREFIX}/lib/libkrb5.so.3" runtime-lib/libkrb5.so.3
 ./library-probe
+# Post-link exception: MIT Makefiles use the same LDFLAGS for in-tree tools and installed ELF files at multiple directory depths.
+# TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+
+# Stage only this package's development interfaces; preserve runtime libraries.
+python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

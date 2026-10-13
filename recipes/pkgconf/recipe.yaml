@@ -14,7 +14,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -54,7 +54,7 @@ tests:
         printf '%s\n' "prefix=${PREFIX}" 'Name: devkit-smoke'
         'Description: pkgconf smoke metadata' 'Version: 1.2.3'
         "Cflags: -I${PREFIX}/include/devkit-smoke"
-        "Libs: ${PREFIX}/lib/libdevkit-smoke.so" >
+        "Libs: ${PREFIX}/lib/devkit/lib/libdevkit-smoke.so" >
         "${PWD}/devkit-smoke.pc"
       - export PKG_CONFIG_PATH="${PWD}"
       - modversion_output="$(${PREFIX}/bin/pkg-config --modversion devkit-smoke)"
@@ -62,7 +62,7 @@ tests:
       - cflags_output="$(${PREFIX}/bin/pkg-config --cflags devkit-smoke)"
       - test "${cflags_output}" = "-I${PREFIX}/include/devkit-smoke"
       - libs_output="$(${PREFIX}/bin/pkg-config --libs devkit-smoke)"
-      - test "${libs_output}" = "${PREFIX}/lib/libdevkit-smoke.so"
+      - test "${libs_output}" = "${PREFIX}/lib/devkit/lib/libdevkit-smoke.so"
     files:
       recipe:
         - tests/

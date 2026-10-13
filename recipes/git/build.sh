@@ -19,12 +19,12 @@ export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 export CXXFLAGS="${CFLAGS}"
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
-export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib"
 devkit_rustup() {
   env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/libgcc_s.so.1" \
     "${BUILD_PREFIX}/bin/rustup" "$@"
@@ -58,7 +58,7 @@ for include in \
   "zlib-${ZLIB_VERSION}" \
   "pcre2-${PCRE2_VERSION}" \
   "expat-${EXPAT_VERSION}"; do
-  test -d "${PREFIX}/include/${include}"
+  test -d "${PREFIX}/lib/devkit/include/${include}"
 done
 
 for library in \
@@ -68,12 +68,12 @@ for library in \
   libz.so \
   libpcre2-8.so \
   libexpat.so; do
-  test -f "${BUILD_PREFIX}/lib/${library}"
+  test -f "${BUILD_PREFIX}/lib/devkit/lib/${library}"
 done
 
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export PKG_CONFIG="${BUILD_PREFIX}/bin/pkg-config"
-export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
+export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}"
 
 COMMON_CFLAGS="${CFLAGS}"
 EXTERNAL_CFLAGS="$(
@@ -90,9 +90,9 @@ fi
 # Git's Makefile accepts exact library paths for these interfaces. Supplying
 # them explicitly prevents feature detection from falling back to host headers
 # or unqualified -l flags.
-EXPAT_LIBEXPAT="${PREFIX}/lib/libexpat.so"
-OPENSSL_LIBSSL="${PREFIX}/lib/libssl.so"
-LIB_4_CRYPTO="${PREFIX}/lib/libcrypto.so"
+EXPAT_LIBEXPAT="${PREFIX}/lib/devkit/lib/libexpat.so"
+OPENSSL_LIBSSL="${PREFIX}/lib/devkit/lib/libssl.so"
+LIB_4_CRYPTO="${PREFIX}/lib/devkit/lib/libcrypto.so"
 
 export RUSTUP_HOME="${SRC_DIR}/.rustup"
 export CARGO_HOME="${SRC_DIR}/.cargo"
@@ -109,9 +109,9 @@ export RUSTDOC="$(devkit_rustup which --toolchain "${RUST_TOOLCHAIN}" rustdoc)"
 # EXTLIBS is overridden as a command-line variable because Git otherwise adds
 # unqualified -lpcre2-8 and -lz. This list preserves its Linux defaults while
 # selecting exact channel libraries.
-EXTERNAL_LIBS="${PREFIX}/lib/libpcre2-8.so \
-${PREFIX}/lib/libz.so \
-${PREFIX}/lib/libcrypto.so \
+EXTERNAL_LIBS="${PREFIX}/lib/devkit/lib/libpcre2-8.so \
+${PREFIX}/lib/devkit/lib/libz.so \
+${PREFIX}/lib/devkit/lib/libcrypto.so \
 -pthread"
 
 cat >config.mak <<EOF
@@ -126,7 +126,7 @@ CC = ${CC}
 AR = ${AR}
 STRIP = ${STRIP}
 CFLAGS = ${CFLAGS}
-LDFLAGS = ${LDFLAGS}
+LDFLAGS = ${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN/../lib:\$\$ORIGIN/../../lib'
 PERL_PATH = ${PREFIX}/bin/perl
 SHELL_PATH = /bin/sh
 CURL_CONFIG = ${CURL_CONFIG}
@@ -157,5 +157,3 @@ rustup_run_make install INSTALL_STRIP=-s \
   LIB_4_CRYPTO="${LIB_4_CRYPTO}"
 make -C contrib/subtree -j"${CPU_COUNT}" install \
   gitexecdir="${PREFIX}/libexec/git-core"
-
-python3 "${BUILD_PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"

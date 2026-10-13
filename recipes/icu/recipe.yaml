@@ -14,7 +14,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -48,8 +48,8 @@ tests:
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./icu-runtime-probe
       - icuinfo
-      - test -f "${PREFIX}/include/icu-${{ version }}/unicode/ucnv.h"
-      - for library in icudata icuuc icui18n icuio icutu; do readelf -d "${PREFIX}/lib/lib${library}.so" | grep -F '(RUNPATH)'; done
+      - test -f "${PREFIX}/lib/devkit/include/icu-${{ version }}/unicode/ucnv.h"
+      - for library in icudata icuuc icui18n icuio icutu; do readelf -d "${PREFIX}/lib/devkit/lib/lib${library}.so" | grep -F '(RUNPATH)'; done
     files:
       source:
         - icu-runtime-probe

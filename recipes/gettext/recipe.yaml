@@ -15,7 +15,7 @@ outputs:
   - package:
       name: gettext
     build:
-      number: 0
+      number: 1
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         binary_relocation: false
@@ -63,10 +63,10 @@ outputs:
             - gettext
             - ngettext
           files:
-            - include/gettext-${{ version }}/gettext-po.h
-            - lib/libgettextpo.so
-            - lib/libasprintf.so
-            - lib/libtextstyle.so
+            - lib/devkit/include/gettext-${{ version }}/gettext-po.h
+            - lib/devkit/lib/libgettextpo.so
+            - lib/devkit/lib/libasprintf.so
+            - lib/devkit/lib/libtextstyle.so
       - script:
           - unset LD_LIBRARY_PATH LD_PRELOAD
           - msgfmt --version | grep -F '0.25.1'
@@ -80,7 +80,7 @@ outputs:
   - package:
       name: gettext-tools
     build:
-      number: 0
+      number: 1
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

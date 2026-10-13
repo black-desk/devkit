@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -46,10 +46,10 @@ tests:
         - lz4cat
         - unlz4
       files:
-        - include/lz4-${{ version }}/*.h
-        - lib/liblz4.so
+        - lib/devkit/include/lz4-${{ version }}/*.h
+        - lib/devkit/lib/liblz4.so
         - lib/liblz4.so.*
-        - lib/liblz4.a
+        - lib/devkit/lib/liblz4.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
@@ -58,7 +58,7 @@ tests:
       - lz4 -f input.txt output.lz4
       - lz4 -df output.lz4 output.txt
       - cmp input.txt output.txt
-      - readelf -d "${PREFIX}/lib/liblz4.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/liblz4.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

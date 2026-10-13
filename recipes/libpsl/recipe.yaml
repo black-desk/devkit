@@ -12,7 +12,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -47,15 +47,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/libpsl-${{ version }}/*.h
-        - lib/libpsl.so
+        - lib/devkit/include/libpsl-${{ version }}/*.h
+        - lib/devkit/lib/libpsl.so
         - lib/libpsl.so.*
-        - lib/pkgconfig/libpsl.pc
+        - lib/devkit/lib/pkgconfig/libpsl.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libpsl.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libpsl.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

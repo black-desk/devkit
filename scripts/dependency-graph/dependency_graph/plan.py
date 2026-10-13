@@ -32,6 +32,7 @@ GLOBAL_INPUTS = {
     "scripts/check-seed.sh",
     "scripts/check-result.sh",
     "scripts/check-glibc-baseline.py",
+    "scripts/check-development-layout.py",
     "scripts/check-clang-policy.sh",
     "scripts/check-clang-channel.sh",
 }

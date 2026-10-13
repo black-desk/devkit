@@ -10,7 +10,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -42,12 +42,12 @@ tests:
       bin:
         - rhash
       files:
-        - include/rhash-${{ version }}/rhash.h
-        - include/rhash-${{ version }}/rhash_torrent.h
-        - lib/librhash.so
+        - lib/devkit/include/rhash-${{ version }}/rhash.h
+        - lib/devkit/include/rhash-${{ version }}/rhash_torrent.h
+        - lib/devkit/lib/librhash.so
         - lib/librhash.so.1
-        - lib/librhash.a
-        - lib/pkgconfig/librhash.pc
+        - lib/devkit/lib/librhash.a
+        - lib/devkit/lib/pkgconfig/librhash.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - rhash --version

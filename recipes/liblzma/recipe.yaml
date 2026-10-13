@@ -12,7 +12,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -42,9 +42,9 @@ requirements:
 tests:
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
-      - test -f "${PREFIX}/include/liblzma-5.8.3/lzma.h"
-      - test -f "${PREFIX}/lib/liblzma.so"
-      - readelf -d "${PREFIX}/lib/liblzma.so" | grep -F '(RUNPATH)'
+      - test -f "${PREFIX}/lib/devkit/include/liblzma-5.8.3/lzma.h"
+      - test -f "${PREFIX}/lib/devkit/lib/liblzma.so"
+      - readelf -d "${PREFIX}/lib/devkit/lib/liblzma.so" | grep -F '(RUNPATH)'
 about:
   homepage: https://tukaani.org/xz/
   license: 0BSD

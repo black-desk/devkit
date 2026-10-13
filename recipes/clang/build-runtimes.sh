@@ -9,6 +9,10 @@ RUNTIME_LINK_FLAGS="--start-no-unused-arguments ${LINK_FLAGS} --end-no-unused-ar
 # not inherit the recipe's clang.cfg, which also adds installed libc++ headers.
 PRIVATE_LIBCXX_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-toolchain=${PREFIX}/share/devkit/no-gcc --rtlib=compiler-rt --end-no-unused-arguments -O2 -fPIC"
 cmake -S "${SRC_DIR}/compiler-rt" -B runtime-build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN/..' \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_ASM_COMPILER="${CC}" \

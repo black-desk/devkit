@@ -13,8 +13,8 @@
 +exec_prefix="${prefix}"
  # shellcheck disable=SC2034
 -includedir="@includedir@"
-+includedir="${prefix}/include/curl-@CURLVERSION@"
-+libdir="${prefix}/lib"
++includedir="${prefix}/lib/devkit/include/curl-@CURLVERSION@"
++libdir="${prefix}/lib/devkit/lib"
 +static_deps="${libdir}/libssl.so ${libdir}/libcrypto.so ${libdir}/libz.so ${libdir}/libnghttp2.so ${libdir}/libssh2.so ${libdir}/libgssapi_krb5.so ${libdir}/libkrb5.so ${libdir}/libk5crypto.so ${libdir}/libcom_err.so ${libdir}/libpsl.so ${libdir}/libzstd.so -ldl -pthread"
 
  usage()

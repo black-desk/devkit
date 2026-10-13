@@ -12,7 +12,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -46,15 +46,15 @@ requirements:
 tests:
   - package_contents:
       files:
-        - include/libedit-${{ version }}/*.h
-        - lib/libedit.so
+        - lib/devkit/include/libedit-${{ version }}/*.h
+        - lib/devkit/lib/libedit.so
         - lib/libedit.so.*
-        - lib/pkgconfig/libedit.pc
+        - lib/devkit/lib/pkgconfig/libedit.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
       - ./library-probe
-      - readelf -d "${PREFIX}/lib/libedit.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libedit.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

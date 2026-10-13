@@ -92,12 +92,12 @@ from its installation prefix.
 The `recipes/libcxx` experiment built and passed its installed-package test,
 combining libc++ and libc++abi while using the separately installed llvm-libgcc
 via its gcc_s compatibility interface. It does not build a second unwinder.
-Development headers are isolated under `include/libcxx-23.1.3/c++/v1`; CMake
-export paths follow that layout. The test covers C++20 algorithms, exceptions,
-threads, and filesystem operations, and verifies that the loaded C++ libraries
-and sole unwinder come from the prefix. llvm-libgcc also now supplies
-compiler-rt crtbegin/crtend objects under `lib/linux` for the later removal of
-seed GCC development files.
+Development headers are isolated under
+`lib/devkit/include/libcxx-23.1.3/c++/v1`; CMake export paths follow that
+layout. The test covers C++20 algorithms, exceptions, threads, and filesystem
+operations, and verifies that the loaded C++ libraries and sole unwinder come
+from the prefix. llvm-libgcc also now supplies compiler-rt crtbegin/crtend
+objects under `lib/linux` for the later removal of seed GCC development files.
 
 The next experiment is `recipes/clang`: a single provisional carrier builds
 Clang, LLD, and LLVM binary tools from the same 23.1.3 source. It builds against
@@ -1350,27 +1350,23 @@ local bootstrap remains stopped.
 
 ## Default host development discovery
 
-Channel CMake excludes its own installation prefix from implicit system-prefix
-and PATH-derived package, library and header searches. Paths are canonicalized
-so symlinks into that prefix are also excluded. Program searches retain PATH;
-channel Clang, Ninja and other tools remain available. Explicit package roots,
-package directories, CMAKE_PREFIX_PATH, hints and project installation prefixes
-retain upstream behavior and can select channel development interfaces. Metadata
-stays in its existing locations; recipes explicitly select their dependency
-prefixes rather than relying on CMake's installation location.
+Development interfaces now live in `lib/devkit`; CMake's previous
+`default-host-discovery.patch` is removed. Upstream implicit prefix/PATH
+searches do not expose hidden linker interfaces, metadata or versioned headers.
+Explicit CMAKE_PREFIX_PATH selects the development prefix. CONFIG packages and
+pkg-config preserve versioned include roots; Find modules that do not use those
+interfaces receive exact dependency paths in recipes.
 
-Channel pkgconf uses upstream with-pkg-config-dir to search host /usr/local and
-/usr metadata directories, including x86_64-linux-gnu and lib64 locations. On
-Linux pkgconf does not derive these paths from PATH. PKG_CONFIG_LIBDIR replaces
-the default directories and PKG_CONFIG_PATH adds explicit overrides. The system
-include/library options only control flag filtering, not metadata discovery.
-These changes affect development discovery, not tool runtime dependencies.
+Pkgconf retains its upstream host metadata search configuration. Recipes opt in
+with PKG_CONFIG_LIBDIR pointing to `lib/devkit/lib/pkgconfig`. Program discovery
+and runtime modules are unchanged. See
+[the layout policy](development-layout.md) for the complete decisions and
+[focused validation](development-prefix-experiment.md).
 
-Focused validation compiles patched CMake 3.31.8 and pkgconf 3.0.7 from source.
-Synthetic metadata tests cover default exclusion, symlinked PATH entries,
-explicit prefix/environment overrides, retained program searches and searches
-outside the tool prefix. Both recipes include these discovery checks as package
-tests. Full bootstrap validation has not been repeated for this policy change.
+CMake, Cargo and Meson packages now use native relative RUNPATH configuration.
+Some existing Libtool/mixed-depth install recipes retain explicitly documented
+post-link exceptions. This migration changes all input generations and requires
+a fresh CI bootstrap; local checks do not replace dirty/result/selfhost testing.
 
 The CI run on 4c2c0f933686 reached the result-stage libnghttp2 build and failed
 because its CXX override added a host-prefix libc++ header tree alongside the

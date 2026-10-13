@@ -12,7 +12,7 @@ source:
   - path: ../clang
     target_directory: devkit-build
 build:
-  number: 0
+  number: 1
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -62,10 +62,10 @@ tests:
         - nghttpx
         - h2load
       files:
-        - include/libnghttp2-${{ version }}/nghttp2/*.h
-        - lib/libnghttp2.so
+        - lib/devkit/include/libnghttp2-${{ version }}/nghttp2/*.h
+        - lib/devkit/lib/libnghttp2.so
         - lib/libnghttp2.so.*
-        - lib/pkgconfig/libnghttp2.pc
+        - lib/devkit/lib/pkgconfig/libnghttp2.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - ln -s "${PREFIX}/lib" runtime-lib
@@ -74,7 +74,7 @@ tests:
       - nghttpd --version
       - nghttpx --version
       - h2load --version
-      - readelf -d "${PREFIX}/lib/libnghttp2.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libnghttp2.so" | grep -F '(RUNPATH)'
     files:
       source:
         - library-probe

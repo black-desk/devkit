@@ -17,13 +17,17 @@ fi
 COMMON_FLAGS="--start-no-unused-arguments ${COMMON_FLAGS} --end-no-unused-arguments"
 CXX_FLAGS="${COMMON_FLAGS}"
 if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
-  CXX_FLAGS="${CXX_FLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  CXX_FLAGS="${CXX_FLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 fi
-LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib -L${PREFIX}/lib/llvm-runtime -Wl,-rpath,${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
+LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -L${PREFIX}/lib/devkit/lib/llvm-runtime -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
 
 cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_ASM_COMPILER="${CC}" \
@@ -50,14 +54,14 @@ cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
   -DLLVM_INCLUDE_EXAMPLES=OFF \
   -DLLVM_ENABLE_BINDINGS=OFF \
   -DLLVM_ENABLE_ZLIB=FORCE_ON \
-  -DZLIB_INCLUDE_DIR="${PREFIX}/include/zlib-1.3.2" \
-  -DZLIB_LIBRARY="${PREFIX}/lib/libz.so" \
+  -DZLIB_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zlib-1.3.2" \
+  -DZLIB_LIBRARY="${PREFIX}/lib/devkit/lib/libz.so" \
   -DLLVM_ENABLE_ZSTD=FORCE_ON \
-  -Dzstd_INCLUDE_DIR="${PREFIX}/include/zstd-1.5.7" \
-  -Dzstd_LIBRARY="${PREFIX}/lib/libzstd.so" \
+  -Dzstd_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zstd-1.5.7" \
+  -Dzstd_LIBRARY="${PREFIX}/lib/devkit/lib/libzstd.so" \
   -DLLVM_ENABLE_LIBXML2=FORCE_ON \
-  -DLIBXML2_INCLUDE_DIR="${PREFIX}/include/libxml2-2.15.4" \
-  -DLIBXML2_LIBRARY="${PREFIX}/lib/libxml2.so" \
+  -DLIBXML2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/libxml2-2.15.4" \
+  -DLIBXML2_LIBRARY="${PREFIX}/lib/devkit/lib/libxml2.so" \
   -DLLVM_ENABLE_RTTI=ON \
   -DLLVM_ENABLE_BACKTRACES=ON \
   -DLLVM_ENABLE_DUMP=ON \
@@ -85,27 +89,34 @@ ln -s ../../../linux "${PREFIX}/lib/clang/23/lib/linux"
 
 # Compile small probes with the newly installed compiler, not the seed.
 "${PREFIX}/bin/clang++" ${CXX_FLAGS} ${LINK_FLAGS} -fsanitize=address,undefined \
+  '-Wl,-rpath,$ORIGIN/../lib' \
   "${RECIPE_DIR}/tests/runtime.cpp" -o runtime-probe
 "${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -fsanitize=address \
+  '-Wl,-rpath,$ORIGIN/../lib' \
   "${RECIPE_DIR}/tests/asan-error.c" -o asan-error-probe
 "${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -stdlib=libc++ -fsanitize=fuzzer \
+  '-Wl,-rpath,$ORIGIN/../lib' \
   "${RECIPE_DIR}/tests/fuzzer.c" -o fuzzer-probe
 "${PREFIX}/bin/clang++" ${CXX_FLAGS} ${LINK_FLAGS} -fprofile-instr-generate -fcoverage-mapping \
+  '-Wl,-rpath,$ORIGIN/../lib' \
   "${RECIPE_DIR}/tests/runtime.cpp" -o profile-probe
 "${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -stdlib=libc++ -fxray-instrument \
+  '-Wl,-rpath,$ORIGIN/../lib' \
   "${RECIPE_DIR}/tests/xray.c" -o xray-probe
 # Package test probes must remain runnable after the build prefixes disappear.
 mkdir -p test-probe-prefix/bin
 for probe in runtime-probe asan-error-probe fuzzer-probe profile-probe xray-probe; do
   cp "${probe}" test-probe-prefix/bin/
 done
-python3 "${RECIPE_DIR}/finalize-elf.py" test-probe-prefix
 cp test-probe-prefix/bin/* .
 
 install -d "${PREFIX}/share/devkit"
 install -m 0644 "${RECIPE_DIR}/clang.cfg" "${PREFIX}/share/devkit/clang.cfg"
+install -m 0644 "${RECIPE_DIR}/stage-development.py" "${PREFIX}/share/devkit/stage-development.py"
 install -m 0644 "${RECIPE_DIR}/finalize-elf.py" "${PREFIX}/share/devkit/finalize-elf.py"
 for driver in clang clang++; do
   install -m 0644 "${RECIPE_DIR}/host.cfg" "${PREFIX}/bin/${driver}.cfg"
 done
-python "${PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"
+
+# Stage only this package's development interfaces; preserve runtime libraries.
+python3 "${RECIPE_DIR}/stage-development.py" "${PREFIX}" --all

@@ -12,9 +12,10 @@ source:
   sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
   patches:
     - patches/compiler-rt-custom-libcxx-flags.patch
+    - patches/llvm-config-development-prefix.patch
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -74,12 +75,16 @@ tests:
         - lib/clang/23/include/sanitizer/asan_interface.h
         - share/devkit/clang.cfg
         - share/devkit/finalize-elf.py
+        - share/devkit/stage-development.py
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - readelf -d "${PREFIX}/bin/clang" | grep -F '(RUNPATH)'
       - clang --version
       - ld.lld --version
       - llvm-ar --version
+      - test "$(llvm-config --includedir)" = "${PREFIX}/lib/devkit/include"
+      - test "$(llvm-config --libdir)" = "${PREFIX}/lib/devkit/lib"
+      - test "$(llvm-config --cmakedir)" = "${PREFIX}/lib/devkit/lib/cmake/llvm"
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - mkdir -p bin
