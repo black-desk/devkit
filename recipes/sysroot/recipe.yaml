@@ -33,6 +33,14 @@ source:
     sha256: 720389167daa7488fe5286f84a1d0705248c50c7c86da671e3a76776d37a2f75
     file_name: kernel-headers.rpm
 
+# NOTE: rpm2cpio and cpio are supplied by the Pixi build environment used to run
+# this bootstrap. They are intentionally tooling dependencies, not part of the
+# target sysroot package.
+
+requirements:
+  run:
+    - tzdata
+
 build:
   number: 3
   string: h${{ hash }}_${{ build_number }}
@@ -41,14 +49,6 @@ build:
     env:
       SYSROOT_TRIPLET: "${{ sysroot_triplet }}"
 
-# rpm2cpio and cpio are supplied by the Pixi build environment used to run
-# this bootstrap.  They are intentionally tooling dependencies, not part of
-# the target sysroot package.
-
-requirements:
-  run:
-    - tzdata
-
 tests:
   - script:
       - test -d "${PREFIX}/x86_64-pc-linux-gnu/sysroot/lib64"
@@ -56,7 +56,11 @@ tests:
       - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/include/stdio.h"
       - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/include/linux/version.h"
       - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/lib64/libc.so.6"
-      - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/lib64/crt1.o"
+      - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/lib64/crt1.o"
+      - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/lib64/libc.so"
+      - test -f "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/lib64/libc_nonshared.a"
+      - test "$(readlink "${PREFIX}/${{ sysroot_triplet }}/sysroot/lib64")" = usr/lib64
+      - test ! -L "${PREFIX}/${{ sysroot_triplet }}/sysroot/usr/lib64"
 
 about:
   homepage: https://www.rockylinux.org/
