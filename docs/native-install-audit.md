@@ -111,3 +111,7 @@ per-file installed RUNPATH. See [development-layout.md](development-layout.md).
 Unified source patches retain upstream context whitespace verbatim. The shared
 clean check excludes `*.patch`; patch applicability is verified separately.
 Removing whitespace from patch context can prevent hunks from applying.
+
+RHash's default `install` target omits its generated `.pc` file. The recipe
+explicitly invokes upstream `install-pkg-config`, which installs directly into
+the configured hidden metadata directory. This target was verified locally.
