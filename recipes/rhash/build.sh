@@ -54,7 +54,8 @@ make -j"${CPU_COUNT}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make test-libs test-full
 fi
-make install
+# The default install target omits the generated library pkg-config file.
+make install install-pkg-config
 make -C librhash install-lib-headers install-so-link
 # Post-link exception: Upstream configuration uses common link flags for build-tree librhash and installed library/tool.
 # TODO: replace with target-specific upstream install/relink support.
