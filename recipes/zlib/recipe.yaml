@@ -13,7 +13,9 @@ source:
     patches:
       - patches/cmake-test-fixture.patch
 
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 outputs:
@@ -49,6 +51,11 @@ outputs:
           - zlib >=1.3.2,<1.4
 
     tests:
+      - script:
+          - python3 devkit-build/check-package.py "${PREFIX}" --package zlib
+        files:
+          source:
+            - devkit-build/check-package.py
       - package_contents:
           files:
             - lib/devkit/include/zlib-${{ version }}/zlib.h

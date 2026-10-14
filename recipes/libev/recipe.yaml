@@ -9,8 +9,13 @@ source:
     sha256: 507eb7b8d1015fbec5b935f34ebed15bf346bed04a11ab82b8eee848c4205aea
     patches:
       - patches/clang-driver-link-policy.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 1
   string: h${{ hash }}_${{ build_number }}
@@ -41,6 +46,11 @@ requirements:
   run:
     - __glibc >=2.28
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libev
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       files:
         - lib/devkit/include/libev-${{ version }}/*.h

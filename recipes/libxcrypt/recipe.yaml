@@ -10,8 +10,13 @@ source:
     patches:
       - patches/clang-driver-link-policy.patch
       - patches/disabled-obsolete-api-symbol-map.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 1
   string: h${{ hash }}_${{ build_number }}
@@ -45,6 +50,11 @@ requirements:
   run:
     - __glibc >=2.28
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libxcrypt
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       files:
         - lib/devkit/include/libxcrypt-${{ version }}/crypt.h

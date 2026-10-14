@@ -112,11 +112,11 @@ cp test-probe-prefix/bin/* .
 
 install -d "${PREFIX}/share/devkit"
 install -m 0644 "${RECIPE_DIR}/clang.cfg" "${PREFIX}/share/devkit/clang.cfg"
-install -m 0644 "${RECIPE_DIR}/stage-development.py" "${PREFIX}/share/devkit/stage-development.py"
-install -m 0644 "${RECIPE_DIR}/finalize-elf.py" "${PREFIX}/share/devkit/finalize-elf.py"
+install -m 0644 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}/share/devkit/stage-development.py"
+install -m 0644 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}/share/devkit/finalize-elf.py"
 for driver in clang clang++; do
   install -m 0644 "${RECIPE_DIR}/host.cfg" "${PREFIX}/bin/${driver}.cfg"
 done
 
 # Stage only this package's development interfaces; preserve runtime libraries.
-python3 "${RECIPE_DIR}/stage-development.py" "${PREFIX}" --all
+python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

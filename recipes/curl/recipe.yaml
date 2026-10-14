@@ -15,7 +15,11 @@ source:
     patches:
       - patches/clang-driver-link-policy.patch
       - patches/curl-config-exact-paths.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 outputs:
@@ -72,6 +76,11 @@ outputs:
         - libnghttp2 ==1.68.1
         - libpsl ==0.23.1
     tests:
+      - script:
+          - python3 devkit-build/check-package.py "${PREFIX}" --package curl
+        files:
+          source:
+            - devkit-build/check-package.py
       - package_contents:
           bin:
             - curl

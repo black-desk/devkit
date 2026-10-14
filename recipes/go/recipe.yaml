@@ -8,8 +8,10 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://go.dev/dl/go${{ version }}.linux-amd64.tar.gz
-  sha256: 63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
+  - url: https://go.dev/dl/go${{ version }}.linux-amd64.tar.gz
+    sha256: 63d339f0da5ab53635a56f2490a7984dfe12dfcff22ad749f63edaf590168445
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
   number: 2
@@ -24,6 +26,11 @@ build:
 requirements: {}
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package go
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - go

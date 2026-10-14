@@ -9,8 +9,13 @@ source:
     sha256: 8fbb03054556498ba9c4cc48fcaa36a4483748c6504a65bdb9ba348f555b0e56
     patches:
       - patches/clang-driver-link-policy.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 1
   string: h${{ hash }}_${{ build_number }}
@@ -45,6 +50,11 @@ requirements:
     - __glibc >=2.28
     - icu ==78.3
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libpsl
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       files:
         - lib/devkit/include/libpsl-${{ version }}/*.h

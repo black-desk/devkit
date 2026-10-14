@@ -13,8 +13,11 @@ source:
     patches:
       - patches/deterministic-remote-debugger-port.patch
 
-  - path: ../clang
+  - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 3
   string: h${{ hash }}_${{ build_number }}
@@ -45,6 +48,11 @@ requirements:
     - libxcrypt >=4.4.38,<5
     - __glibc >=2.28
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package perl
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - perl

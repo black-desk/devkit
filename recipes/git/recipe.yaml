@@ -13,8 +13,10 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://www.kernel.org/pub/software/scm/git/git-${{ version }}.tar.xz
-  sha256: 26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3
+  - url: https://www.kernel.org/pub/software/scm/git/git-${{ version }}.tar.xz
+    sha256: 26c56c296b38c0695b26fa95f475f1d01704d2d38e73465ca30b0b2f5dc789d3
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
   number: 2
@@ -67,6 +69,11 @@ requirements:
     - pcre2 ==10.49
     - expat ==2.8.5
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package git
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - git

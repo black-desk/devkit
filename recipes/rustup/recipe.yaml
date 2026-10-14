@@ -16,6 +16,8 @@ source:
   - url: https://github.com/rust-lang/rustup/archive/refs/tags/${{ version }}.tar.gz
     sha256: 00f79a02275fd0252be6928d7a44f96bfba706a0cc47a0c85557aa4a875d1181
     target_directory: rustup-source
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
   number: 3
@@ -36,6 +38,11 @@ requirements:
     - __glibc >=2.28
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package rustup
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - rustup

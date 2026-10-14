@@ -9,8 +9,11 @@ source:
     sha256: 744346f6bca195c8f894f847bb32a16e9bcae6002624a58fadc81e80f595b3cb
     patches:
       - patches/respect-install-includedir.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 1
   string: h${{ hash }}_${{ build_number }}
@@ -61,6 +64,11 @@ requirements:
     - lz4-c >=1.10.0,<2
     - lzo >=2.10,<3
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libarchive
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - bsdtar

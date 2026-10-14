@@ -8,10 +8,14 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/golang/tools/archive/refs/tags/gopls/v${{ version }}.tar.gz
-  sha256: 1ba41875b918db73c6a409ad8f552b85f72dfeea43ffb541b798322ff6b4152b
+  - url: https://github.com/golang/tools/archive/refs/tags/gopls/v${{ version }}.tar.gz
+    sha256: 1ba41875b918db73c6a409ad8f552b85f72dfeea43ffb541b798322ff6b4152b
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
+  dynamic_linking:
+    binary_relocation: false
   number: 2
   string: h${{ hash }}_${{ build_number }}
   script:
@@ -24,6 +28,11 @@ requirements:
     - go >=1.27.1,<1.28
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package gopls
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - gopls

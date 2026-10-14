@@ -9,8 +9,13 @@ source:
     sha256: 432d5e7ea8b0116dd39f2eca7bc11d0eed77faa6b77ea526ace89907c23ea4a0
     patches:
       - patches/clang-driver-link-policy.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 1
   string: h${{ hash }}_${{ build_number }}
@@ -44,6 +49,11 @@ requirements:
     - __glibc >=2.28
     - ncurses ==6.6
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libedit
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       files:
         - lib/devkit/include/libedit-${{ version }}/*.h

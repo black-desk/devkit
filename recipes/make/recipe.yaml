@@ -11,8 +11,11 @@ source:
   - url: https://ftp.gnu.org/gnu/make/make-${{ version }}.tar.gz
     sha256: dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3
 
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 2
   string: h${{ hash }}_${{ build_number }}
@@ -38,6 +41,11 @@ requirements:
     - gnuconfig ==2025.07.09
     - sysroot_linux-64
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package make
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - make
