@@ -1395,3 +1395,18 @@ separate overlay; publication merges verified applicable artifacts. See
 [package CI](package-ci.md) for skip conditions, file protocol and local
 commands. No full local bootstrap is restarted to verify this orchestration
 change.
+
+### Why separate prefixes do not replace the dirty libgcc meta
+
+Build and host environments share the configured channel list. With dirty
+preferred over seed, even seed Clang can select dirty libxml2 transitively;
+rebuilt Ninja also brings in llvm-libgcc. Seed libstdcxx still requires GNU
+libgcc with an exact version/build pin. Without the metadata-only replacement,
+both runtimes would own `lib/libgcc_s.so.1` in the build environment. The dirty
+meta satisfies that pin while LLVM-libgcc owns the files; seed tools in this
+mixed environment therefore use LLVM-libgcc too. Removing the meta requires a
+supported way to keep the complete build-tool dependency closure in seed, not
+just separate build/host prefixes or a seed pin on Clang itself.
+
+The installed LLVM runtime probe is compiled in the recipe test environment
+using channel Clang, rather than passed from the build environment.
