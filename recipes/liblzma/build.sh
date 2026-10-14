@@ -48,19 +48,14 @@ export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s"
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" build-aux/config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" build-aux/config.sub
 # Preserve conda-forge's default codec/filter/threading configuration.
-./configure --prefix="${PREFIX}"
+./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/liblzma-${LIBRARY_VERSION}"
 make -j"${CPU_COUNT}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make check
 fi
 # This seed dependency is the library; test the tools upstream but install
 # only the library/development files in the channel package.
-make -C src/liblzma install
-mkdir -p "${PREFIX}/include/liblzma-${LIBRARY_VERSION}"
-mv "${PREFIX}/include/lzma.h" "${PREFIX}/include/lzma" \
-  "${PREFIX}/include/liblzma-${LIBRARY_VERSION}/"
-sed -i "s|includedir=.*|includedir=\${prefix}/include/liblzma-${LIBRARY_VERSION}|" \
-  "${PREFIX}/lib/pkgconfig/liblzma.pc"
+make -C src/liblzma install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig"
 rm -f "${PREFIX}/lib/liblzma.la"
 # Post-link exception: Autotools/Libtool does not expose separate build and install relative RUNPATH settings.
 # TODO: replace with target-specific upstream install/relink support.

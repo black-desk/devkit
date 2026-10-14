@@ -1,0 +1,92 @@
+TODO: generated files are updated manually alongside their source templates;
+regenerate with upstream Automake 1.18.1 when that generator is available.
+
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/include/libxml/Makefile.am
++++ b/include/libxml/Makefile.am
+@@ -1,6 +1,6 @@
+ ## Process this file with automake to produce Makefile.in
+ 
+-xmlincdir = $(includedir)/libxml2/libxml
++xmlincdir = $(includedir)/libxml
+ 
+ xmlinc_HEADERS = \
+ 		SAX.h \
+--- a/include/libxml/Makefile.in
++++ b/include/libxml/Makefile.in
+@@ -366,7 +366,7 @@
+ top_build_prefix = @top_build_prefix@
+ top_builddir = @top_builddir@
+ top_srcdir = @top_srcdir@
+-xmlincdir = $(includedir)/libxml2/libxml
++xmlincdir = $(includedir)/libxml
+ xmlinc_HEADERS = \
+ 		SAX.h \
+ 		entities.h \
+--- a/libxml-2.0.pc.in
++++ b/libxml-2.0.pc.in
+@@ -1,12 +1,12 @@
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/libxml2-2.15.4
+ modules=@WITH_MODULES@
+ 
+ Name: libXML
+ Version: @VERSION@
+ Description: libXML library version2.
+ Requires@XML_PC_PRIVATE@: @XML_PC_REQUIRES@
+-Libs: @XML_LIBDIR@ @XML_LIBS@ @XML_PC_LIBS_PRIVATE@ @XML_PC_LIBS@ @LIBS@
+-Cflags: @XML_INCLUDEDIR@ @XML_PC_CFLAGS_PRIVATE@ @XML_STATIC_CFLAGS@
++Libs: ${libdir}/libxml2.so @XML_PC_LIBS_PRIVATE@ @XML_PC_LIBS@ @LIBS@
++Cflags: -I${includedir} @XML_PC_CFLAGS_PRIVATE@ @XML_STATIC_CFLAGS@
+--- a/libxml2-config.cmake.in
++++ b/libxml2-config.cmake.in
+@@ -29,12 +29,12 @@
+ set(LIBXML2_VERSION_MICRO  @LIBXML_MICRO_VERSION@)
+ set(LIBXML2_VERSION_STRING "@VERSION@")
+ set(LIBXML2_DEFINITIONS    "@XML_CFLAGS@")
+-set(LIBXML2_INCLUDE_DIR    @INSTALL_INCLUDEDIR@/libxml2)
+-set(LIBXML2_LIBRARY_DIR    @INSTALL_LIBDIR@)
++set(LIBXML2_INCLUDE_DIR    "${CMAKE_CURRENT_LIST_DIR}/../../../include/libxml2-2.15.4")
++set(LIBXML2_LIBRARY_DIR    "${CMAKE_CURRENT_LIST_DIR}/../..")
+ 
+ find_library(LIBXML2_LIBRARY NAMES xml2 HINTS ${LIBXML2_LIBRARY_DIR} NO_DEFAULT_PATH)
+-find_program(LIBXML2_XMLCATALOG_EXECUTABLE NAMES xmlcatalog HINTS @INSTALL_BINDIR@ NO_DEFAULT_PATH)
+-find_program(LIBXML2_XMLLINT_EXECUTABLE NAMES xmllint HINTS @INSTALL_BINDIR@ NO_DEFAULT_PATH)
++find_program(LIBXML2_XMLCATALOG_EXECUTABLE NAMES xmlcatalog HINTS "${CMAKE_CURRENT_LIST_DIR}/../../../../../bin" NO_DEFAULT_PATH)
++find_program(LIBXML2_XMLLINT_EXECUTABLE NAMES xmllint HINTS "${CMAKE_CURRENT_LIST_DIR}/../../../../../bin" NO_DEFAULT_PATH)
+ 
+ set(LIBXML2_LIBRARIES ${LIBXML2_LIBRARY})
+ set(LIBXML2_INCLUDE_DIRS ${LIBXML2_INCLUDE_DIR})
+--- a/xml2-config.in
++++ b/xml2-config.in
+@@ -1,9 +1,9 @@
+ #! /bin/sh
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-includedir=@includedir@
+-libdir=@libdir@
++prefix="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
++exec_prefix=${prefix}
++includedir=${prefix}/lib/devkit/include/libxml2-2.15.4
++libdir=${prefix}/lib/devkit/lib
+ cflags=
+ libs=
+ 
+@@ -40,7 +40,7 @@
+     case "$1" in
+     --prefix=*)
+ 	prefix=$optarg
+-	includedir=$prefix/include
++	includedir=$prefix/lib/devkit/include/libxml2-2.15.4
+ 	libdir=$prefix/lib
+ 	;;
+ 

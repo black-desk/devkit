@@ -8,6 +8,7 @@ source:
   - url: https://github.com/libarchive/libarchive/archive/v${{ version }}.tar.gz
     sha256: 744346f6bca195c8f894f847bb32a16e9bcae6002624a58fadc81e80f595b3cb
     patches:
+      - patches/development-install.patch
       - patches/respect-install-includedir.patch
   - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
@@ -15,7 +16,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

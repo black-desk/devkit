@@ -1,0 +1,23 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -233,7 +233,7 @@
+ cppdap_set_target_options(cppdap)
+ 
+ set(CPPDAP_TARGET_NAME               ${PROJECT_NAME})
+-set(CPPDAP_CONFIG_INSTALL_DIR        "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}" CACHE INTERNAL "")
++set(CPPDAP_CONFIG_INSTALL_DIR        "lib/devkit/lib/cmake/${PROJECT_NAME}" CACHE INTERNAL "")
+ set(CPPDAP_INCLUDE_INSTALL_DIR       "${CMAKE_INSTALL_INCLUDEDIR}")
+ set(CPPDAP_TARGETS_EXPORT_NAME       "${PROJECT_NAME}-targets")
+ set(CPPDAP_CMAKE_CONFIG_TEMPLATE     "cmake/Config.cmake.in")
+@@ -255,7 +255,7 @@
+ install(
+ 	TARGETS                  "${CPPDAP_TARGET_NAME}"
+ 	EXPORT                   "${CPPDAP_TARGETS_EXPORT_NAME}"
+-	ARCHIVE DESTINATION      "${CMAKE_INSTALL_LIBDIR}"
++	ARCHIVE DESTINATION      "lib/devkit/lib"
+ 	LIBRARY DESTINATION      "${CMAKE_INSTALL_LIBDIR}"
+ 	RUNTIME DESTINATION      "${CMAKE_INSTALL_BINDIR}"
+ 	INCLUDES DESTINATION     "${CPPDAP_INCLUDE_INSTALL_DIR}"

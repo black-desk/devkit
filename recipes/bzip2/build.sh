@@ -54,7 +54,9 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make test CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
     CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
 fi
-make install PREFIX="${PREFIX}" CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
+make install PREFIX="${PREFIX}" \
+  INCLUDEDIR="${PREFIX}/lib/devkit/include/bzip2-${LIBRARY_VERSION}" \
+  MANDIR="${PREFIX}/share/man" ARCHIVEDIR="${PREFIX}/lib/devkit/lib" CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
 make -f Makefile-libbz2_so -j"${CPU_COUNT}" CC="${CC}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
@@ -63,10 +65,5 @@ ln -s libbz2.so.1.0 "${PREFIX}/lib/libbz2.so"
 # Exercise the shared-library executable before package relocation.
 ./bzip2-shared -dc sample1.bz2 >shared-result
 cmp sample1.ref shared-result
-mkdir -p "${PREFIX}/include/bzip2-${LIBRARY_VERSION}" "${PREFIX}/share/man"
-mv "${PREFIX}/include/bzlib.h" "${PREFIX}/include/bzip2-${LIBRARY_VERSION}/"
-mv "${PREFIX}/man/"* "${PREFIX}/share/man/"
-rmdir "${PREFIX}/man"
-
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

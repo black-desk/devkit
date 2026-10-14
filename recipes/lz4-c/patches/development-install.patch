@@ -1,0 +1,23 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/lib/liblz4.pc.in
++++ b/lib/liblz4.pc.in
+@@ -2,13 +2,13 @@
+ #   Copyright (C) 2011-2020, Yann Collet.
+ #   BSD 2-Clause License (http://www.opensource.org/licenses/bsd-license.php)
+ 
+-prefix=@PREFIX@
+-libdir=@LIBDIR@
+-includedir=@INCLUDEDIR@
++prefix=${pcfiledir}/../..
++libdir=${prefix}/lib
++includedir=${prefix}/include/lz4-1.10.0
+ 
+ Name: lz4
+ Description: extremely fast lossless compression algorithm library
+ URL: http://www.lz4.org/
+ Version: @VERSION@
+-Libs: -L${libdir} -llz4
++Libs: ${libdir}/liblz4.so
+ Cflags: -I${includedir}

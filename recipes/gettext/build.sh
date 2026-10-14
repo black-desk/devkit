@@ -51,7 +51,7 @@ export CXXFLAGS="${CXXFLAGS} -I${PREFIX}/lib/devkit/include/libiconv-1.18"
 export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/gettext-tools/src/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/intl/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/libasprintf/.libs -Wl,-rpath,${SRC_DIR}/libtextstyle/lib/.libs"
 # Match conda-forge 0.25.1's native tool/library feature configuration.
 # Release scripts and parsers are pre-generated; no autoreconf is required.
-./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/gettext-${LIBRARY_VERSION}" \
+./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/gettext-${LIBRARY_VERSION}" \
   --with-libiconv-prefix="${PREFIX}/lib/devkit" --disable-static --disable-csharp \
   --disable-dependency-tracking --disable-java --disable-native-java \
   --disable-openmp --enable-fast-install --without-emacs
@@ -61,7 +61,7 @@ make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make check
 fi
-make install AM_LDFLAGS=-no-install
+make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" AM_LDFLAGS=-no-install
 rm -f "${PREFIX}/share/info/dir"
 find "${PREFIX}" -name '*.la' -delete
 # Post-link exception: Libtool -no-install is needed by in-tree tools; installed gettext/libtextstyle programs retain build-tree paths.

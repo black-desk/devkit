@@ -35,7 +35,7 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_INSTALL_LIBDIR=lib \
-  -DCMAKE_INSTALL_INCLUDEDIR="include/pcre2-${PCRE2_VERSION}" \
+  -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/pcre2-${PCRE2_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_C_FLAGS="${CFLAGS} -O3" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" \
@@ -61,47 +61,6 @@ cmake --build build --parallel "${CPU_COUNT}"
 ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}"
 cmake --install build
 
-# The source patch keeps upstream's command-line interface while making its
-# flag output relocatable and exact. Keep the generated helper private to this
-# package instead of exposing it as a user command in ${PREFIX}/bin.
-install -d -m 0755 "${PREFIX}/libexec/pcre2/bin"
-mv "${PREFIX}/bin/pcre2-config" \
-  "${PREFIX}/libexec/pcre2/bin/pcre2-config"
-
-for width in 8 16 32; do
-  cat >"${PREFIX}/lib/pkgconfig/libpcre2-${width}.pc" <<EOF
-prefix=\${pcfiledir}/../..
-exec_prefix=\${prefix}
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: libpcre2-${width}
-Description: PCRE2 - Perl compatible regular expressions C library (2nd API) with ${width} bit character support
-Version: ${PCRE2_VERSION}
-License: BSD-3-Clause WITH PCRE2-exception
-Cflags: -I\${includedir}/pcre2-${PCRE2_VERSION}
-Cflags.private: -DPCRE2_STATIC
-Libs: \${libdir}/libpcre2-${width}.so
-Libs.private: -lm
-EOF
-
-done
-
-cat >"${PREFIX}/lib/pkgconfig/libpcre2-posix.pc" <<EOF
-prefix=\${pcfiledir}/../..
-exec_prefix=\${prefix}
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: libpcre2-posix
-Description: Posix compatible interface to libpcre2-8
-Version: ${PCRE2_VERSION}
-License: BSD-3-Clause WITH PCRE2-exception
-Cflags: -I\${includedir}/pcre2-${PCRE2_VERSION}
-Libs: \${libdir}/libpcre2-posix.so
-Requires.private: libpcre2-8
-EOF
-
 cat >"${SRC_DIR}/devkit-consumer.c" <<'EOF'
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
@@ -126,7 +85,7 @@ EOF
 
 "${CC}" \
   ${CFLAGS} ${LDFLAGS} -Wl,-rpath,"${PREFIX}/lib" \
-  -I"${PREFIX}/include/pcre2-${PCRE2_VERSION}" \
+  -I"${PREFIX}/lib/devkit/include/pcre2-${PCRE2_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libpcre2-8.so" \
   -o "${SRC_DIR}/devkit-consumer"

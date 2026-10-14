@@ -1,0 +1,20 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/lib/libxcrypt.pc.in
++++ b/lib/libxcrypt.pc.in
+@@ -2,11 +2,11 @@
+ #####   Pkg-Config file for libxcrypt   #####
+ #############################################
+ 
+-prefix=@prefix@
++prefix=${pcfiledir}/../..
+ exec_prefix=${prefix}
+ 
+-libdir=@libdir@
+-includedir=@includedir@
++libdir=${prefix}/lib
++includedir=${prefix}/include/libxcrypt-4.4.38
+ 
+ Name: @PACKAGE@
+ Version: @VERSION@

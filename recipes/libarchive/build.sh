@@ -52,7 +52,7 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="include/libarchive-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/libarchive-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_C_FLAGS="${CFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
@@ -85,23 +85,7 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}"
 fi
 cmake --install build
-python3 - <<'PY'
-import os
-from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/libarchive.pc'
-lines = p.read_text().splitlines()
-backends = ['z', 'bz2', 'lzma', 'zstd', 'xml2', 'iconv', 'lzo2', 'lz4', 'crypto']
-lines = ['prefix=${pcfiledir}/../..' if x.startswith('prefix=') else
-         'exec_prefix=${prefix}' if x.startswith('exec_prefix=') else
-         'libdir=${prefix}/lib' if x.startswith('libdir=') else
-         'includedir=${prefix}/include/libarchive-' + os.environ['LIBRARY_VERSION']
-         if x.startswith('includedir=') else
-         'Libs: ${libdir}/libarchive.so' if x.startswith('Libs:') else
-         'Libs.private: ' + ' '.join('${libdir}/lib'+n+'.so' for n in backends)
-         if x.startswith('Libs.private:') else x for x in lines]
-p.write_text('\n'.join(lines)+'\n')
-PY
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libarchive-${LIBRARY_VERSION}" \
+"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libarchive-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libarchive.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 ln -s "${PREFIX}/lib" runtime-lib

@@ -103,93 +103,10 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
     TEST_ARGS='op/magic.t op/tie.t ../lib/perl5db.t'
 fi
 
-make install -j"${CPU_COUNT}"
-
-# Perl's build metadata records the compiler and sysroot used during this
-# package build. Replace that absolute build-tool prefix with a runtime marker;
-# Config_heavy.pl resolves the marker relative to the active perl executable.
-config_heavy="${PREFIX}/lib/perl5/${PERL_VERSION}/x86_64-linux-thread-multi/Config_heavy.pl"
-config_pm="${PREFIX}/lib/perl5/${PERL_VERSION}/x86_64-linux-thread-multi/Config.pm"
-test -n "${config_heavy}"
-test -n "${config_pm}"
-test -f "${config_heavy}"
-test -f "${config_pm}"
-
-chmod u+w "${config_heavy}" "${config_pm}"
-
-# Installed XS metadata describes the final channel toolchain, even when this
-# interpreter was bootstrapped with seed Clang and seed GCC development files.
+# The patched upstream installer normalizes only installed Config modules;
+# build-time Config modules keep the bootstrap compiler settings.
 export DEVKIT_FLAGS
-python3 - "${config_heavy}" "${config_pm}" <<'PYCODE'
-import os
-from pathlib import Path
-import sys
-for filename in sys.argv[1:]:
-    path = Path(filename)
-    text = path.read_text().replace(
-        os.environ["DEVKIT_FLAGS"],
-        "--no-default-config --config=" + os.environ["BUILD_PREFIX"] + "/share/devkit/clang.cfg",
-    )
-    text = text.replace("/bin/clang-23", "/bin/clang")
-    text = text.replace("x86_64-conda-linux-gnu/sysroot", "x86_64-pc-linux-gnu/sysroot")
-    path.write_text(text)
-PYCODE
-sed -i "s|${BUILD_PREFIX}|__PERL_BUILD_PREFIX__|g" "${config_heavy}" "${config_pm}"
-
-python3 - "${config_heavy}" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-needle = "my $summary_expanded;\n"
-insert = """my $summary_expanded;
-
-use Cwd qw(abs_path);
-use File::Basename;
-my $perl_build_prefix = dirname(dirname(abs_path($^X)));
-"""
-if needle not in text:
-    raise SystemExit("Config_heavy.pl insertion point not found")
-text = text.replace(needle, insert, 1)
-needle = "my $i = ord(8);\n"
-insert = """$_ =~ s/__PERL_BUILD_PREFIX__/$perl_build_prefix/g;
-my $i = ord(8);
-"""
-if needle not in text:
-    raise SystemExit("Config_heavy.pl replacement point not found")
-text = text.replace(needle, insert, 1)
-path.write_text(text)
-PY
-
-python3 - "${config_pm}" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-text = path.read_text()
-needle = "sub FETCH {\n"
-insert = """use Cwd qw(abs_path);
-use File::Basename;
-my $perl_build_prefix = dirname(dirname(abs_path($^X)));
-
-sub FETCH {
-"""
-if needle not in text:
-    raise SystemExit("Config.pm insertion point not found")
-text = text.replace(needle, insert, 1)
-text = text.replace(
-    "cc => '__PERL_BUILD_PREFIX__/bin/clang'",
-    "cc => $perl_build_prefix . '/bin/clang'",
-)
-text = text.replace(
-    "libpth => '__PERL_BUILD_PREFIX__/lib "
-    "__PERL_BUILD_PREFIX__/x86_64-pc-linux-gnu/sysroot/lib64'",
-    "libpth => $perl_build_prefix . '/lib ' . "
-    "$perl_build_prefix . '/x86_64-pc-linux-gnu/sysroot/lib64'",
-)
-path.write_text(text)
-PY
+DEVKIT_INSTALL_CONFIG=1 make install -j"${CPU_COUNT}"
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
 # Post-link exception: Perl applies one lddlflags value to XS modules installed at different depths; its relocatable-inc support does not compute per-module RUNPATH.

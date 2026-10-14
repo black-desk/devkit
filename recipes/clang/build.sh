@@ -27,6 +27,8 @@ cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
   '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_INSTALL_INCLUDEDIR=lib/devkit/include \
+  -DCMAKE_INSTALL_PACKAGEDIR=lib/devkit/lib/cmake \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \

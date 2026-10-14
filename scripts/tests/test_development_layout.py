@@ -70,6 +70,20 @@ class DevelopmentLayoutTests(unittest.TestCase):
             "prefix=${pcfiledir}/../..", (dev / "lib/pkgconfig/foo.pc").read_text()
         )
 
+    def test_native_installed_metadata_and_helpers_remain_untouched(self):
+        dev = self.prefix / "lib/devkit"
+        (dev / "lib/pkgconfig").mkdir(parents=True)
+        pc = dev / "lib/pkgconfig/native.pc"
+        metadata = "prefix=${pcfiledir}/../..\nlibdir=${prefix}/lib\n"
+        pc.write_text(metadata)
+        (self.prefix / "bin").mkdir()
+        helper = self.prefix / "bin/ncurses6-config"
+        content = f'libdir="{dev}/lib"\n' f'RPATH_LIST="{self.prefix}/lib"\n'
+        helper.write_text(content)
+        self.stage()
+        self.assertEqual(pc.read_text(), metadata)
+        self.assertEqual(helper.read_text(), content)
+
     def test_inputs_remain_untouched(self):
         (self.prefix / "conda-meta").mkdir()
         owned = [

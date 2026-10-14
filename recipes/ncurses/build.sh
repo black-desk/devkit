@@ -46,9 +46,9 @@ cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
 for mode in narrow wide; do
   wide_option=--disable-widec
   [[ "$mode" == narrow ]] || wide_option=--enable-widec
-  ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include" \
+  ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/ncurses-${LIBRARY_VERSION}" \
     --without-debug --without-ada --with-shared \
-    --with-pkg-config --with-pkg-config-libdir="${PREFIX}/lib/pkgconfig" \
+    --with-pkg-config --with-pkg-config-libdir="${PREFIX}/lib/devkit/lib/pkgconfig" \
     --disable-overwrite --enable-symlinks --enable-termcap --enable-pc-files \
     --with-termlib --with-versioned-syms --disable-mixed-case \
     --enable-relative-terminfo "${wide_option}"
@@ -56,47 +56,6 @@ for mode in narrow wide; do
   make install
   make distclean
 done
-# Upstream only preserves separate ncurses/ncursesw header trees when the
-# configured include directory ends in /include. A versioned --includedir
-# flattens both trees and rewrites internal includes to the version basename.
-# Install using the upstream layout, then isolate both trees together.
-mkdir -p "${PREFIX}/include/ncurses-${LIBRARY_VERSION}"
-for headers in ncurses ncursesw; do
-  mv "${PREFIX}/include/${headers}" "${PREFIX}/include/ncurses-${LIBRARY_VERSION}/"
-done
-# Normalize generated consumer metadata, without leaking seed compiler flags.
-python3 - <<'PY'
-import os
-import re
-from pathlib import Path
-prefix = Path(os.environ['PREFIX'])
-version = os.environ['LIBRARY_VERSION']
-for path in (prefix / 'lib/pkgconfig').glob('*.pc'):
-    lines = []
-    for line in path.read_text().splitlines():
-        if line.startswith('Libs:'):
-            libraries = [flag for flag in line.split()[1:]
-                         if flag.startswith('-l') and flag != '-lgcc_s']
-            line = 'Libs: -L${libdir} ' + ' '.join(libraries)
-        elif line.startswith('Cflags:'):
-            definitions = [flag for flag in line.split()[1:] if flag.startswith('-D')]
-            line = ('Cflags: ' + ' '.join(definitions)
-                    + ' -I${includedir} -I${prefix}/include/ncurses-' + version)
-        elif line.startswith('includedir='):
-            if '/include/ncurses-' + version not in line:
-                line = line.replace('/include', '/include/ncurses-' + version)
-        lines.append(line)
-    path.write_text('\n'.join(lines) + '\n')
-for path in (prefix / 'bin').glob('ncurses*6-config'):
-    lines = []
-    text = re.sub(r'(\$\{prefix\}|\$prefix)/include(?!/ncurses-' + re.escape(version) + r')',
-                  r'\1/include/ncurses-' + version, path.read_text())
-    for line in text.splitlines():
-        if line.startswith('for opt in '):
-            line = 'for opt in -L$libdir $LIBS'
-        lines.append(line)
-    path.write_text('\n'.join(lines) + '\n')
-PY
 # Post-link exception: narrow/wide builds install utilities and libraries with
 # shared link flags; retain per-file paths until native install relinking is set.
 # TODO: configure upstream target-specific install RUNPATH.

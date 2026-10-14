@@ -1,0 +1,26 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/libpsl.pc.in
++++ b/libpsl.pc.in
+@@ -1,7 +1,7 @@
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/libpsl-0.23.1
+ 
+ Name: @PACKAGE_NAME@
+ Description: Public Suffix List C library.
+@@ -9,7 +9,7 @@
+ URL: @PACKAGE_URL@
+ Requires: @libpsl_pc_Requires@
+ Requires.private: @libpsl_pc_Requires_private@
+-Libs: -L${libdir} -lpsl @libpsl_pc_Libs@
++Libs: ${libdir}/libpsl.so
+ Libs.private: @libpsl_pc_Libs_private@
+ Cflags: -I${includedir} @libpsl_pc_Cflags@
+ @libpsl_pc_Cflags_private@

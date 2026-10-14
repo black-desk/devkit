@@ -11,6 +11,7 @@ source:
   - url: https://www.cpan.org/src/5.0/perl-${{ version }}.tar.xz
     sha256: 505cf43912e9480495c344c70260452e32aa2a73c546a026b3f100053b23ce91
     patches:
+      - patches/development-install.patch
       - patches/deterministic-remote-debugger-port.patch
 
   - path: ../../scripts/packaging/finalize-elf.py
@@ -19,7 +20,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -69,6 +70,10 @@ tests:
       - perl -e 'die "crypt unavailable" unless crypt("devkit", q{$6$devkit$}) =~ /^\$6\$devkit\$/;'
       - readelf -d "${PREFIX}/bin/perl" | grep -F '[libcrypt.so.2]'
       - perl -Mstrict -Mwarnings -e 'print "core-modules-ok\n"'
+      - >-
+        perl -MConfig -e 'for my $key (qw(cc libpth sysroot ccflags ldflags)) {
+        die "unresolved build prefix in $key" if
+        $Config{$key} =~ /__PERL_BUILD_PREFIX__/; }'
       - >-
         perl -MPOSIX -MSocket -MStorable -MTest::More -e 'print
         "dynamic-modules-ok\n"'

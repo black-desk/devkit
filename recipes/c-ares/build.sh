@@ -42,7 +42,7 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="include/c-ares-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/c-ares-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_C_FLAGS="${CFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
@@ -50,19 +50,7 @@ cmake -S . -B build -G Ninja \
   -DCARES_SHARED=ON -DCARES_STATIC=ON -DCARES_STATIC_PIC=ON -DCARES_THREADS=ON
 cmake --build build --parallel "${CPU_COUNT}"
 cmake --install build
-python3 - <<'PY'
-import os
-from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/libcares.pc'
-lines = p.read_text().splitlines()
-lines = ['prefix=${pcfiledir}/../..' if x.startswith('prefix=') else
-         'exec_prefix=${prefix}' if x.startswith('exec_prefix=') else
-         'libdir=${prefix}/lib' if x.startswith('libdir=') else
-         'includedir=${prefix}/include/c-ares-' + os.environ['LIBRARY_VERSION']
-         if x.startswith('includedir=') else x for x in lines]
-p.write_text(('\n'.join(lines) + '\n').replace('-L${libdir} -lcares', '${libdir}/libcares.so'))
-PY
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/c-ares-${LIBRARY_VERSION}" \
+"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/c-ares-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libcares.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 mkdir runtime-lib

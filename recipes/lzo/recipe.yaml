@@ -7,13 +7,15 @@ package:
 source:
   - url: https://www.oberhumer.com/opensource/lzo/download/lzo-${{ version }}.tar.gz
     sha256: c0f892943208266f9b6543b3ae308fab6284c5c90e627931446fb49b4221a072
+    patches:
+      - patches/development-install.patch
   - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

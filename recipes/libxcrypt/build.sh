@@ -49,16 +49,16 @@ export PERL="${BUILD_PREFIX}/bin/perl"
 test -x "${PERL}"
 # Match conda-forge's main libxcrypt output; libcrypt.so.1 is a separate ABI.
 ./configure --prefix="${PREFIX}" \
-  --includedir="${PREFIX}/include/libxcrypt-${LIBRARY_VERSION}" \
+  --includedir="${PREFIX}/lib/devkit/include/libxcrypt-${LIBRARY_VERSION}" \
   --disable-static --enable-hashes=strong,glibc \
   --enable-obsolete-api=no --disable-failure-tokens
 make -j"${CPU_COUNT}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make check -j"${CPU_COUNT}"
 fi
-make install -j"${CPU_COUNT}"
+make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" -j"${CPU_COUNT}"
 rm -f "${PREFIX}/lib/libcrypt.la"
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libxcrypt-${LIBRARY_VERSION}" \
+"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libxcrypt-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libcrypt.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 ln -s "${PREFIX}/lib" runtime-lib

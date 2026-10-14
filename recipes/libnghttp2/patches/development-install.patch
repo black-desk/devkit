@@ -1,0 +1,25 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/lib/libnghttp2.pc.in
++++ b/lib/libnghttp2.pc.in
+@@ -20,14 +20,14 @@
+ # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/libnghttp2-1.68.1
+ 
+ Name: libnghttp2
+ Description: HTTP/2 C library
+ URL: https://github.com/tatsuhiro-t/nghttp2
+ Version: @VERSION@
+-Libs: -L${libdir} -lnghttp2
++Libs: ${libdir}/libnghttp2.so
+ Cflags: -I${includedir}

@@ -1,0 +1,69 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -172,16 +172,16 @@
+         "pkg-config/jsoncpp.pc"
+         @ONLY)
+     install(FILES "${CMAKE_CURRENT_BINARY_DIR}/pkg-config/jsoncpp.pc"
+-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
++        DESTINATION "lib/devkit/lib/pkgconfig")
+ endif()
+ 
+ if(JSONCPP_WITH_CMAKE_PACKAGE)
+     include(CMakePackageConfigHelpers)
+     install(EXPORT jsoncpp
+-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jsoncpp
++        DESTINATION lib/devkit/lib/cmake/jsoncpp
+         FILE        jsoncpp-targets.cmake)
+     configure_package_config_file(jsoncppConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/jsoncppConfig.cmake
+-        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jsoncpp)
++        INSTALL_DESTINATION lib/devkit/lib/cmake/jsoncpp)
+ 
+     write_basic_package_version_file("${CMAKE_CURRENT_BINARY_DIR}/jsoncppConfigVersion.cmake"
+         VERSION ${PROJECT_VERSION}
+@@ -189,7 +189,7 @@
+     install(FILES
+         ${CMAKE_CURRENT_BINARY_DIR}/jsoncppConfigVersion.cmake ${CMAKE_CURRENT_BINARY_DIR}/jsoncppConfig.cmake
+         ${CMAKE_CURRENT_SOURCE_DIR}/jsoncpp-namespaced-targets.cmake
+-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/jsoncpp)
++        DESTINATION lib/devkit/lib/cmake/jsoncpp)
+ endif()
+ 
+ if(JSONCPP_WITH_TESTS)
+--- a/pkg-config/jsoncpp.pc.in
++++ b/pkg-config/jsoncpp.pc.in
+@@ -1,11 +1,11 @@
+-prefix=@CMAKE_INSTALL_PREFIX@
+-exec_prefix=@CMAKE_INSTALL_PREFIX@
+-libdir=@libdir_for_pc_file@
+-includedir=@includedir_for_pc_file@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/jsoncpp-1.9.8
+ 
+ Name: jsoncpp
+ Description: A C++ library for interacting with JSON
+ Version: @PROJECT_VERSION@
+ URL: https://github.com/open-source-parsers/jsoncpp
+-Libs: -L${libdir} -ljsoncpp
++Libs: ${libdir}/libjsoncpp.so
+ Cflags: -I${includedir}
+--- a/src/lib_json/CMakeLists.txt
++++ b/src/lib_json/CMakeLists.txt
+@@ -200,8 +200,8 @@
+ install(TARGETS ${CMAKE_TARGETS} ${INSTALL_EXPORT}
+     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-    OBJECTS DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-)
+-
+-endif()
++    ARCHIVE DESTINATION "lib/devkit/lib"
++    OBJECTS DESTINATION lib/devkit/lib
++)
++
++endif()

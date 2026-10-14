@@ -1,0 +1,80 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -779,17 +779,17 @@
+ install(FILES LICENSE DESTINATION ${CMAKE_INSTALL_DOCDIR})
+ install(FILES LICENSE-extra DESTINATION ${CMAKE_INSTALL_DOCDIR})
+ install(FILES ${PROJECT_BINARY_DIR}/libuv-static.pc
+-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
++        DESTINATION lib/devkit/lib/pkgconfig)
+ install(TARGETS uv_a EXPORT libuvConfig
+-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++        ARCHIVE DESTINATION "lib/devkit/lib")
+ install(EXPORT libuvConfig
+-	DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv
++	DESTINATION lib/devkit/lib/cmake/libuv
+ 	NAMESPACE libuv::)
+ write_basic_package_version_file(libuvConfigVersion.cmake
+                                  VERSION ${PACKAGE_VERSION}
+                                  COMPATIBILITY SameMajorVersion)
+ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/libuvConfigVersion.cmake
+-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/libuv)
++        DESTINATION lib/devkit/lib/cmake/libuv)
+ 
+ if(LIBUV_BUILD_SHARED)
+   # The version in the filename is mirroring the behaviour of autotools.
+@@ -798,11 +798,11 @@
+           SOVERSION ${UV_VERSION_MAJOR})
+   configure_file(libuv.pc.in libuv.pc @ONLY)
+   install(FILES ${PROJECT_BINARY_DIR}/libuv.pc
+-          DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
++          DESTINATION lib/devkit/lib/pkgconfig)
+   install(TARGETS uv EXPORT libuvConfig
+           RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++          ARCHIVE DESTINATION "lib/devkit/lib")
+ endif()
+ 
+ if(MSVC)
+--- a/libuv-static.pc.in
++++ b/libuv-static.pc.in
+@@ -1,12 +1,12 @@
+-prefix=@prefix@
++prefix=${pcfiledir}/../..
+ exec_prefix=${prefix}
+-libdir=@libdir@
+-includedir=@includedir@
++libdir=${prefix}/lib
++includedir=${prefix}/include/libuv-1.52.1
+ 
+ Name: libuv-static
+ Version: @PACKAGE_VERSION@
+ Description: multi-platform support library with a focus on asynchronous I/O.
+ URL: http://libuv.org/
+ 
+-Libs: -L${libdir} -l:libuv.a @LIBS@
++Libs: ${libdir}/libuv.a
+ Cflags: -I${includedir}
+--- a/libuv.pc.in
++++ b/libuv.pc.in
+@@ -1,7 +1,7 @@
+-prefix=@prefix@
++prefix=${pcfiledir}/../..
+ exec_prefix=${prefix}
+-libdir=@libdir@
+-includedir=@includedir@
++libdir=${prefix}/lib
++includedir=${prefix}/include/libuv-1.52.1
+ LIBUV_STATIC=-L${libdir} -l:libuv.a @LIBS@
+ 
+ Name: libuv
+@@ -9,5 +9,5 @@
+ Description: multi-platform support library with a focus on asynchronous I/O.
+ URL: http://libuv.org/
+ 
+-Libs: -L${libdir} -luv @LIBS@
++Libs: ${libdir}/libuv.so
+ Cflags: -I${includedir}

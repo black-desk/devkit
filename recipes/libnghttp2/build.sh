@@ -62,27 +62,15 @@ export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-
 # Preserve the seed's native applications and dependencies. Release scripts
 # are pre-generated; Python bindings are absent from this upstream version.
 ./configure --prefix="${PREFIX}" \
-  --includedir="${PREFIX}/include/libnghttp2-${LIBRARY_VERSION}" \
+  --includedir="${PREFIX}/lib/devkit/include/libnghttp2-${LIBRARY_VERSION}" \
   --disable-static --enable-app --with-zlib --with-openssl --with-libev --with-libcares
 make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make check AM_LDFLAGS=-no-install
 fi
-make install AM_LDFLAGS=-no-install
+make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" AM_LDFLAGS=-no-install
 find "${PREFIX}" -name '*.la' -delete
-python3 - <<'PY'
-import os
-from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/libnghttp2.pc'
-lines = p.read_text().splitlines()
-lines = ['prefix=${pcfiledir}/../..' if x.startswith('prefix=') else
-         'exec_prefix=${prefix}' if x.startswith('exec_prefix=') else
-         'libdir=${prefix}/lib' if x.startswith('libdir=') else
-         'includedir=${prefix}/include/libnghttp2-' + os.environ['LIBRARY_VERSION']
-         if x.startswith('includedir=') else x for x in lines]
-p.write_text(('\n'.join(lines) + '\n').replace('-L${libdir} -lnghttp2', '${libdir}/libnghttp2.so'))
-PY
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libnghttp2-${LIBRARY_VERSION}" \
+"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libnghttp2-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libnghttp2.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 mkdir runtime-lib

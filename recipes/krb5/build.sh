@@ -45,13 +45,13 @@ cd src
 # MIT's official release includes configure; unlike the Git snapshot used by
 # forge, it does not require autoreconf. Keep forge's native feature baseline.
 # Explicit NLS makes a missing msgfmt an error instead of silently dropping it.
-./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/krb5-${LIBRARY_VERSION}" \
+./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/krb5-${LIBRARY_VERSION}" \
   --without-tcl --without-readline --with-libedit --with-crypto-impl=openssl \
   --with-keyutils=yes --without-system-verto --enable-nls
 make -j"${CPU_COUNT}"
-make install
+make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig"
 cd ..
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/krb5-${LIBRARY_VERSION}" \
+"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/krb5-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libkrb5.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 mkdir runtime-lib
