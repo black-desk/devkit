@@ -82,17 +82,26 @@ outputs:
           recipe:
             - tests/runtime.c
 
-  # Dirty and seed share the channel list for BOTH build and host solves.
-  # Separate prefixes do not keep build tools' transitive dependencies in seed:
-  # seed clang-23 can select dirty libxml2, which pulls in llvm-libgcc; rebuilt
-  # ninja also pulls in llvm-libgcc. Seed clang/libstdcxx still require libgcc,
-  # so without this meta both GNU libgcc and llvm-libgcc would install the same
-  # lib/libgcc_s.so.1 into BUILD_PREFIX. This empty package satisfies the seed
-  # libstdcxx exact version/build pin while llvm-libgcc supplies the actual files.
-  # Thus seed tools in that mixed environment also run against LLVM-libgcc;
-  # this is compatibility substitution, not isolation of their GNU runtime.
-  # Copy version, build string and build number from seed libgcc metadata.
-  # The skip condition below limits this output to dirty; result omits it.
+  # Seed -> dirty bootstrap: dirty Clang must link against our LLVM-libgcc,
+  # while seed tools still declare GNU libgcc/libstdcxx runtime dependencies.
+  # Rattler-build uses the SAME channel list for build and host solves; it has
+  # no separate build-only seed channel setting. Separate prefixes therefore
+  # do not guarantee seed-only tool dependencies: seed clang-23 can select dirty
+  # libxml2 transitively, and rebuilt ninja also brings in llvm-libgcc.
+  # GNU libgcc and llvm-libgcc both own lib/libgcc_s.so.1, so they cannot safely
+  # coexist in one prefix. This file-free libgcc meta satisfies the GNU package
+  # dependency while depending on llvm-libgcc, which supplies the actual files.
+  # Seed libstdcxx pins libgcc's VERSION AND BUILD STRING exactly; copy those
+  # fields (and build number) from seed metadata via seed-libgcc-variant.py.
+  # Seed tools in this mixed environment consequently also use LLVM-libgcc;
+  # this substitutes the runtime rather than isolating the original GNU one.
+  # Compatibility is not complete: six quad-precision functions lack the
+  # GCC_4.3.0 symbol versions required by seed libstdcxx. The dirty-only
+  # --allow-shlib-undefined workaround in build.sh relaxes LLD's check; it
+  # does not supply the missing symbol versions or guarantee full ABI parity.
+  # The skip condition below omits this meta from result/selfhost outputs.
+  # See docs/clang-bootstrap.md: "Why separate prefixes do not replace the
+  # dirty libgcc meta" for the dependency-source and compatibility rationale.
   # TODO: Remove when a supported solve policy keeps the entire build-tool
   # dependency closure in seed while allowing dirty libraries in the host prefix.
   - package:
