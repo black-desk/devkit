@@ -60,7 +60,7 @@ tests:
       - ln -s "${PREFIX}/lib" runtime-lib
       - readelf -d "${PREFIX}/lib/libc++.so.1" | grep -F '(RUNPATH)'
       - readelf -d "${PREFIX}/lib/libc++abi.so.1" | grep -F '(RUNPATH)'
-      - env -u LD_LIBRARY_PATH -u LD_PRELOAD ./libcxx-probe "${PREFIX}"
+      - ./libcxx-probe "${PREFIX}"
     files:
       source:
         - libcxx-probe

@@ -1408,5 +1408,20 @@ mixed environment therefore use LLVM-libgcc too. Removing the meta requires a
 supported way to keep the complete build-tool dependency closure in seed, not
 just separate build/host prefixes or a seed pin on Clang itself.
 
+The dirty Clang is intentionally linked against channel LLVM-libgcc. The
+metadata-only `libgcc` output prevents seed GNU libgcc from being installed
+alongside it in a mixed prefix; it owns no runtime files and depends on the
+matching llvm-libgcc output. `scripts/seed-libgcc-variant.py` copies the seed
+libgcc version, build string and build number, because seed libstdcxx requires
+an exact version/build identity. The recipe omits this meta from result and
+selfhost outputs.
+
+This is a compatibility substitution, not a claim of complete binary
+compatibility. Six quad-precision functions lack the `GCC_4.3.0` symbol versions
+required by seed libstdcxx. The dirty-only `--allow-shlib-undefined` option in
+`recipes/llvm-libgcc/build.sh` relaxes LLD's shared-library check; it neither adds
+those versions nor guarantees full ABI parity. The rationale is also recorded
+immediately above the meta output in `recipes/llvm-libgcc/recipe.yaml`.
+
 The installed LLVM runtime probe is compiled in the recipe test environment
 using channel Clang, rather than passed from the build environment.
