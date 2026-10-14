@@ -385,19 +385,20 @@ provide a relative `x86_64-conda-linux-gnu` compatibility symlink for seed
 compilers. Deferred consumer tests use the canonical path in every stage;
 otherwise a dirty-stage compiler would refer to a sysroot absent from its
 completed channel. The alias contains no additional glibc copy. Inside the
-sysroot, preserve the Rocky RPM paths under `/usr`, including `/usr/lib64`
-for runtime libraries, linker scripts, static libraries and startup objects.
-For root directories absent from these RPMs, recreate Rocky's relative
-`bin`, `sbin`, `lib` and `lib64` links into `/usr`, normally supplied by its
-filesystem RPM. Preserve directories actually present in the inputs, including
-`/sbin` containing `ldconfig`. In particular, `/lib64 -> usr/lib64`
-resolves the original glibc linker-script paths. Do not merge the RPM contents
-into a different directory to imitate conda-forge's sysroot layout. This does
-not change the channel's own `<prefix>/lib` layout. Upstream conda-forge
-reverses the `/lib64` symlink and merges library directories to work around
+sysroot, preserve the Rocky RPM paths under `/usr`, including `/usr/lib64` for
+runtime libraries, linker scripts, static libraries and startup objects. For
+root directories absent from these RPMs, recreate Rocky's relative `bin`,
+`sbin`, `lib` and `lib64` links into `/usr`, normally supplied by its filesystem
+RPM. Preserve directories actually present in the inputs, including `/sbin`
+containing `ldconfig`. In particular, `/lib64 -> usr/lib64` resolves the
+original glibc linker-script paths. Do not merge the RPM contents into a
+different directory to imitate conda-forge's sysroot layout. This does not
+change the channel's own `<prefix>/lib` layout. Upstream conda-forge reverses
+the `/lib64` symlink and merges library directories to work around
 [conda-build prefix detection](https://github.com/conda/conda-build/issues/5853);
 we use rattler-build and have verified native-layout Clang/LLD C and libc++
-consumer links locally. Full bootstrap validation of this layout remains pending.
+consumer links locally. Full bootstrap validation of this layout remains
+pending.
 
 Retain conda-forge's removal of legacy glibc `libnsl` and `rpcsvc/yp*` headers:
 [the upstream compatibility report](https://github.com/conda-forge/rasterio-feedstock/issues/220)

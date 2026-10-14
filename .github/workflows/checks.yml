@@ -24,6 +24,9 @@ jobs:
     steps:
       - name: Run shared repository checks
         uses: black-desk/workflows/generic@master
+        env:
+          # Unified patches preserve upstream context whitespace verbatim.
+          CLEAN_IGNORE: "*.patch"
 
   format:
     name: Format checks
