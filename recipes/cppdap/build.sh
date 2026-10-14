@@ -58,7 +58,7 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="include/cppdap-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/cppdap-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_C_FLAGS="${CFLAGS}" -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
@@ -76,7 +76,7 @@ cmake --install build
 cmake -S . -B static-build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="include/cppdap-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/cppdap-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_C_FLAGS="${CFLAGS}" -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
@@ -85,7 +85,7 @@ cmake -S . -B static-build -G Ninja \
 cmake --build static-build --parallel "${CPU_COUNT}"
 # Preserve the installed shared target; expose static explicitly as an archive.
 install -m644 static-build/libcppdap.a "${PREFIX}/lib/libcppdap.a"
-"${CXX}" ${CXXFLAGS} ${LDFLAGS} -I"${PREFIX}/include/cppdap-${LIBRARY_VERSION}" \
+"${CXX}" ${CXXFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/cppdap-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.cpp" "${PREFIX}/lib/libcppdap.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 ln -s "${PREFIX}/lib" runtime-lib

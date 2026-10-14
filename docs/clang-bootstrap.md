@@ -1419,9 +1419,25 @@ selfhost outputs.
 This is a compatibility substitution, not a claim of complete binary
 compatibility. Six quad-precision functions lack the `GCC_4.3.0` symbol versions
 required by seed libstdcxx. The dirty-only `--allow-shlib-undefined` option in
-`recipes/llvm-libgcc/build.sh` relaxes LLD's shared-library check; it neither adds
-those versions nor guarantees full ABI parity. The rationale is also recorded
-immediately above the meta output in `recipes/llvm-libgcc/recipe.yaml`.
+`recipes/llvm-libgcc/build.sh` relaxes LLD's shared-library check; it neither
+adds those versions nor guarantees full ABI parity. The rationale is also
+recorded immediately above the meta output in `recipes/llvm-libgcc/recipe.yaml`.
 
 The installed LLVM runtime probe is compiled in the recipe test environment
 using channel Clang, rather than passed from the build environment.
+
+The libcxx runtime probe is likewise compiled during installed-package tests,
+using channel Clang and its explicit configuration. It links the installed
+libc++, libc++abi and LLVM-libgcc and uses the test prefix's library directory
+as RUNPATH; no build-stage probe or runtime-lib symlink is carried into tests.
+
+## Native development installation
+
+The repository-wide review moves versioned header and metadata installation into
+upstream build options and source templates. See
+[native-install-audit.md](native-install-audit.md) for all recipe treatments and
+validation scope. ICU generates a separate installed pkgdata configuration; Perl
+normalizes installed XS Config modules inside installperl, preserving its
+build-time modules. Remaining staging handles runtime aliases and installers
+that share one libdir for both shared and static libraries. This does not change
+stage dependency selection or the dirty-only libgcc compatibility output.

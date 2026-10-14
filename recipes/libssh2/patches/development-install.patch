@@ -1,0 +1,80 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/libssh2.pc.in
++++ b/libssh2.pc.in
+@@ -5,10 +5,10 @@
+ # SPDX-License-Identifier: BSD-3-Clause
+ ###########################################################################
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/libssh2-1.11.1
+ 
+ Name: libssh2
+ URL: https://libssh2.org/
+@@ -16,6 +16,6 @@
+ Version: @LIBSSH2_VERSION@
+ Requires: @LIBSSH2_PC_REQUIRES@
+ Requires.private: @LIBSSH2_PC_REQUIRES_PRIVATE@
+-Libs: -L${libdir} -lssh2 @LIBSSH2_PC_LIBS@
++Libs: ${libdir}/libssh2.so @LIBSSH2_PC_LIBS@
+ Libs.private: @LIBSSH2_PC_LIBS_PRIVATE@
+ Cflags: -I${includedir}
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -163,14 +163,14 @@
+     EXPORT "${PROJECT_NAME}-targets"
+     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    ARCHIVE DESTINATION "lib/devkit/lib")
+ endif()
+ if(BUILD_SHARED_LIBS)
+   install(TARGETS ${LIB_SHARED}
+     EXPORT "${PROJECT_NAME}-targets"
+     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++    ARCHIVE DESTINATION "lib/devkit/lib")
+ 
+   list(APPEND _RUNTIME_DEPENDENCIES $<TARGET_FILE:${LIB_SHARED}>)
+ endif()
+@@ -183,7 +183,7 @@
+ ## During package installation, install libssh2-targets.cmake
+ install(EXPORT "${PROJECT_NAME}-targets"
+   NAMESPACE "${PROJECT_NAME}::"
+-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
++  DESTINATION "lib/devkit/lib/cmake/${PROJECT_NAME}")
+ 
+ ## During build, register directly from build tree
+ # create libssh2-targets.cmake
+@@ -198,7 +198,7 @@
+     "${PROJECT_SOURCE_DIR}/cmake/FindLibgcrypt.cmake"
+     "${PROJECT_SOURCE_DIR}/cmake/FindMbedTLS.cmake"
+     "${PROJECT_SOURCE_DIR}/cmake/FindWolfSSL.cmake"
+-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
++  DESTINATION "lib/devkit/lib/cmake/${PROJECT_NAME}")
+ 
+ # Calculate variables for pkg-config
+ set(LIBSSH2_PC_LIBS_PRIVATE "")
+@@ -327,7 +327,7 @@
+ configure_file("${PROJECT_SOURCE_DIR}/libssh2.pc.in" "libssh2.pc" @ONLY)
+ install(
+   FILES "${CMAKE_CURRENT_BINARY_DIR}/libssh2.pc"
+-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
++  DESTINATION "lib/devkit/lib/pkgconfig")
+ 
+ #
+ 
+@@ -338,4 +338,4 @@
+   COMPATIBILITY SameMajorVersion)
+ install(
+   FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake"
+-  DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
++  DESTINATION "lib/devkit/lib/cmake/${PROJECT_NAME}")

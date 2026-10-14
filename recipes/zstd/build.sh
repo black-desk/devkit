@@ -53,7 +53,7 @@ cmake -S build/cmake -B devkit-build-tree -G Ninja \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
   -DCMAKE_INSTALL_LIBDIR=lib \
-  -DCMAKE_INSTALL_INCLUDEDIR="include/zstd-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/zstd-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_C_FLAGS="${CFLAGS}" -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
@@ -78,8 +78,6 @@ cmake --install devkit-build-tree
 make -C contrib/pzstd -j"${CPU_COUNT}" \
   LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN/../lib'" all
 install -m 0755 contrib/pzstd/pzstd "${PREFIX}/bin/pzstd"
-sed -i "s|includedir=.*|includedir=\${prefix}/include/zstd-${LIBRARY_VERSION}|; s|Libs:.*|Libs: \${libdir}/libzstd.so|" \
-  "${PREFIX}/lib/pkgconfig/libzstd.pc"
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

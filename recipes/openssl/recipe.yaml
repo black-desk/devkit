@@ -10,6 +10,8 @@ package:
 source:
   - url: https://github.com/openssl/openssl/releases/download/openssl-${{ version }}/openssl-${{ version }}.tar.gz
     sha256: 603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
+    patches:
+      - patches/development-install.patch
 
   - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
@@ -19,7 +21,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

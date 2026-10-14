@@ -68,6 +68,7 @@ cmake -S "${SRC_DIR}/llvm-libgcc" -B build -G Ninja \
   -DCOMPILER_RT_BUILD_PROFILE=OFF \
   -DCOMPILER_RT_BUILD_ORC=OFF \
   -DCOMPILER_RT_INCLUDE_TESTS=OFF \
+  -DLIBUNWIND_INSTALL_INCLUDE_DIR="lib/devkit/include/libunwind-23.1.3" \
   -DLIBUNWIND_INCLUDE_TESTS=OFF
 
 cmake --build build --target llvm-libgcc crt --parallel "${CPU_COUNT}"
@@ -75,11 +76,7 @@ cmake --install build --component llvm-libgcc
 cmake --install build --component clang_rt.crtbegin-x86_64
 cmake --install build --component clang_rt.crtend-x86_64
 cmake --install build --component unwind-headers
-mkdir -p "${PREFIX}/include/libunwind-23.1.3" "${PREFIX}/lib/devkit/lib/llvm-runtime"
-for header in "${PREFIX}"/include/*; do
-  [[ "${header}" == "${PREFIX}/include/libunwind-23.1.3" ]] && continue
-  mv "${header}" "${PREFIX}/include/libunwind-23.1.3/"
-done
+mkdir -p "${PREFIX}/lib/devkit/lib/llvm-runtime"
 for library in libgcc.a libgcc_eh.a libgcc_s.so libunwind.so libunwind.a; do
   ln -s "../${library}" "${PREFIX}/lib/devkit/lib/llvm-runtime/${library}"
 done

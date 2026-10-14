@@ -1,0 +1,56 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -123,7 +123,7 @@
+ 	RUNTIME DESTINATION  ${CMAKE_INSTALL_BINDIR}
+ 	BUNDLE DESTINATION   ${CMAKE_INSTALL_BINDIR}
+ 	LIBRARY DESTINATION  ${CMAKE_INSTALL_LIBDIR}
+-	ARCHIVE DESTINATION  ${CMAKE_INSTALL_LIBDIR}
++	ARCHIVE DESTINATION  "lib/devkit/lib"
+ )
+ 
+ # Function in Library
+@@ -779,7 +779,7 @@
+ 
+ # Export targets
+ IF (CARES_INSTALL)
+-	SET (CMAKECONFIG_INSTALL_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
++	SET (CMAKECONFIG_INSTALL_DIR "lib/devkit/lib/cmake/${PROJECT_NAME}")
+ 	INCLUDE (CMakePackageConfigHelpers)
+ 	CONFIGURE_PACKAGE_CONFIG_FILE (${PROJECT_NAME}-config.cmake.in ${PROJECT_NAME}-config.cmake
+ 		INSTALL_DESTINATION ${CMAKECONFIG_INSTALL_DIR}
+@@ -800,7 +800,7 @@
+ 	ENDFOREACH ()
+ 
+ 	CONFIGURE_FILE("libcares.pc.cmake" "libcares.pc" @ONLY)
+-	INSTALL (FILES "${CMAKE_CURRENT_BINARY_DIR}/libcares.pc" COMPONENT Devel DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
++	INSTALL (FILES "${CMAKE_CURRENT_BINARY_DIR}/libcares.pc" COMPONENT Devel DESTINATION "lib/devkit/lib/pkgconfig")
+ ENDIF ()
+ 
+ # Legacy chain-building variables (provided for compatibility with old code).
+--- a/libcares.pc.cmake
++++ b/libcares.pc.cmake
+@@ -6,10 +6,10 @@
+ #
+ # Copyright (C) The c-ares project and its contributors
+ # SPDX-License-Identifier: MIT
+-prefix=@CMAKE_INSTALL_PREFIX@
+-exec_prefix=${prefix}/@CMAKE_INSTALL_BINDIR@
+-libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+-includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/c-ares-1.34.8
+ 
+ Name: c-ares
+ URL: https://c-ares.org/
+@@ -19,5 +19,5 @@
+ Requires.private: 
+ Cflags: -I${includedir}
+ Cflags.private: -DCARES_STATICLIB
+-Libs: -L${libdir} -lcares
++Libs: ${libdir}/libcares.so
+ Libs.private: @CARES_PRIVATE_LIBS@

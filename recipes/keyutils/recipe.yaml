@@ -8,6 +8,7 @@ source:
   - url: https://git.kernel.org/pub/scm/linux/kernel/git/dhowells/keyutils.git/snapshot/keyutils-${{ version }}.tar.gz
     sha256: a61d5706136ae4c05bd48f86186bcfdbd88dd8bd5107e3e195c924cfc1b39bb4
     patches:
+      - patches/development-install.patch
       # TODO: Upstream the correction of the two nonexistent versioned symbols.
       - patches/remove-nonexistent-version-symbols.patch
       - patches/0001-Make-endian-detection-in-work-on-non-RHEL-distributi.patch
@@ -18,7 +19,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

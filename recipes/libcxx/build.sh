@@ -44,6 +44,8 @@ cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
   -DCMAKE_MODULE_LINKER_FLAGS="${LINK_FLAGS}" \
   -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" \
   -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF \
+  -DLIBCXX_INSTALL_INCLUDE_DIR="lib/devkit/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
+  -DLIBCXXABI_INSTALL_INCLUDE_DIR="lib/devkit/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
   -DLIBCXX_INCLUDE_TESTS=OFF \
   -DLIBCXXABI_INCLUDE_TESTS=OFF \
   -DLIBCXX_USE_COMPILER_RT=ON \
@@ -56,23 +58,10 @@ cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
 cmake --build build --parallel "${CPU_COUNT}"
 cmake --install build
 
-mkdir -p "${PREFIX}/include/libcxx-${LIBCXX_VERSION}"
-mv "${PREFIX}/include/c++" "${PREFIX}/include/libcxx-${LIBCXX_VERSION}/c++"
-if [[ -d "${PREFIX}/lib/cmake" ]]; then
-  while IFS= read -r -d '' metadata; do
-    sed -i "s|/include/c++/v1|/include/libcxx-${LIBCXX_VERSION}/c++/v1|g" "${metadata}"
-  done < <(find "${PREFIX}/lib/cmake" -type f -name '*.cmake' -print0)
-fi
 mkdir -p "${PREFIX}/lib/devkit/lib/llvm-runtime"
 for library in libc++.so libc++.so.1 libc++.a libc++abi.so libc++abi.so.1 libc++abi.a; do
   ln -s "../${library}" "${PREFIX}/lib/devkit/lib/llvm-runtime/${library}"
 done
-
-"${CXX}" ${COMMON_FLAGS} ${LINK_FLAGS} -std=c++20 -nostdinc++ -nostdlib++ \
-  -isystem "${PREFIX}/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
-  "${RECIPE_DIR}/tests/runtime.cpp" -lc++ -lc++abi -lgcc_s -ldl -pthread \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' \
-  -o "${SRC_DIR}/libcxx-probe"
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

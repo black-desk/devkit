@@ -8,6 +8,7 @@ source:
   - url: https://github.com/besser82/libxcrypt/releases/download/v${{ version }}/libxcrypt-${{ version }}.tar.xz
     sha256: 80304b9c306ea799327f01d9a7549bdb28317789182631f1b54f4511b4206dd6
     patches:
+      - patches/development-install.patch
       - patches/clang-driver-link-policy.patch
       - patches/disabled-obsolete-api-symbol-map.patch
   - path: ../../scripts/packaging/stage-development.py
@@ -18,7 +19,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

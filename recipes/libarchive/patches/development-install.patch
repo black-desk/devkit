@@ -1,0 +1,51 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/build/cmake/CreatePkgConfigFile.cmake
++++ b/build/cmake/CreatePkgConfigFile.cmake
+@@ -29,5 +29,5 @@
+ # And install it, of course ;).
+ IF(ENABLE_INSTALL)
+   INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/build/pkgconfig/libarchive.pc
+-          DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig")
++          DESTINATION "lib/devkit/lib/pkgconfig")
+ ENDIF()
+--- a/build/pkgconfig/libarchive.pc.in
++++ b/build/pkgconfig/libarchive.pc.in
+@@ -1,13 +1,13 @@
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/libarchive-3.8.9
+ 
+ Name: libarchive
+ Description: library that can create and read several streaming archive formats
+ Version: @VERSION@
+ Cflags: -I${includedir}
+ Cflags.private: -DLIBARCHIVE_STATIC
+-Libs: -L${libdir} -larchive
+-Libs.private: @LIBS@
++Libs: ${libdir}/libarchive.so
++Libs.private: ${libdir}/libz.so ${libdir}/libbz2.so ${libdir}/liblzma.so ${libdir}/libzstd.so ${libdir}/libxml2.so ${libdir}/libiconv.so ${libdir}/liblzo2.so ${libdir}/liblz4.so ${libdir}/libcrypto.so
+ Requires.private: @LIBSREQUIRED@
+--- a/libarchive/CMakeLists.txt
++++ b/libarchive/CMakeLists.txt
+@@ -280,12 +280,12 @@
+     INSTALL(TARGETS archive
+             RUNTIME DESTINATION bin
+             LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-            ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++            ARCHIVE DESTINATION "lib/devkit/lib")
+   ENDIF(BUILD_SHARED_LIBS)
+   INSTALL(TARGETS archive_static
+           RUNTIME DESTINATION bin
+           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+-          ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
++          ARCHIVE DESTINATION "lib/devkit/lib")
+   INSTALL_MAN(${libarchive_MANS})
+   INSTALL(FILES ${include_HEADERS} DESTINATION include)
+ ENDIF()

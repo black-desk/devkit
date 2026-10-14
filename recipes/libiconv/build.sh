@@ -57,9 +57,9 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 # Match conda-forge's library package: retain all encodings and static libraries,
 # install library headers only, without the separately licensed CLI/docs.
-make install-lib libdir="${PREFIX}/lib" includedir="${PREFIX}/include/libiconv-1.18"
+make install-lib libdir="${PREFIX}/lib" includedir="${PREFIX}/lib/devkit/include/libiconv-1.18"
 make -C libcharset install-lib libdir="${PREFIX}/lib" \
-  includedir="${PREFIX}/include/libiconv-1.18"
+  includedir="${PREFIX}/lib/devkit/include/libiconv-1.18"
 # Post-link exception: Libtool installs both libiconv and libcharset; shared dependencies require install-time path rewriting.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

@@ -53,7 +53,7 @@ test -x "${CC}"
 
 ./configure \
   --prefix="${PREFIX}" \
-  --includedir="${PREFIX}/include/make-${LIBRARY_VERSION}" \
+  --includedir="${PREFIX}/lib/devkit/include/make-${LIBRARY_VERSION}" \
   --disable-dependency-tracking
 
 # GNU Make's source tree can bootstrap itself without an existing make.

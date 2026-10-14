@@ -224,38 +224,3 @@ for metadata in dict.fromkeys(args.metadata):
                     "pkglibdir = $(libdir)/", "pkglibdir = $(prefix)/lib/devkit/lib/"
                 )
             path.write_text(text)
-
-for pattern in [
-    "bin/krb5-config",
-    "bin/icu-config",
-    "bin/xml2-config",
-    "bin/ncurses*6-config",
-]:
-    for path in prefix.glob(pattern):
-        if path.relative_to(prefix).as_posix() in dependencies:
-            continue
-        text = path.read_text()
-        text = text.replace(str(prefix) + "/lib", str(dev) + "/lib")
-        text = text.replace(str(prefix) + "/include/", str(dev) + "/include/")
-        text = re.sub(
-            r'(\$(?:\{(?:exec_)?prefix\}|(?:exec_)?prefix))/lib(?!/devkit)(?=/|["\'\s]|$)',
-            r"\1/lib/devkit/lib",
-            text,
-        )
-        text = re.sub(
-            r"(\$(?:\{(?:exec_)?prefix\}|(?:exec_)?prefix))/include",
-            r"\1/lib/devkit/include",
-            text,
-        )
-        # Config helpers can emit both linker paths and runtime paths. Their
-        # runtime options must still point at public lib, never at hidden aliases.
-        if path.name == "krb5-config":
-            text = text.replace("#'$libdir'#", "#'$prefix/lib'#", 1)
-        elif path.name == "icu-config":
-            text = text.replace(
-                "${LD_RPATH}${LD_RPATH_PRE}${libdir}",
-                "${LD_RPATH}${LD_RPATH_PRE}${prefix}/lib",
-            )
-        elif path.name.startswith("ncurses"):
-            text = text.replace('RPATH_LIST="${libdir}"', 'RPATH_LIST="${prefix}/lib"')
-        path.write_text(text)

@@ -8,6 +8,7 @@ source:
   - url: https://github.com/google/cppdap/archive/c69444ed76f7468b232ac4f989cb8f2bdc100185.tar.gz
     sha256: f73953fe9c9557b6ce893a3ee90bbde5919c96e4f3603d67cdf8ed49da714529
     patches:
+      - patches/development-install.patch
       - patches/jsoncpp-config-dependency.patch
       - patches/shared-library-version.patch
   # Test-only source; not installed or a channel runtime dependency.
@@ -20,7 +21,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

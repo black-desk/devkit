@@ -48,7 +48,7 @@ test -x "${CC}"
 # Keep flags in the environment: command-line LDFLAGS suppress upstream
 # target-specific additions, including -pthread for the multithreaded CLI.
 NATIVE_LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN:\$\$ORIGIN/../lib'"
-LDFLAGS="${NATIVE_LDFLAGS}" make -j"${CPU_COUNT}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
+LDFLAGS="${NATIVE_LDFLAGS}" make -j"${CPU_COUNT}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/lib/devkit/include/lz4-${LIBRARY_VERSION}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   LDFLAGS="${NATIVE_LDFLAGS}" make -C tests datagen
   # Preserve conda-forge's corpus, including large and linked blocks.
@@ -60,20 +60,8 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   tests/datagen -g33M | ./lz4 --no-frame-crc | ./lz4 -t
   tests/datagen -g256MB | ./lz4 -vqB4D | ./lz4 -t
 fi
-LDFLAGS="${NATIVE_LDFLAGS}" make install PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
-python3 - <<'PY'
-import os
-from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/liblz4.pc'
-lines = p.read_text().splitlines()
-lines = ['prefix=${pcfiledir}/../..' if x.startswith('prefix=') else
-         'exec_prefix=${prefix}' if x.startswith('exec_prefix=') else
-         'libdir=${prefix}/lib' if x.startswith('libdir=') else
-         'includedir=${prefix}/include/lz4-' + os.environ['LIBRARY_VERSION']
-         if x.startswith('includedir=') else x for x in lines]
-p.write_text(('\n'.join(lines) + '\n').replace('-L${libdir} -llz4', '${libdir}/liblz4.so'))
-PY
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/lz4-${LIBRARY_VERSION}" \
+LDFLAGS="${NATIVE_LDFLAGS}" make install PREFIX="${PREFIX}" PKGCONFIGDIR="${PREFIX}/lib/devkit/lib/pkgconfig" INCLUDEDIR="${PREFIX}/lib/devkit/include/lz4-${LIBRARY_VERSION}"
+"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/lz4-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/liblz4.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 ln -s "${PREFIX}/lib" runtime-lib

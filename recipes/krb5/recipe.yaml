@@ -7,6 +7,8 @@ package:
 source:
   - url: https://web.mit.edu/kerberos/dist/krb5/1.22/krb5-${{ version }}.tar.gz
     sha256: 3243ffbc8ea4d4ac22ddc7dd2a1dc54c57874c40648b60ff97009763554eaf13
+    patches:
+      - patches/development-install.patch
   - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/finalize-elf.py
@@ -15,7 +17,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

@@ -45,14 +45,14 @@ export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}
 test -d "${SYSROOT}"
 test -x "${CC}"
 cp "${BUILD_PREFIX}/share/gnuconfig/"config.* .
-./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/libev-${LIBRARY_VERSION}"
+./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/libev-${LIBRARY_VERSION}"
 make -j"${CPU_COUNT}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make check
 fi
-make install
+make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig"
 # All three headers, including the compatibility interface, stay version-isolated.
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libev-${LIBRARY_VERSION}" \
+"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libev-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libev.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 mkdir runtime-lib

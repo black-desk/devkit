@@ -50,7 +50,7 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="include/jsoncpp-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/jsoncpp-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_C_FLAGS="${CFLAGS}" -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
@@ -63,18 +63,7 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ctest --test-dir build --output-on-failure
 fi
 cmake --install build
-python3 - <<'PYMETA'
-import os
-from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/jsoncpp.pc'
-s = p.read_text()
-s = '\n'.join('prefix=${pcfiledir}/../..' if x.startswith('prefix=') else
-              'exec_prefix=${prefix}' if x.startswith('exec_prefix=') else x
-              for x in s.splitlines()) + '\n'
-s = s.replace('-L${libdir} -ljsoncpp', '${libdir}/libjsoncpp.so')
-p.write_text(s)
-PYMETA
-"${CXX}" ${CXXFLAGS} ${LDFLAGS} -I"${PREFIX}/include/jsoncpp-${LIBRARY_VERSION}" \
+"${CXX}" ${CXXFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/jsoncpp-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.cpp" "${PREFIX}/lib/libjsoncpp.so" \
   '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
 ln -s "${PREFIX}/lib" runtime-lib

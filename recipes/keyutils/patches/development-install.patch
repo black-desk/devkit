@@ -1,0 +1,30 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/Makefile
++++ b/Makefile
+@@ -208,7 +208,7 @@
+ 	-e 's,@libdir\@,$(USRLIBDIR),g' \
+ 	-e 's,@includedir\@,$(INCLUDEDIR),g' \
+ 	< $(PKGCONFIG).in > $(PKGCONFIG) || rm $(PKGCONFIG)
+-	$(INSTALL) -D $(PKGCONFIG) $(DESTDIR)$(LIBDIR)/$(PKGCONFIG_DIR)/$(PKGCONFIG)
++	$(INSTALL) -D $(PKGCONFIG) $(DESTDIR)$(PREFIX)/lib/devkit/lib/pkgconfig/$(PKGCONFIG)
+ 	rm $(PKGCONFIG)
+ endif
+ 	$(INSTALL) -D keyctl $(DESTDIR)$(BINDIR)/keyctl
+--- a/libkeyutils.pc.in
++++ b/libkeyutils.pc.in
+@@ -1,8 +1,10 @@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/keyutils-1.6.3
+ 
+ Name: libkeyutils
+ Description: keyutils library
+ Version: @VERSION@
+ Cflags: -I${includedir}
+-Libs: -L${libdir} -lkeyutils
++Libs: ${libdir}/libkeyutils.so

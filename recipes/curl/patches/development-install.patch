@@ -1,0 +1,57 @@
+TODO: generated files are updated manually alongside their source templates;
+regenerate with upstream Automake 1.16.5 when that generator is available.
+
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -75,6 +75,7 @@
+ 
+ DISTCLEANFILES = buildinfo.txt
+ 
++bindir = $(prefix)/libexec/curl/bin
+ bin_SCRIPTS = curl-config
+ 
+ CURL_ETAGS_FILES = \
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -404,7 +404,7 @@
+ am__quote = @am__quote@
+ am__tar = @am__tar@
+ am__untar = @am__untar@
+-bindir = @bindir@
++bindir = $(prefix)/libexec/curl/bin
+ build = @build@
+ build_alias = @build_alias@
+ build_cpu = @build_cpu@
+--- a/libcurl.pc.in
++++ b/libcurl.pc.in
+@@ -22,10 +22,10 @@
+ #
+ ###########################################################################
+ 
+-prefix=@prefix@
+-exec_prefix=@exec_prefix@
+-libdir=@libdir@
+-includedir=@includedir@
++prefix=${pcfiledir}/../..
++exec_prefix=${prefix}
++libdir=${prefix}/lib
++includedir=${prefix}/include/curl-8.22.0
+ supported_protocols="@SUPPORT_PROTOCOLS@"
+ supported_features="@SUPPORT_FEATURES@"
+ 
+@@ -38,9 +38,9 @@
+ Version: @CURLVERSION@
+ Source: https://curl.se/download/curl-@CURLVERSION@.tar.gz
+ Requires: @LIBCURL_PC_REQUIRES@
+-Requires.private: @LIBCURL_PC_REQUIRES_PRIVATE@
+-Libs: -L${libdir} -lcurl @LIBCURL_PC_LIBS@
+-Libs.private: @LIBCURL_PC_LDFLAGS_PRIVATE@ @LIBCURL_PC_LIBS_PRIVATE@
++Requires.private:
++Libs: ${libdir}/libcurl.so
++Libs.private: ${libdir}/libssl.so ${libdir}/libcrypto.so ${libdir}/libz.so ${libdir}/libnghttp2.so ${libdir}/libssh2.so ${libdir}/libgssapi_krb5.so ${libdir}/libkrb5.so ${libdir}/libk5crypto.so ${libdir}/libcom_err.so ${libdir}/libpsl.so ${libdir}/libzstd.so -ldl -pthread
+ Cflags: -I${includedir} @LIBCURL_PC_CFLAGS@
+ Cflags.private: @LIBCURL_PC_CFLAGS_PRIVATE@
+ Link.ABI: c

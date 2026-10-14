@@ -1,0 +1,162 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/source/Makefile.in
++++ b/source/Makefile.in
+@@ -177,8 +177,8 @@
+ 
+ # always installs. Used by layoutex.
+ install-pkgconfig: $(ALL_PKGCONFIG_FILES)
+-	@$(MKINSTALLDIRS) $(DESTDIR)$(libdir)/pkgconfig
+-	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(libdir)/pkgconfig/
++	@$(MKINSTALLDIRS) $(DESTDIR)$(prefix)/lib/devkit/lib/pkgconfig
++	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(prefix)/lib/devkit/lib/pkgconfig/
+ 
+ install-icu: $(INSTALLED_BUILT_FILES)
+ 	@$(MKINSTALLDIRS) $(DESTDIR)$(pkgdatadir)/config
+@@ -188,14 +188,18 @@
+ 	$(INSTALL_DATA) @platform_make_fragment@ $(DESTDIR)$(pkgdatadir)/config/@platform_make_fragment_name@
+ 	$(INSTALL_SCRIPT) $(top_srcdir)/mkinstalldirs $(DESTDIR)$(pkgdatadir)/mkinstalldirs
+ 	$(INSTALL_SCRIPT) $(top_srcdir)/install-sh $(DESTDIR)$(pkgdatadir)/install-sh
+-	@$(MKINSTALLDIRS) $(DESTDIR)$(libdir)/pkgconfig
+-	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(libdir)/pkgconfig/
++	@$(MKINSTALLDIRS) $(DESTDIR)$(prefix)/lib/devkit/lib/pkgconfig
++	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(prefix)/lib/devkit/lib/pkgconfig/
+ 	$(INSTALL_DATA) $(top_srcdir)/../LICENSE $(DESTDIR)$(pkgdatadir)/LICENSE
+ ifeq ($(INSTALL_ICU_CONFIG),true)
+ 	$(INSTALL_SCRIPT) $(top_builddir)/config/icu-config $(DESTDIR)$(bindir)/icu-config
+ endif
+ 	$(INSTALL_DATA) $(top_builddir)/config/Makefile.inc $(DESTDIR)$(pkglibdir)/Makefile.inc
+-	$(INSTALL_DATA) $(top_builddir)/config/pkgdata.inc $(DESTDIR)$(pkglibdir)/pkgdata.inc
++	cd $(top_builddir)/config; $(MAKE) -f pkgdataMakefile \
++	    OUTPUTFILE=pkgdata-install.inc COMPILE.c="clang -O2 -c" \
++	    SHLIB.c="clang -shared -Wl,-Bsymbolic" AR=llvm-ar RANLIB=llvm-ranlib \
++	    SHAREDLIBCPPFLAGS=-DPIC SHAREDLIBCFLAGS=-fPIC
++	$(INSTALL_DATA) $(top_builddir)/config/pkgdata-install.inc $(DESTDIR)$(pkglibdir)/pkgdata.inc
+ #	@echo icuinfo.xml is built after make check.
+ #	-$(INSTALL_DATA) $(top_builddir)/config/icuinfo.xml $(DESTDIR)$(pkglibdir)/icuinfo.xml
+ 	cd $(DESTDIR)$(pkglibdir)/..; \
+--- a/source/config/Makefile.inc.in
++++ b/source/config/Makefile.inc.in
+@@ -28,8 +28,8 @@
+ # following line.  There should exist $(prefix)/include/unicode/utypes.h
+ # for example.
+ prefix = @prefix@
+-exec_prefix = @exec_prefix@
+-libdir = @libdir@
++exec_prefix = $(prefix)
++libdir = $(prefix)/lib/devkit/lib
+ libexecdir = @libexecdir@
+ bindir = @bindir@
+ datarootdir = @datarootdir@
+@@ -61,14 +61,14 @@
+ ## equivalent '#SH#' lines for icu-config fixup
+ ENABLE_RPATH = @ENABLE_RPATH@
+ ifeq ($(ENABLE_RPATH),YES)
+-RPATHLDFLAGS = $(LD_RPATH)$(LD_RPATH_PRE)$(libdir)
++RPATHLDFLAGS = $(LD_RPATH)$(LD_RPATH_PRE)$(prefix)/lib
+ endif
+ 
+ #SH## icu-config version of above 'if':
+ #SH#case "x$ENABLE_RPATH" in 
+ #SH#     x[yY]*)
+ #SH# 	ENABLE_RPATH=YES
+-#SH# 	RPATHLDFLAGS="${LD_RPATH}${LD_RPATH_PRE}${libdir}"
++#SH# 	RPATHLDFLAGS="${LD_RPATH}${LD_RPATH_PRE}${prefix}/lib"
+ #SH# 	;;
+ #SH#
+ #SH#     x[nN]*)
+@@ -114,7 +114,7 @@
+ ICULIBS_ICUIO = -l$(ICUPREFIX)io$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)
+ ICULIBS_OBSOLETE = -l$(ICUPREFIX)obsolete$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)
+ ICULIBS_LAYOUTEX = -l$(ICUPREFIX)lx$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)
+-ICULIBS_BASE = -L$(libdir)
++ICULIBS_BASE = -L$(prefix)/lib/devkit/lib
+ 
+ # for icu-config to test with
+ ICULIBS_COMMON_LIB_NAME = ${LIBICU}${COMMON_STUBNAME}${ICULIBSUFFIX}${ICULIBSUFFIX_VERSION}.${SO}
+@@ -155,7 +155,7 @@
+ 
+ # moved here because of dependencies
+ pkgdatadir = $(datadir)/$(PACKAGE)$(ICULIBSUFFIX)/$(VERSION)
+-pkglibdir = $(libdir)/$(PACKAGE)$(ICULIBSUFFIX)/$(VERSION)
++pkglibdir = $(prefix)/lib/devkit/lib/$(PACKAGE)$(ICULIBSUFFIX)/$(VERSION)
+ 
+ ##################################################################
+ ##################################################################
+@@ -180,16 +180,16 @@
+ #       *4*  compiler flags and misc. options
+ #
+ ##################################################################
+-AR = @AR@
++AR = llvm-ar
+ # initial tab keeps it out of the shell version.
+ 	ARFLAGS := @ARFLAGS@ $(ARFLAGS)
+ #SH#ARFLAGS="@ARFLAGS@ ${ARFLAGS}"
+-CC = @CC@
+-CPP = @CPP@
++CC = clang
++CPP = clang -E
+ CFLAGS = @UCONFIG_CFLAGS@ 
+-CPPFLAGS = @UCONFIG_CPPFLAGS@ -I$(prefix)/include
++CPPFLAGS = @UCONFIG_CPPFLAGS@ -I$(prefix)/lib/devkit/include/icu-78.3
+ CXXFLAGS = @UCONFIG_CXXFLAGS@
+-CXX = @CXX@
++CXX = clang++
+ DEFAULT_MODE = @DATA_PACKAGING_MODE@
+ DEFS = @DEFS@ 
+ # use a consistent INSTALL 
+@@ -205,13 +205,13 @@
+ LIB_VERSION = @LIB_VERSION@
+ LIB_VERSION_MAJOR = @LIB_VERSION_MAJOR@
+ MKINSTALLDIRS = $(SHELL) $(pkgdatadir)/mkinstalldirs
+-RANLIB = @RANLIB@
++RANLIB = llvm-ranlib
+ RMV = rm -rf
+ SHELL = @SHELL@
+ SHLIB.c=      $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -shared
+ SHLIB.cc=     $(CXX) $(DEFS) $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS) -shared
+ U_IS_BIG_ENDIAN = @U_IS_BIG_ENDIAN@
+-includedir = @includedir@
++includedir = $(prefix)/lib/devkit/include/icu-78.3
+ infodir = @infodir@
+ localstatedir = @localstatedir@
+ mandir = @mandir@
+--- a/source/config/icu.pc.in
++++ b/source/config/icu.pc.in
+@@ -8,11 +8,11 @@
+ CXXFLAGS = @UCONFIG_CXXFLAGS@
+ # DEFS only contains those UCONFIG_CPPFLAGS which are not auto-set by platform.h
+ DEFS = @UCONFIG_CPPFLAGS@
+-prefix = @prefix@
+-exec_prefix = @exec_prefix@
++prefix = ${pcfiledir}/../..
++exec_prefix = ${prefix}
+ #bindir = @bindir@
+-libdir = @libdir@
+-includedir = @includedir@
++libdir = ${prefix}/lib
++includedir = ${prefix}/include/icu-78.3
+ baselibs = @LIBS@
+ #datarootdir = @datarootdir@
+ #datadir = @datadir@
+--- a/source/config/pkgdataMakefile.in
++++ b/source/config/pkgdataMakefile.in
+@@ -14,7 +14,7 @@
+ ## All the flags and other definitions are included here.
+ include $(top_builddir)/icudefs.mk
+ 
+-OUTPUTFILE=pkgdata.inc
++OUTPUTFILE?=pkgdata.inc
+ MIDDLE_SO_TARGET=
+ PKGDATA_TRAILING_SPACE=" "
+ 
+@@ -26,7 +26,7 @@
+ 	@echo LIBPREFIX=$(LIBPREFIX)$(STATIC_PREFIX_WHEN_USED) >> $(OUTPUTFILE)
+ 	@echo LIB_EXT_ORDER=$(FINAL_SO_TARGET) >> $(OUTPUTFILE)
+ 	@echo COMPILE="$(COMPILE.c)" >> $(OUTPUTFILE)
+-	@echo LIBFLAGS="-I$(prefix)/include $(SHAREDLIBCPPFLAGS) $(SHAREDLIBCFLAGS)" >> $(OUTPUTFILE)
++	@echo LIBFLAGS="-I$(includedir) $(SHAREDLIBCPPFLAGS) $(SHAREDLIBCFLAGS)" >> $(OUTPUTFILE)
+ 	@echo GENLIB="$(SHLIB.c)" >> $(OUTPUTFILE)
+ 	@echo LDICUDTFLAGS=$(LDFLAGSICUDT) >> $(OUTPUTFILE)
+ 	@echo LD_SONAME=$(LD_SONAME) >> $(OUTPUTFILE)

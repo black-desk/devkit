@@ -16,7 +16,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 5
+  number: 6
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -57,13 +57,23 @@ tests:
         - lib/libc++abi.so.1
         - lib/devkit/include/libcxx-${{ version }}/c++/v1/iostream
   - script:
-      - ln -s "${PREFIX}/lib" runtime-lib
+      - >-
+        "${PREFIX}/bin/clang++" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg"
+        --unwindlib=none -O2 -std=c++20 -nostdlib++
+        tests/runtime.cpp -lc++ -lc++abi -lgcc_s -ldl -pthread
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib"
+        -o libcxx-probe
       - readelf -d "${PREFIX}/lib/libc++.so.1" | grep -F '(RUNPATH)'
       - readelf -d "${PREFIX}/lib/libc++abi.so.1" | grep -F '(RUNPATH)'
       - ./libcxx-probe "${PREFIX}"
+    requirements:
+      run:
+        - clang ==23.1.3
+        - sysroot_linux-64 ==2.28
     files:
-      source:
-        - libcxx-probe
+      recipe:
+        - tests/runtime.cpp
 
 about:
   homepage: https://libcxx.llvm.org/

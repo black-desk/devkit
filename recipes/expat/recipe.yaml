@@ -10,6 +10,8 @@ recipe:
 source:
   - url: https://github.com/libexpat/libexpat/releases/download/R_2_8_5/expat-${{ version }}.tar.xz
     sha256: 1e727b8933ec51a77a9a9d9afcf8e688bce45d907c13e36ab7393fe36e703182
+    patches:
+      - patches/development-install.patch
   - path: ../../scripts/packaging/stage-development.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/finalize-elf.py
@@ -21,7 +23,7 @@ outputs:
   - package:
       name: expat
     build:
-      number: 3
+      number: 4
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -114,7 +116,7 @@ outputs:
   - package:
       name: libexpat
     build:
-      number: 3
+      number: 4
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

@@ -1,0 +1,70 @@
+Install development interfaces and generate their paths in the upstream build.
+Keep runtime libraries in the public lib directory.
+
+--- a/installperl
++++ b/installperl
+@@ -541,6 +541,44 @@
+     }
+ }
+ 
++sub devkit_install_config {
++    my ($file) = @_;
++    open my $input, '<', $file or die "open $file: $!";
++    my $text = do { local $/; <$input> };
++    close $input;
++    my $flags = $ENV{DEVKIT_FLAGS};
++    my $build = $ENV{BUILD_PREFIX};
++    die "missing devkit install settings" unless length($flags) && length($build);
++    my $canonical = "--no-default-config --config=$build/share/devkit/clang.cfg";
++    $text =~ s/\Q$flags\E/$canonical/g;
++    $text =~ s!/bin/clang-23!/bin/clang!g;
++    $text =~ s!x86_64-conda-linux-gnu/sysroot!x86_64-pc-linux-gnu/sysroot!g;
++    $text =~ s/\Q$build\E/__PERL_BUILD_PREFIX__/g;
++    my $resolve = 'use Cwd qw(abs_path);' . "\n" .
++                  'use File::Basename;' . "\n" .
++                  'my $perl_build_prefix = dirname(dirname(abs_path($^X)));' . "\n";
++    if ($file =~ /Config_heavy\.pl$/) {
++        $text =~ s/my \$summary_expanded;\n/my \$summary_expanded;\n$resolve/
++            or die "Config_heavy.pl insertion point not found";
++        my $replace = '$_ =~ s/__PERL_BUILD_PREFIX__/$perl_build_prefix/g;' . "\n";
++        $text =~ s/my \$i = ord\(8\);\n/${replace}my \$i = ord(8);\n/
++            or die "Config_heavy.pl replacement point not found";
++    } else {
++        $text =~ s/sub FETCH \{\n/${resolve}\nsub FETCH {\n/
++            or die "Config.pm insertion point not found";
++        my $fetch = 'my $value = exists $self->{$key} ? $self->{$key} : $self->fetch_string($key);' . "\n" .
++                    '    $value =~ s/__PERL_BUILD_PREFIX__/$perl_build_prefix/g if defined $value;' . "\n" .
++                    '    return $value;';
++        $text =~ s/return exists \$self->\{\$key\} \? \$self->\{\$key\} : \$self->fetch_string\(\$key\);/$fetch/
++            or die "Config.pm FETCH point not found";
++        $text =~ s!cc => '__PERL_BUILD_PREFIX__/bin/clang'!cc => \$perl_build_prefix . '/bin/clang'!g;
++        $text =~ s!libpth => '__PERL_BUILD_PREFIX__/lib __PERL_BUILD_PREFIX__/x86_64-pc-linux-gnu/sysroot/lib64'!libpth => \$perl_build_prefix . '/lib ' . \$perl_build_prefix . '/x86_64-pc-linux-gnu/sysroot/lib64'!g;
++    }
++    open my $output, '>', $file or die "write $file: $!";
++    print {$output} $text;
++    close $output or die "close $file: $!";
++}
++
+ sub copy {
+     my($from,$to) = @_;
+ 
+@@ -556,6 +594,9 @@
+ 	    unless -f $to and (chmod(0666, $to), unlink $to)
+ 		   and File::Copy::copy($from, $to);
+     }
++    devkit_install_config($to)
++        if $ENV{DEVKIT_INSTALL_CONFIG} && !$opts{notify}
++            && $to =~ m!(?:^|/)Config(?:_heavy\.pl|\.pm)$!;
+     $packlist->{$xto} = { type => 'file' };
+ }
+ 
+@@ -704,6 +745,9 @@
+ 	$perlpodbadsymlink = 1;
+     }
+     -f $from || $perlpodbadsymlink || warn "$0: $from not found";
++    devkit_install_config($to)
++        if $ENV{DEVKIT_INSTALL_CONFIG} && !$opts{notify}
++            && $to =~ m!(?:^|/)Config(?:_heavy\.pl|\.pm)$!;
+     $packlist->{$xto} = { type => 'file' };
+     if ($opts{force} || compare($from, $to) || $opts{notify}) {
+ 	safe_unlink($to);   # In case we don't have write permissions.

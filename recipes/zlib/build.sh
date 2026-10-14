@@ -55,7 +55,7 @@ cmake -S "${SRC_DIR}" -B "${SRC_DIR}/build" -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_INSTALL_LIBDIR=lib \
-  -DCMAKE_INSTALL_INCLUDEDIR="include/zlib-${ZLIB_VERSION}" \
+  -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/zlib-${ZLIB_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_C_FLAGS="${CFLAGS}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" \
   -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
@@ -68,20 +68,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ctest --test-dir "${SRC_DIR}/build" --output-on-failure --parallel "${CPU_COUNT}"
 fi
 cmake --install "${SRC_DIR}/build"
-cat >"${PREFIX}/lib/pkgconfig/zlib.pc" <<EOF
-prefix=\${pcfiledir}/../..
-exec_prefix=\${prefix}
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: zlib
-Description: zlib compression library
-Version: ${ZLIB_VERSION}
-License: Zlib
-Cflags: -I\${includedir}/zlib-${ZLIB_VERSION}
-Libs: \${libdir}/libz.so
-EOF
-
 cat >"${SRC_DIR}/devkit-consumer.c" <<'EOF'
 #include <zlib.h>
 
@@ -100,13 +86,11 @@ EOF
 
 "${CC}" \
   ${CFLAGS} ${LDFLAGS} -Wl,-rpath,"${PREFIX}/lib" \
-  -I"${PREFIX}/include/zlib-${ZLIB_VERSION}" \
+  -I"${PREFIX}/lib/devkit/include/zlib-${ZLIB_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libz.so" \
   -o "${SRC_DIR}/devkit-consumer"
 
 env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
 
-python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" \
-  --include "zlib-${ZLIB_VERSION}" --library z \
-  --metadata lib/pkgconfig/zlib.pc --metadata lib/cmake/zlib
+python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all
