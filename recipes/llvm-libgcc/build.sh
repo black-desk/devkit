@@ -39,7 +39,7 @@ cmake -S "${SRC_DIR}/llvm-libgcc" -B build -G Ninja \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
-  '-DCMAKE_INSTALL_RPATH=$ORIGIN' \
+  -DCMAKE_INSTALL_RPATH='$ORIGIN' \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_ASM_COMPILER="${CC}" \
@@ -83,11 +83,6 @@ done
 for library in libgcc.a libgcc_eh.a libgcc_s.so libunwind.so libunwind.a; do
   ln -s "../${library}" "${PREFIX}/lib/devkit/lib/llvm-runtime/${library}"
 done
-
-# The installed-package test needs no compiler or GNU runtime in its environment.
-"${CC}" ${COMMON_FLAGS} ${LINK_FLAGS} \
-  "${RECIPE_DIR}/tests/runtime.c" -ldl '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' \
-  -o "${SRC_DIR}/runtime-probe"
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all
