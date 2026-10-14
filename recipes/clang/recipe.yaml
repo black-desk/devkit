@@ -8,11 +8,17 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ version }}/llvm-project-${{ version }}.src.tar.xz
-  sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
-  patches:
-    - patches/compiler-rt-custom-libcxx-flags.patch
-    - patches/llvm-config-development-prefix.patch
+  - url: https://github.com/llvm/llvm-project/releases/download/llvmorg-${{ version }}/llvm-project-${{ version }}.src.tar.xz
+    sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
+    patches:
+      - patches/compiler-rt-custom-libcxx-flags.patch
+      - patches/llvm-config-development-prefix.patch
+  - path: ../../scripts/packaging/stage-development.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
   number: 4
@@ -53,6 +59,11 @@ requirements:
     - __glibc >=2.28
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package clang
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - clang

@@ -10,7 +10,11 @@ recipe:
 source:
   - url: https://github.com/libexpat/libexpat/releases/download/R_2_8_5/expat-${{ version }}.tar.xz
     sha256: 1e727b8933ec51a77a9a9d9afcf8e688bce45d907c13e36ab7393fe36e703182
-  - path: ../clang
+  - path: ../../scripts/packaging/stage-development.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 outputs:
@@ -55,6 +59,11 @@ outputs:
           - expat >=2.8.5,<2.9
 
     tests:
+      - script:
+          - python3 devkit-build/check-package.py "${PREFIX}" --package expat
+        files:
+          source:
+            - devkit-build/check-package.py
       - package_contents:
           bin:
             - xmlwf

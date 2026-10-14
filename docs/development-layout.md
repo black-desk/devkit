@@ -86,13 +86,54 @@ Retired GCC packages can be removed independently once the Clang generation has
 published successfully and no retained package depends on them. Do not delete
 llvm-libgcc or compiler runtime resources as part of that cleanup.
 
+## Package checks
+
+`scripts/packaging/check-package.py PREFIX --package NAME` checks only files
+owned by that installed package, using its `conda-meta` file list. Native
+payload recipes copy the standalone checker as a source input and archive it
+with a dedicated recipe script test. Metadata-only recipes and compatibility
+outputs need no separate ELF audit. Python 3 and readelf are runner tooling,
+like the tools already used by package tests; they do not add runtime or seed
+dependencies.
+
+The checker rejects DT_RPATH, absolute or working-directory-relative search
+paths, empty search entries, paths escaping the installed prefix, and runtime
+paths resolving into `lib/devkit`. RUNPATH entries must start with `$ORIGIN` or
+`${ORIGIN}`; ELFs without a search path are allowed. It also checks public
+development-file locations, relocatable/non-dangling development symlinks, and
+that dynamic runtime ELFs are not stored in the hidden development prefix.
+Dependencies are present during installed tests, so a development link into a
+separate runtime package is valid. Missing ownership records fail the audit.
+
+The sysroot recipe does not run this checker: its Rocky RPM ELFs are original
+target-system inputs, not channel-built runtime outputs. Completed-prefix checks
+likewise skip the canonical and seed-triplet sysroot trees. Archived test inputs
+under `etc/conda/test-files` are excluded; copying the same ELF into an actual
+runtime location does not exempt it.
+
+Bootstrap remains a stage-level unit: dirty/result completion checks install and
+audit the completed channel; selfhost package recipe tests and runtime smoke
+checks run after its entire stage, in the independent test job. No per-package
+archive check or early installed test is added to bootstrap. Ordinary packages
+run their recipe tests immediately after packaging. The completed-channel entry
+point, `scripts/check-development-layout.py`, delegates to this same checker
+without `--package` to audit the entire installed prefix.
+
 ## Packaging implementation
 
-`stage-development.py` stages development interfaces after upstream
-installation. Recipes call it with `--all` to select newly installed headers,
-top-level linker interfaces/archives and metadata; installed input files are
-excluded using conda-meta ownership records. Runtime library files and SONAME
-links stay in public lib; relative development aliases preserve exported
+`scripts/packaging/` contains the shared recipe packaging utilities. Recipes
+copy only the required scripts into their `devkit-build/` source directory; they
+do not import the clang recipe directory. Clang continues to install these
+staging/relocation utilities under `share/devkit` in its package. Changes to
+shared packaging utilities are global packaging inputs in the affected-build
+planner, so they trigger a full channel rebuild. `finalize-elf.py` implements
+the annotated post-link RUNPATH exceptions described above.
+
+`scripts/packaging/stage-development.py` stages development interfaces after
+upstream installation. Recipes call it with `--all` to select newly installed
+headers, top-level linker interfaces/archives and metadata; installed input
+files are excluded using conda-meta ownership records. Runtime library files and
+SONAME links stay in public lib; relative development aliases preserve exported
 filenames. This is a packaging operation, not a shared compiler/environment
 setup script.
 

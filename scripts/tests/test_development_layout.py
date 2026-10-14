@@ -8,7 +8,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-STAGE = ROOT / "recipes/clang/stage-development.py"
+STAGE = ROOT / "scripts/packaging/stage-development.py"
 
 
 class DevelopmentLayoutTests(unittest.TestCase):

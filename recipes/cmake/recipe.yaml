@@ -14,9 +14,9 @@ source:
     patches:
       - patches/bootstrap-exclude-ghs-generator.patch
       - patches/curl-long-proxy-type.patch
-
-  - path: ../clang
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
+
 build:
   number: 4
   string: h${{ hash }}_${{ build_number }}
@@ -66,6 +66,11 @@ requirements:
     - zstd ==1.5.7
     - liblzma ==5.8.3
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package cmake
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - cmake

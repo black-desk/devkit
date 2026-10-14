@@ -10,10 +10,14 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/jesseduffield/lazygit/archive/refs/tags/v${{ version }}.tar.gz
-  sha256: df30ec1a5032b3c5672a30090fe787fb32d4122fd996d6d85e1d10135acfbc89
+  - url: https://github.com/jesseduffield/lazygit/archive/refs/tags/v${{ version }}.tar.gz
+    sha256: df30ec1a5032b3c5672a30090fe787fb32d4122fd996d6d85e1d10135acfbc89
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
+  dynamic_linking:
+    binary_relocation: false
   number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
@@ -30,6 +34,11 @@ requirements:
     - git >=2.56.0,<3
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package lazygit
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - lazygit

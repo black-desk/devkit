@@ -15,8 +15,9 @@ source:
   - url: https://github.com/google/googletest/releases/download/v1.16.0/googletest-1.16.0.tar.gz
     sha256: 78c676fc63881529bf97bf9d45948d905a66833fbfa5318ea2cd7478cb98f399
     target_directory: test-googletest
-  - path: ../clang
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
+
 build:
   number: 2
   string: h${{ hash }}_${{ build_number }}
@@ -50,6 +51,11 @@ requirements:
     - __glibc >=2.28
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package ninja
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - ninja

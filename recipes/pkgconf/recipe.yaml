@@ -10,9 +10,9 @@ package:
 source:
   - url: https://github.com/pkgconf/pkgconf/archive/pkgconf-${{ version }}.tar.gz
     sha256: a9ae678879771fcf15247ac2435e7ad8308be8a5921898e6720b3b8949410f73
-
-  - path: ../clang
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
+
 build:
   number: 3
   string: h${{ hash }}_${{ build_number }}
@@ -38,6 +38,11 @@ requirements:
     - ninja >=1.13.2,<1.14
     - sysroot_linux-64 ==2.28
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package pkgconf
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - pkgconf

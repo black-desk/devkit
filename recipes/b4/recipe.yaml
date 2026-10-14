@@ -72,6 +72,9 @@ source:
     sha256: 0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3
     file_name: urllib3-2.8.0-py3-none-any.whl
     target_directory: artifacts
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
   number: 2
   string: h${{ hash }}_${{ build_number }}
@@ -92,6 +95,11 @@ requirements:
     - __glibc >=2.28
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package b4
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - b4
