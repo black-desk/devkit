@@ -107,3 +107,7 @@ for this installation change.
 Post-link ELF exceptions are separate from development installation: existing
 annotated finalize-elf uses remain until each build system supports the required
 per-file installed RUNPATH. See [development-layout.md](development-layout.md).
+
+Unified source patches retain upstream context whitespace verbatim. The shared
+clean check excludes `*.patch`; patch applicability is verified separately.
+Removing whitespace from patch context can prevent hunks from applying.
