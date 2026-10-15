@@ -121,3 +121,11 @@ the destination has been written. `copy_if_diff` delegates to `copy`; running
 normalization before that delegation fails on first installation because the
 destination does not exist yet. The installer copy paths were checked for fresh
 installation, repeated installation and notify-only mode.
+
+The Perl install hook selects the exact source paths `lib/Config.pm` and
+`lib/Config_heavy.pl`. Other modules also use the basename `Config.pm` (for
+example, `ExtUtils/MakeMaker/Config.pm`); those are unrelated to compiler
+metadata and must be copied unchanged. Validation includes a full local Clang
+build and fresh/repeated installation of Perl 5.44, loading the installed core
+Config and checking the unrelated Config modules against their sources. This
+installer check uses host build dependencies, not the bootstrap environment.
