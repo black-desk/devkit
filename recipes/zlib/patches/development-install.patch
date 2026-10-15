@@ -83,3 +83,45 @@ Keep runtime libraries in the public lib directory.
 -Libs: -L${libdir} -L${sharedlibdir} -lz
 +Libs: ${libdir}/libz.so
  Cflags: -I${includedir}
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -176,6 +176,7 @@
+         -B${CMAKE_CURRENT_BINARY_DIR}/findpackage_test_build
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
++        -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/test_install/lib/devkit
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
+         -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_test)
+ 
+@@ -211,6 +212,7 @@
+         -B${CMAKE_CURRENT_BINARY_DIR}/findpackage_no_components_test_build
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
++        -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/test_install/lib/devkit
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
+         -G "${CMAKE_GENERATOR}"
+         -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_no_components_test)
+@@ -235,6 +237,7 @@
+         -B${CMAKE_CURRENT_BINARY_DIR}/findpackage_wrong_components_test_build
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
++        -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/test_install/lib/devkit
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
+         -G "${CMAKE_GENERATOR}"
+         -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_wrong_components_test)
+@@ -254,6 +257,7 @@
+         -B${CMAKE_CURRENT_BINARY_DIR}/add_subdirectory_test_build
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
++        -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/test_install/lib/devkit
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
+         -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_test)
+ 
+@@ -289,6 +293,7 @@
+         -B${CMAKE_CURRENT_BINARY_DIR}/add_subdirectory_exclude_test_build
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
++        -DCMAKE_PREFIX_PATH=${CMAKE_CURRENT_BINARY_DIR}/test_install/lib/devkit
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
+         -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_test)
+ 
