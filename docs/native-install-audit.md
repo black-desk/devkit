@@ -152,3 +152,11 @@ fallback exposed the previously ignored lowercase override. Verified the pinned
 source's configured `install-mkdirs` and build-tools installation targets
 locally: all eight pc files land directly in the hidden directory with their
 native generated prefix definitions.
+
+Zlib's upstream installation-consumer tests explicitly search their temporary
+installation's `lib/devkit` prefix. Their original reliance on searching only
+`CMAKE_INSTALL_PREFIX` no longer finds the relocated CONFIG package. All five
+consumer configure commands select the fixture's hidden prefix, rather than an
+input generation's zlib or a host library. No tests are disabled. Locally
+reproduced the selfhost failure (10 failed or blocked tests), then rebuilt with
+the corrected search paths: all 18 upstream CTest tests pass.
