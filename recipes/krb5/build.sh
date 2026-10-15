@@ -49,7 +49,8 @@ cd src
   --without-tcl --without-readline --with-libedit --with-crypto-impl=openssl \
   --with-keyutils=yes --without-system-verto --enable-nls
 make -j"${CPU_COUNT}"
-make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig"
+# MIT Makefiles use PKGCONFIG_DIR, unlike Automake's pkgconfigdir.
+make install PKGCONFIG_DIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 cd ..
 "${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/krb5-${LIBRARY_VERSION}" \
   "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libkrb5.so" \
