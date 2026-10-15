@@ -115,3 +115,9 @@ Removing whitespace from patch context can prevent hunks from applying.
 RHash's default `install` target omits its generated `.pc` file. The recipe
 explicitly invokes upstream `install-pkg-config`, which installs directly into
 the configured hidden metadata directory. This target was verified locally.
+
+Perl's installed Config normalization runs only in `installperl::copy`, after
+the destination has been written. `copy_if_diff` delegates to `copy`; running
+normalization before that delegation fails on first installation because the
+destination does not exist yet. The installer copy paths were checked for
+fresh installation, repeated installation and notify-only mode.
