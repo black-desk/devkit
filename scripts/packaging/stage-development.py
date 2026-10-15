@@ -4,7 +4,6 @@
 import argparse
 import json
 import os
-import re
 from pathlib import Path
 import shutil
 
@@ -18,7 +17,6 @@ parser.add_argument(
     default=[],
     help="reviewed runtime filenames that end in .so",
 )
-parser.add_argument("--metadata", action="append", default=[])
 parser.add_argument(
     "--all",
     action="store_true",
@@ -78,14 +76,21 @@ if args.all:
         prefix / "lib/cmake",
         prefix / "share/cmake",
         prefix / "lib/icu",
-        *sorted((prefix / "lib").glob("objects-*")),
     ]:
         if root.exists():
             for source in sorted(root.rglob("*")):
                 if source.is_file() or source.is_symlink():
                     relative = source.relative_to(prefix).as_posix()
                     if relative not in dependencies:
-                        args.metadata.append(relative)
+                        raise RuntimeError(
+                            f"development file must be installed at its final path: {source}"
+                        )
+    for root in sorted((prefix / "lib").glob("objects-*")):
+        for source in sorted(root.rglob("*")):
+            if source.is_file() or source.is_symlink():
+                relative = source.relative_to(prefix).as_posix()
+                if relative not in dependencies:
+                    move(relative)
     stems = set()
     for source in (prefix / "lib").glob("lib*"):
         if source.is_dir() or source.relative_to(prefix).as_posix() in dependencies:
@@ -151,76 +156,3 @@ for library in args.library:
             else:
                 # Preserve SONAME links and real versioned files in public lib.
                 target.symlink_to(os.path.relpath(source, target.parent))
-
-for metadata in dict.fromkeys(args.metadata):
-    target = move(metadata)
-    files = [target] if target.is_file() else list(target.rglob("*"))
-    for path in files:
-        if path.suffix == ".pc":
-            lines = path.read_text().splitlines()
-            lines = [
-                (
-                    "prefix=${pcfiledir}/../.."
-                    if re.match(r"^\s*prefix\s*=", line)
-                    else (
-                        "exec_prefix=${prefix}"
-                        if re.match(r"^\s*exec_prefix\s*=", line)
-                        else line.replace(
-                            str(prefix) + "/include", "${prefix}/include"
-                        ).replace(str(prefix) + "/lib", "${prefix}/lib")
-                    )
-                )
-                for line in lines
-            ]
-            # Some upstream metadata (notably keyutils) refers to ${prefix}
-            # without defining it. Do not leave its paths rooted at /include.
-            if not any(line.startswith("prefix=") for line in lines):
-                lines.insert(0, "prefix=${pcfiledir}/../..")
-            path.write_text("\n".join(lines) + "\n")
-        elif path.suffix in [".cmake", ".inc"]:
-            # Upstream relative exports naturally compute the hidden prefix.
-            # Correct only literal configured development paths, not runtime paths.
-            text = path.read_text()
-            text = text.replace(str(prefix) + "/include/", str(dev) + "/include/")
-            text = text.replace(str(prefix) + "/lib/lib", str(dev) + "/lib/lib")
-            if path.suffix == ".cmake":
-                # Exported executable targets still live in public bin. Rewrite
-                # their relative locations instead of publishing a shared bin
-                # alias that both LLVM and PCRE2 would have to own.
-                text = re.sub(
-                    r"(\$\{[^}]*prefix[^}]*\})/bin(?=[/\"\s)])",
-                    r"\1/../../bin",
-                    text,
-                    flags=re.IGNORECASE,
-                )
-                # Autotools libxml2 exports a library search directory rather
-                # than an imported filename. Keep executable/runtime paths public.
-                text = re.sub(
-                    r"(set\(\w*(?:LIBRARY_DIRS?|LIBDIR)\s+\"?)"
-                    + re.escape(str(prefix))
-                    + r"/lib(?=[\"\s)])",
-                    lambda match: match[1] + str(dev) + "/lib",
-                    text,
-                )
-                # Keep configured absolute exports usable when an installation
-                # is moved, without depending on conda prefix substitution.
-                for root in [dev, prefix]:
-                    relative = os.path.relpath(root, path.parent)
-                    reference = "${CMAKE_CURRENT_LIST_DIR}/" + relative
-                    text = re.sub(
-                        re.escape(str(root)) + r'(?=/|["\s)])',
-                        lambda match: reference,
-                        text,
-                    )
-            elif metadata.startswith("lib/icu/"):
-                text = text.replace(
-                    "$(prefix)/include/", "$(prefix)/lib/devkit/include/"
-                )
-                text = text.replace(
-                    "${prefix}/include/", "${prefix}/lib/devkit/include/"
-                )
-                text = text.replace("-L$(libdir)", "-L$(prefix)/lib/devkit/lib")
-                text = text.replace(
-                    "pkglibdir = $(libdir)/", "pkglibdir = $(prefix)/lib/devkit/lib/"
-                )
-            path.write_text(text)

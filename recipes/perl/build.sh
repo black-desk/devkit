@@ -103,10 +103,14 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
     TEST_ARGS='op/magic.t op/tie.t ../lib/perl5db.t'
 fi
 
-# The patched upstream installer normalizes only installed Config modules;
-# build-time Config modules keep the bootstrap compiler settings.
+# Generate consumer Config modules from the same inputs with canonical compiler
+# metadata. Keep the original modules for build-time tools and install only the
+# two explicitly selected generated consumer files.
 export DEVKIT_FLAGS
-DEVKIT_INSTALL_CONFIG=1 make install -j"${CPU_COUNT}"
+export DEVKIT_CONFIG_DIR="${SRC_DIR}/devkit-config"
+mkdir -p "${DEVKIT_CONFIG_DIR}"
+./perl -I. -Ilib configpm
+make install -j"${CPU_COUNT}"
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
 # Post-link exception: Perl applies one lddlflags value to XS modules installed at different depths; its relocatable-inc support does not compute per-module RUNPATH.

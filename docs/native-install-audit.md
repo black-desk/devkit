@@ -13,9 +13,9 @@ Moving those interfaces after installation avoids redirecting runtime libraries.
 Libtool `.la` directory fields follow their archive location.
 
 The staging script no longer rewrites public config helpers. Native hidden
-metadata is left untouched. The generic metadata fallback remains for
-imported/legacy inputs; current source recipes generate their paths before
-installation.
+metadata is left untouched. There is no metadata-rewrite fallback. Newly
+installed public headers or metadata cause staging to fail; recipes must
+generate their final paths before installation.
 
 | Recipe                | Installation treatment                                                                                                                                                |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -61,7 +61,7 @@ installation.
 | `ninja`               | Executable/application output; no public C/C++ development interface. Preserve native installation and runtime resources.                                             |
 | `openssl`             | Patched native header/exporter install rules; generated pc/CMake metadata agrees with hidden paths. Providers stay public.                                            |
 | `pcre2`               | Native CMake includedir; patched metadata/archive install destinations and generated pc templates. CMake exports derive their installed paths.                        |
-| `perl`                | Patch installperl to normalize installed XS Config modules only; build-time modules remain unchanged.                                                                 |
+| `perl`                | Patch configpm to generate separate consumer Config modules; install those explicitly and preserve build-time modules.                                                |
 | `pkgconf`             | Executable/application output; no public C/C++ development interface. Preserve native installation and runtime resources.                                             |
 | `python`              | Imported upstream toolchain payload; retain tool-internal resources and upstream layout. No newly built public library interface.                                     |
 | `rhash`               | Native INSTALL_INCDIR/pkgconfigdir; patched configure pc template.                                                                                                    |
@@ -94,9 +94,11 @@ installation.
   bootstrap flags.
 - LLVM/Clang: configured patched sources and checked generated installed
   include/library/package paths, without compiling the compiler.
-- Perl: exercised installed-Config normalization against fixtures, including
-  variable-length Config.pm entries; also loaded normalized real Config modules
-  with Perl 5.44. Original build inputs are untouched.
+- Perl: generated separate consumer Config modules using patched configpm;
+  installed and loaded them with a complete local Clang-built Perl 5.44.
+  Verified fresh/repeated installation, physical prefix relocation, unchanged
+  build Config modules and unrelated modules with the same basename. This
+  installer validation uses host dependencies, not the bootstrap environment.
 - Repository packaging/pipeline tests, shell syntax, recipe rendering and patch
   application checks accompany the change.
 
@@ -116,16 +118,29 @@ RHash's default `install` target omits its generated `.pc` file. The recipe
 explicitly invokes upstream `install-pkg-config`, which installs directly into
 the configured hidden metadata directory. This target was verified locally.
 
-Perl's installed Config normalization runs only in `installperl::copy`, after
-the destination has been written. `copy_if_diff` delegates to `copy`; running
-normalization before that delegation fails on first installation because the
-destination does not exist yet. The installer copy paths were checked for fresh
-installation, repeated installation and notify-only mode.
+Perl's `configpm` generator reads individual values from `config.sh`. In
+consumer mode it canonicalizes the compiler settings before serialization and
+emits relocation support from source templates. It writes separate Config
+modules outside the build's `lib` tree. The install rule selects these two
+artifacts explicitly; neither the generic copy routine nor any installed file
+content is modified. The normal generator mode retains bootstrap settings for
+building and testing Perl. Other modules named `Config.pm` remain unchanged.
 
-The Perl install hook selects the exact source paths `lib/Config.pm` and
-`lib/Config_heavy.pl`. Other modules also use the basename `Config.pm` (for
-example, `ExtUtils/MakeMaker/Config.pm`); those are unrelated to compiler
-metadata and must be copied unchanged. Validation includes a full local Clang
-build and fresh/repeated installation of Perl 5.44, loading the installed core
-Config and checking the unrelated Config modules against their sources. This
-installer check uses host build dependencies, not the bootstrap environment.
+ICU uses its upstream `INVOKE`, `PKGDATA_INVOKE` and `INSTALLED_INVOKE` wrappers
+for build-time library loading. The recipe does not override them or add
+source-tree RUNPATH entries to global `LDFLAGS`. Installed ELF finalization and
+tests remain independent of the build-time loader environment. This change does
+not merge the build and consumer pkgdata configurations.
+
+Validated the ICU wrapper change with a complete local Clang build and install
+using the pinned 78.3 source and recipe patches. Build logs show upstream
+`LD_LIBRARY_PATH` wrappers executing `icupkg` and `pkgdata`; both generated and
+installed pkgdata configurations contain no source-tree paths or RUNPATH flags.
+After the existing ELF finalization, installed `icuinfo` runs without a loader
+environment override. This check uses host build dependencies.
+
+Keep the public `pkgdata` tool and the channel configuration in the hidden
+development directory. The optional library-generation modes do not require
+adding a compiler runtime dependency to ICU, just as the distribution package
+does not depend on GCC. Default configuration discovery remains host-oriented;
+channel builds explicitly select the channel configuration.

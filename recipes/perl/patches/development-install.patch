@@ -1,62 +1,106 @@
-Install development interfaces and generate their paths in the upstream build.
-Keep runtime libraries in the public lib directory.
+Generate separate installed Config modules from config.sh and source templates.
+Keep build-time Config modules and generic installer copying unchanged.
 
---- a/installperl
-+++ b/installperl
-@@ -541,6 +541,44 @@
-     }
+--- a/configpm
++++ b/configpm
+@@ -129,8 +129,11 @@
+ my ($Config_SH, $Config_PM, $Config_heavy, $Config_POD);
+ my $Glossary = 'Porting/Glossary';
+ 
+-$Config_PM = "lib/Config.pm";
+-$Config_POD = "lib/Config.pod";
++# Generate a separate consumer configuration after building and testing Perl.
++# The build configuration must retain the bootstrap compiler and flags.
++my $devkit_dir = $ENV{DEVKIT_CONFIG_DIR};
++$Config_PM = $devkit_dir ? "$devkit_dir/Config.pm" : "lib/Config.pm";
++$Config_POD = $devkit_dir ? "$devkit_dir/Config.pod" : "lib/Config.pod";
+ $Config_SH = "config.sh";
+ 
+ ($Config_heavy = $Config_PM) =~ s/\.pm$/_heavy.pl/;
+@@ -277,6 +280,15 @@
+ 
+     $val =~ s/$quote\n?\z//;
+ 
++    if ($devkit_dir) {
++        my $build = $ENV{BUILD_PREFIX} or die "missing BUILD_PREFIX";
++        my $flags = $ENV{DEVKIT_FLAGS} or die "missing DEVKIT_FLAGS";
++        my $canonical = "--no-default-config --config=$build/share/devkit/clang.cfg";
++        $val =~ s/\Q$flags\E/$canonical/g;
++        $val =~ s!/bin/clang-23!/bin/clang!g;
++        $val =~ s!x86_64-conda-linux-gnu/sysroot!x86_64-pc-linux-gnu/sysroot!g;
++        $val =~ s/\Q$build\E/__PERL_BUILD_PREFIX__/g;
++    }
+     my $line = "$name=$quote$val$quote\n";
+     push(@v_others, $line);
+     $seen_quotes{$quote}++;
+@@ -643,6 +655,15 @@
+ }
  }
  
-+sub devkit_install_config {
-+    my ($file) = @_;
-+    open my $input, '<', $file or die "open $file: $!";
-+    my $text = do { local $/; <$input> };
-+    close $input;
-+    my $flags = $ENV{DEVKIT_FLAGS};
-+    my $build = $ENV{BUILD_PREFIX};
-+    die "missing devkit install settings" unless length($flags) && length($build);
-+    my $canonical = "--no-default-config --config=$build/share/devkit/clang.cfg";
-+    $text =~ s/\Q$flags\E/$canonical/g;
-+    $text =~ s!/bin/clang-23!/bin/clang!g;
-+    $text =~ s!x86_64-conda-linux-gnu/sysroot!x86_64-pc-linux-gnu/sysroot!g;
-+    $text =~ s/\Q$build\E/__PERL_BUILD_PREFIX__/g;
-+    my $resolve = 'use Cwd qw(abs_path);' . "\n" .
-+                  'use File::Basename;' . "\n" .
-+                  'my $perl_build_prefix = dirname(dirname(abs_path($^X)));' . "\n";
-+    if ($file =~ /Config_heavy\.pl$/) {
-+        $text =~ s/my \$summary_expanded;\n/my \$summary_expanded;\n$resolve/
-+            or die "Config_heavy.pl insertion point not found";
-+        my $replace = '$_ =~ s/__PERL_BUILD_PREFIX__/$perl_build_prefix/g;' . "\n";
-+        $text =~ s/my \$i = ord\(8\);\n/${replace}my \$i = ord(8);\n/
-+            or die "Config_heavy.pl replacement point not found";
-+    } else {
-+        $text =~ s/sub FETCH \{\n/${resolve}\nsub FETCH {\n/
-+            or die "Config.pm insertion point not found";
-+        my $fetch = 'my $value = exists $self->{$key} ? $self->{$key} : $self->fetch_string($key);' . "\n" .
-+                    '    $value =~ s/__PERL_BUILD_PREFIX__/$perl_build_prefix/g if defined $value;' . "\n" .
-+                    '    return $value;';
-+        $text =~ s/return exists \$self->\{\$key\} \? \$self->\{\$key\} : \$self->fetch_string\(\$key\);/$fetch/
-+            or die "Config.pm FETCH point not found";
-+        $text =~ s!cc => '__PERL_BUILD_PREFIX__/bin/clang'!cc => \$perl_build_prefix . '/bin/clang'!g;
-+        $text =~ s!libpth => '__PERL_BUILD_PREFIX__/lib __PERL_BUILD_PREFIX__/x86_64-pc-linux-gnu/sysroot/lib64'!libpth => \$perl_build_prefix . '/lib ' . \$perl_build_prefix . '/x86_64-pc-linux-gnu/sysroot/lib64'!g;
-+    }
-+    open my $output, '>', $file or die "write $file: $!";
-+    print {$output} $text;
-+    close $output or die "close $file: $!";
++if ($devkit_dir) {
++    $heavy_txt .= uncomment <<'EOT';
++#    use Cwd qw(abs_path);
++#    use File::Basename qw(dirname);
++#    my $perl_build_prefix = dirname(dirname(abs_path($^X)));
++#    s/__PERL_BUILD_PREFIX__/$perl_build_prefix/g;
++EOT
 +}
 +
- sub copy {
-     my($from,$to) = @_;
+ $heavy_txt .= uncomment <<'EOT';
+ #    my $config_sh_len = length $_;
+ #
+@@ -712,13 +733,29 @@
  
-@@ -556,6 +594,11 @@
- 	    unless -f $to and (chmod(0666, $to), unlink $to)
- 		   and File::Copy::copy($from, $to);
-     }
-+    # Only the core generated Config modules describe the compiler; modules
-+    # such as ExtUtils/MakeMaker/Config.pm must be installed unchanged.
-+    devkit_install_config($to)
-+        if $ENV{DEVKIT_INSTALL_CONFIG} && !$opts{notify}
-+            && $from =~ m!^lib/Config(?:_heavy\.pl|\.pm)$!;
-     $packlist->{$xto} = { type => 'file' };
+ $heavy_txt .= $fetch_string;
+ 
++if ($devkit_dir) {
++    $config_txt .= uncomment <<'EOT';
++#    use Cwd qw(abs_path);
++#    use File::Basename qw(dirname);
++#    my $perl_build_prefix = dirname(dirname(abs_path($^X)));
++EOT
++}
++
+ $config_txt .= uncomment <<'ENDOFEND';
+ #
+ #    sub FETCH {
+ #        my($self, $key) = @_;
+ #
+ #        # check for cached value (which may be undef so we use exists not defined)
+-#        return exists $self->{$key} ? $self->{$key} : $self->fetch_string($key);
++#        my $value = exists $self->{$key} ? $self->{$key} : $self->fetch_string($key);
++ENDOFEND
++if ($devkit_dir) {
++    $config_txt .= uncomment <<'EOT';
++#        $value =~ s/__PERL_BUILD_PREFIX__/$perl_build_prefix/g if defined $value;
++EOT
++}
++$config_txt .= uncomment <<'ENDOFEND';
++#        return $value;
+ #    }
+ #
+ ENDOFEND
+@@ -1196,7 +1233,7 @@
  }
  
+ # Now do some simple tests on the Config.pm file we have created
+-unshift(@INC,'lib');
++unshift(@INC, $devkit_dir || 'lib');
+ require $Config_PM;
+ require $Config_heavy;
+ Config->import;
+--- a/installperl
++++ b/installperl
+@@ -667,7 +667,11 @@
+ 	    mkpath("$installlib/$dir");
+ 	    # HP-UX (at least) needs to maintain execute permissions
+ 	    # on dynamically-loaded libraries.
+-            if (copy_if_diff($_, "$installlib/$name")) {
++            my $source = $_;
++            if ($ENV{DEVKIT_CONFIG_DIR} && m!^lib/(Config(?:_heavy\.pl|\.pm))$!) {
++                $source = "$ENV{DEVKIT_CONFIG_DIR}/$1";
++            }
++            if (copy_if_diff($source, "$installlib/$name")) {
+                 strip("-S", "$installlib/$name")
+                     if $^O eq 'darwin' and /\.(?:so|$dlext|a)$/;
+                 chmod(/\.(so|$dlext)$/ ? $SO_MODE : $NON_SO_MODE,
