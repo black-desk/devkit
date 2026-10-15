@@ -37,9 +37,9 @@ test -d "${SYSROOT}"
 test -x "${CC}"
 unset LD_LIBRARY_PATH LD_PRELOAD ICU_DATA
 export CXXFLAGS="${CXXFLAGS} -std=c++17"
-# ICU invokes its newly built tools before installing them. Their dependencies
-# live in the build tree; use RUNPATH rather than ICU's loader-env wrappers.
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/source/lib -Wl,-rpath,${SRC_DIR}/source/stubdata -Wl,-rpath,${SRC_DIR}/source/tools/ctestfw"
+# ICU runs newly built tools through its upstream loader-environment wrappers.
+# Keep build-tree library paths out of the exported linker configuration.
+export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s"
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" source/config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" source/config.sub
 cd source
@@ -48,10 +48,12 @@ cd source
 unset PYTHON
 ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" --disable-samples --disable-extras \
   --disable-tests
-make -j"${CPU_COUNT}" INVOKE= PKGDATA_INVOKE= INSTALLED_INVOKE=
-make install INVOKE= PKGDATA_INVOKE= INSTALLED_INVOKE= \
+make -j"${CPU_COUNT}"
+make install \
   pkglibdir="${PREFIX}/lib/devkit/lib/icu/${LIBRARY_VERSION}"
-# Post-link exception: ICU installs its build-tree tools without a separate install-time RUNPATH rewrite; pkgdata also invokes tools before installation.
+# Post-link exception: ICU has no per-tool relative installed RUNPATH setting.
+# Build-time tools use upstream loader wrappers; installed tools must load
+# channel dependencies without those wrappers.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
 "${CXX}" ${CXXFLAGS} "${SRC_DIR}/devkit-tests/runtime.cpp" \
