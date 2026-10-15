@@ -144,3 +144,11 @@ development directory. The optional library-generation modes do not require
 adding a compiler runtime dependency to ICU, just as the distribution package
 does not depend on GCC. Default configuration discovery remains host-oriented;
 channel builds explicitly select the channel configuration.
+
+MIT krb5 uses the case-sensitive Make variable `PKGCONFIG_DIR`, not Automake's
+`pkgconfigdir`. Pass that variable to `make install` so all eight generated pc
+files install directly into `lib/devkit/lib/pkgconfig`. Removing the staging
+fallback exposed the previously ignored lowercase override. Verified the pinned
+source's configured `install-mkdirs` and build-tools installation targets
+locally: all eight pc files land directly in the hidden directory with their
+native generated prefix definitions.
