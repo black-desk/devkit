@@ -160,3 +160,36 @@ consumer configure commands select the fixture's hidden prefix, rather than an
 input generation's zlib or a host library. No tests are disabled. Locally
 reproduced the selfhost failure (10 failed or blocked tests), then rebuilt with
 the corrected search paths: all 18 upstream CTest tests pass.
+
+## Installation-consumer test audit
+
+After the selfhost zlib failure, reviewed every recipe's build/test entry points
+and the pinned, checksum-verified upstream CMake/test definitions for the eleven
+other CMake projects below. This checks nested consumer discovery, not just the
+outer recipe's `CMAKE_PREFIX_PATH`: cache arguments are not automatically passed
+to a nested CMake invocation.
+
+| Project    | Enabled test/discovery path                                                                           | Finding                                                                                                                                         |
+| ---------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| zlib       | Installs a temporary fixture and launches five nested consumer configurations.                        | Fixed each configure command to search that fixture's `lib/devkit`; all 18 tests pass locally.                                                  |
+| c-ares     | Recipe runs an explicitly compiled installed-library probe; upstream GoogleTest suite is not enabled. | No nested installation consumer.                                                                                                                |
+| cppdap     | Build-tree GoogleTest executable; separate test-only GTest installation.                              | `GTest_DIR` explicitly selects the test fixture; `jsoncpp_DIR` explicitly selects the channel configuration.                                    |
+| jsoncpp    | Build-tree unit executable and Python-driven reader/writer tests.                                     | No installed-package discovery in enabled tests.                                                                                                |
+| libarchive | Build-tree archive/command test executables.                                                          | No nested installation consumer; outer dependency discovery uses the hidden prefix and explicit Find-module paths.                              |
+| libssh2    | Build-tree unit executables and script tests.                                                         | No nested installation consumer; optional SSH integration scope is unchanged.                                                                   |
+| libuv      | Selected `uv_test` executable in the build tree.                                                      | No nested installation consumer.                                                                                                                |
+| lzo        | Build-tree compression/example executables.                                                           | No nested installation consumer.                                                                                                                |
+| pcre2      | Build-tree regression scripts/JIT/POSIX executables; repository installed-consumer tests.             | Installed shared/static consumers explicitly set `PCRE2_DIR` to the hidden configuration and `PKG_CONFIG_LIBDIR` to hidden pc files.            |
+| zstd       | Build-tree benchmark/fuzzer/stream tests and CLI script.                                              | No nested installation consumer.                                                                                                                |
+| CMake      | Selected CTest parallel/download smoke tests; repository discovery tests.                             | Parallel fixture configures a self-contained test project; discovery tests explicitly distinguish host defaults from the hidden channel prefix. |
+| Ninja      | Build-tree `ninja_test`.                                                                              | No nested installation consumer.                                                                                                                |
+
+The other recipes use Make/Autotools, Meson, Cargo, Go, imported payloads or
+data-only installation. Reviewed their repository test entry points for CMake
+and pkg-config consumers as well: existing explicit hidden search paths remain
+in place. LLVM/Clang runtime probes select the channel compiler configuration
+explicitly; they do not use a temporary installed-package CMake fixture.
+
+No second instance of zlib's missing nested installation prefix was found. This
+source/recipe audit does not claim all upstream suites have run locally;
+selfhost and the later smoke/ordinary jobs remain required validation.
