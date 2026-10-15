@@ -58,13 +58,3 @@ Keep runtime libraries in the public lib directory.
      $packlist->{$xto} = { type => 'file' };
  }
  
-@@ -704,6 +745,9 @@
- 	$perlpodbadsymlink = 1;
-     }
-     -f $from || $perlpodbadsymlink || warn "$0: $from not found";
-+    devkit_install_config($to)
-+        if $ENV{DEVKIT_INSTALL_CONFIG} && !$opts{notify}
-+            && $to =~ m!(?:^|/)Config(?:_heavy\.pl|\.pm)$!;
-     $packlist->{$xto} = { type => 'file' };
-     if ($opts{force} || compare($from, $to) || $opts{notify}) {
- 	safe_unlink($to);   # In case we don't have write permissions.
