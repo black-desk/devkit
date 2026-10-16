@@ -38,8 +38,10 @@ class PackageAuditTests(unittest.TestCase):
         subprocess.run(command, check=True)
         return path
 
-    def check(self, package=None):
+    def check(self, package=None, *, skip_runpath=False):
         command = ["python3", str(CHECK), str(self.prefix)]
+        if skip_runpath:
+            command.append("--skip-runpath-check")
         if package:
             command += ["--package", package]
         return subprocess.run(command, capture_output=True, text=True)
@@ -63,6 +65,27 @@ class PackageAuditTests(unittest.TestCase):
         result = self.check()
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("DT_RPATH is forbidden", result.stderr)
+
+    def test_skip_runpath_retains_layout_and_ownership_checks(self):
+        self.elf(runpath="/tools/deps/lib", old=True)
+        self.record("imported", ["bin/probe"])
+        self.assertNotEqual(self.check("imported").returncode, 0)
+        result = self.check("imported", skip_runpath=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("ELF RUNPATH: OK", result.stdout)
+        self.assertNotEqual(self.check("missing", skip_runpath=True).returncode, 0)
+        self.elf("lib/devkit/lib/hidden.so", runpath="/tools/deps/lib", old=True)
+        header = self.prefix / "include/probe.h"
+        header.parent.mkdir()
+        header.write_text("/* public header */")
+        self.record(
+            "imported", ["bin/probe", "lib/devkit/lib/hidden.so", "include/probe.h"]
+        )
+        result = self.check("imported", skip_runpath=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("runtime ELF in development prefix", result.stderr)
+        self.assertIn("public development interface", result.stderr)
+        self.assertNotIn("DT_RPATH is forbidden", result.stderr)
 
     def test_rejects_absolute_relative_empty_and_hidden_runpaths(self):
         for value, message in (
