@@ -246,6 +246,7 @@ scripts/
   affected-build.sh     Run the planned local pipeline
   build-ordinary.sh     Build ordinary recipes from an existing plan
   channel-artifact.py   Verify, seal and merge portable stage channels
+  bootstrap-fingerprint.py Hash complete bootstrap inputs for CI cache reuse
   dependency-graph/     Rendered recipe graph and affected-closure calculator
   publish-result.sh     Upload generated result archives to prefix.dev
   fetch-seed.sh         Download and verify the fixed seed
@@ -911,11 +912,14 @@ skipped when no target packages change.
 
 The plan travels as an artifact and small job outputs control scheduling.
 Channel artifacts contain archives, repodata, relative package manifests and
-checksums tied to the checkout and plan. Each runner creates fresh environments;
-no installed environment or build tree is transferred. Ordinary output remains
-separate from the immutable, tested selfhost input. Publication verifies and
-merges the required artifacts into channels/result. Intentional skips pass the
-final gate; failures, cancellations and unexpected skips do not.
+checksums tied to the bootstrap inputs, or to the checkout and plan for ordinary
+outputs. Exact bootstrap cache hits skip the three compilation jobs and still
+run independent tests and smoke checks. Only successfully tested selfhost
+channels enter the cache; a miss rebuilds normally. Each runner creates fresh
+environments; no installed environment or build tree is transferred. Ordinary
+output remains separate from the immutable, tested selfhost input. Publication
+verifies and merges the required artifacts into channels/result. Intentional
+skips pass the final gate; failures, cancellations and unexpected skips do not.
 
 Pull requests validate without publishing. Main pushes retain prefix.dev OIDC
 trusted publishing after every required build and test succeeds. The workflow

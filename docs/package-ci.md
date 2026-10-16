@@ -37,9 +37,12 @@ build/artifact selection controls; it cannot start before the final gate passes.
 
 ## Portable handoffs
 
-The small boolean controls bootstrap_required, ordinary_required and
-build_required are GitHub job outputs. The complete affected-plan.json is an
-artifact containing the selected outputs, dependency order, revision validation,
+The small boolean controls bootstrap_required, bootstrap_build_required,
+ordinary_required and build_required are GitHub job outputs. bootstrap_required
+still means the plan needs a selfhost channel; bootstrap_build_required means
+that channel must be compiled rather than restored from cache. The plan job also
+exports bootstrap_cache_key. The complete affected-plan.json is an artifact
+containing the selected outputs, dependency order, revision validation,
 base/head commits and ordered deduplicated ordinary recipe list. Every consumer
 reads this same file instead of recomputing the plan.
 
@@ -51,15 +54,18 @@ output. Dirty alone downloads seed; subsequent jobs carry tzdata from their
 input channel. Dirty's seed compatibility variant remains generated from the
 verified seed metadata.
 
-stage-state.json records stage, checkout commit, plan/seed manifest SHA-256,
-input state SHA-256 and the relative file names, sizes and hashes. Consumers
-reject missing, extra or changed files, the wrong stage/commit/plan/seed, and
-publication inputs from incompatible stage attempts. Only successfully checked
-stages are sealed and uploaded. Tar preserves channel files; installed
-environments, build trees and runner absolute paths are not transferred.
-Artifacts belong to the current workflow run and are retained for three days.
-Pixi's existing orchestration cache remains optional; it is not a channel
-handoff.
+stage-state.json schema 2 records stage, original checkout commit, plan/seed
+manifest SHA-256, bootstrap input SHA-256, input state SHA-256 and the relative
+file names, sizes and hashes. Every consumer requires a plan for its current
+checkout. Bootstrap channels are reusable across commits and plans only when
+their bootstrap input hash matches; ordinary outputs remain bound to the exact
+current commit and plan. Consumers reject missing, extra or changed files,
+incorrect stage/seed/input hashes, and publication inputs from incompatible
+stage attempts. Only successfully checked stages are sealed and uploaded. Tar
+preserves channel files; installed environments, build trees and runner absolute
+paths are not transferred. Artifacts belong to the current workflow run and are
+retained for three days. Pixi's existing orchestration cache remains optional;
+it is not a channel handoff.
 
 selfhost-channel contains channels/result-rebuild. Ordinary consumes it
 read-only and publishes only its own new packages into channels/ordinary.
@@ -68,6 +74,54 @@ rejects colliding archive names, recreates indexes and invokes the existing OIDC
 uploader. A bootstrap-only build publishes selfhost directly; an ordinary-only
 build publishes only its new packages. No placeholder artifact is needed for a
 skipped stage.
+
+## Reusing completed bootstrap builds
+
+`scripts/bootstrap-fingerprint.py` hashes the entire bootstrap closure as one
+unit. The key `bootstrap-v1-linux-64-<SHA256>` includes:
+
+- Bootstrap membership/order and every file under each member recipe, including
+  patches, tests, build scripts and vendored inputs.
+- Literal local source paths referenced by those recipes, including sources
+  outside their own recipe directory.
+- Seed manifest, Pixi manifest/lock, all variants, repository scripts and the
+  package workflow (including runner label, pinned actions and Pixi version).
+- Git ignore/submodule configuration and retired package policy when present.
+
+Names, executable bits and file bytes contribute to the hash. Commit IDs,
+ordinary recipe contents, documentation and ignored generated output do not.
+Script changes are deliberately conservative: even changes to orchestration
+checks invalidate the cache. New non-ignored inputs count before being
+committed, matching local planner behavior. Unsupported templated local paths,
+symlinks or submodule inputs fail closed instead of silently omitting their
+content; extend the fingerprint reader before introducing those inputs. The
+runner label is hashed, not GitHub's changing image contents. Bump the
+fingerprint/cache version when an external environment or policy change requires
+a forced rebuild.
+
+When bootstrap is selected, plan restores only an exact cache key, extracts the
+selfhost channel and validates its input hash plus every sealed file checksum.
+An invalid restored channel fails planning; it cannot be published. A valid hit
+is uploaded as this run's normal selfhost-channel artifact.
+Dirty/result/selfhost are intentionally skipped, while smoke still executes the
+independent package tests and channel checks. Ordinary builds and publication
+then follow the same artifact handoffs as a fresh build. The final gate
+distinguishes those planned compilation skips from failed or unexpectedly
+skipped tests.
+
+On a miss, all three compilation stages run normally. Smoke saves the archived
+selfhost channel through actions/cache/save only after all its tests succeed,
+before ordinary builds run. A later ordinary-package failure therefore leaves a
+usable bootstrap cache for the next run. No dirty/result partial stages, build
+trees or installed environments are cached. Cache eviction or unavailable cache
+entries simply trigger a full rebuild. There are no restore-key fallbacks.
+GitHub's normal branch scope applies: a PR can read default-branch caches and
+its own PR caches, but a cache saved by a PR is not shared with main or other
+PRs. Pixi's existing environment cache remains separate.
+
+An ordinary-only plan still uses the published channel and does not restore or
+rebuild bootstrap. Local entry points always perform their requested stages;
+GitHub cache lookup/save is confined to the workflow.
 
 ## Local entry points
 
@@ -107,7 +161,9 @@ commands, without downloads or compiler work. It covers stage channel selection,
 upstream test flags, deferred independent tests, fresh-runner input
 availability, retry isolation, corrupted artifacts, commit/plan/seed mismatches,
 ordinary-only and bootstrap-plus-ordinary paths, publication assembly, mixed
-stage attempts, planning outputs and failure/cancellation/skip propagation.
+stage attempts, planning outputs and failure/cancellation/skip propagation. It
+also checks fingerprint invalidation, cross-commit cached selfhost testing and
+ordinary publication, and cache-hit compilation skips without skipping tests.
 Checks also runs the existing dependency graph tests; actionlint validates
 workflow syntax and expressions. These checks establish orchestration behavior,
 not a completed multi-job bootstrap build. Full builds remain CI validation.
