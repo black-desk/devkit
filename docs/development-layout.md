@@ -128,7 +128,7 @@ paths resolving into `lib/devkit`. RUNPATH entries must start with `$ORIGIN` or
 development-file locations, relocatable/non-dangling development symlinks, and
 that dynamic runtime ELFs are not stored in the hidden development prefix. The
 explicit `--skip-runpath-check` option disables only RPATH/RUNPATH policy checks
-for imported binaries. Python, rustup and b4 use this option to retain their
+for imported binaries. Python, rustup, Go and b4 use this option to retain their
 upstream/runtime packaging choices. In b4, imported manylinux wheels retain
 auditwheel's RPATHs for their bundled native dependencies in the private Python
 environment. File ownership, development layout and symlink checks, and the ban
