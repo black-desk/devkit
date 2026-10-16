@@ -128,12 +128,14 @@ paths resolving into `lib/devkit`. RUNPATH entries must start with `$ORIGIN` or
 development-file locations, relocatable/non-dangling development symlinks, and
 that dynamic runtime ELFs are not stored in the hidden development prefix. The
 explicit `--skip-runpath-check` option disables only RPATH/RUNPATH policy checks
-for imported binaries. Python and rustup use this option to retain their
-upstream/runtime packaging choices. File ownership, development layout and
-symlink checks, and the ban on runtime ELFs in `lib/devkit` remain enabled.
-Default invocations, including completed bootstrap-prefix audits, remain strict.
-Existing Python runtime/venv tests and rustup loader/runtime tests still run.
-The skipped check is omitted from the success message.
+for imported binaries. Python, rustup and b4 use this option to retain their
+upstream/runtime packaging choices. In b4, imported manylinux wheels retain
+auditwheel's RPATHs for their bundled native dependencies in the private Python
+environment. File ownership, development layout and symlink checks, and the ban
+on runtime ELFs in `lib/devkit` remain enabled. Default invocations, including
+completed bootstrap-prefix audits, remain strict. Existing Python runtime/venv
+tests, rustup loader/runtime tests and b4 native module/relocation tests still
+run. The skipped check is omitted from the success message.
 
 Dependencies are present during installed tests, so a development link into a
 separate runtime package is valid. Missing ownership records fail the audit.
