@@ -40,6 +40,11 @@ class ArtifactTests(unittest.TestCase):
         self.addCleanup(patch.stopall)
         patch.object(ARTIFACT, "ROOT", self.root).start()
         patch.object(ARTIFACT, "head", return_value="abc").start()
+        patch.object(
+            ARTIFACT,
+            "bootstrap_digest",
+            side_effect=lambda: ARTIFACT.digest(self.root / "seed-packages.tsv"),
+        ).start()
         self.channel = self.root / "dirty"
         self.make_channel(self.channel)
         ARTIFACT.seal(self.channel, "dirty", self.plan, [])
@@ -91,20 +96,48 @@ class ArtifactTests(unittest.TestCase):
             restore()
         ARTIFACT.verify(self.channel, "dirty", self.plan)
 
-    def test_rejects_wrong_stage_commit_plan_and_seed(self):
+    def test_bootstrap_reuse_across_commits_and_plans_requires_same_inputs(
+        self,
+    ):
         with self.assertRaises(ValueError):
             ARTIFACT.verify(self.channel, "selfhost", self.plan)
+        original = json.loads(self.plan.read_text())
         with patch.object(ARTIFACT, "head", return_value="different"):
+            # The current plan must still match the current checkout.
             with self.assertRaises(ValueError):
                 ARTIFACT.verify(self.channel, "dirty", self.plan)
-        original = self.plan.read_text()
-        self.plan.write_text(original + "\n")
-        with self.assertRaises(ValueError):
+            self.plan.write_text(json.dumps({**original, "head_sha": "different"}))
             ARTIFACT.verify(self.channel, "dirty", self.plan)
-        self.plan.write_text(original)
+        self.plan.write_text(json.dumps(original) + "\n")
+        ARTIFACT.verify(self.channel, "dirty", self.plan)
+        with patch.object(ARTIFACT, "bootstrap_digest", return_value="changed-inputs"):
+            with self.assertRaisesRegex(ValueError, "bootstrap input"):
+                ARTIFACT.verify(self.channel, "dirty", self.plan)
         (self.root / "seed-packages.tsv").write_text("different seed\n")
         with self.assertRaises(ValueError):
             ARTIFACT.verify(self.channel, "dirty", self.plan)
+
+    def test_ordinary_is_still_bound_to_current_commit_and_plan(self):
+        recipe = self.root / "recipes/first"
+        recipe.mkdir(parents=True)
+        (recipe / "recipe.yaml").touch()
+        report = json.loads(self.plan.read_text())
+        report.update(
+            bootstrap_required=False,
+            ordinary_recipes=["first"],
+            selected=[{"recipe": "recipes/first", "bootstrap": False}],
+        )
+        self.plan.write_text(json.dumps(report))
+        ARTIFACT.seal(self.channel, "ordinary", self.plan, [])
+        ARTIFACT.verify(self.channel, "ordinary", self.plan)
+        self.plan.write_text(self.plan.read_text() + "\n")
+        with self.assertRaisesRegex(ValueError, "commit/plan"):
+            ARTIFACT.verify(self.channel, "ordinary", self.plan)
+        report["head_sha"] = "new"
+        self.plan.write_text(json.dumps(report))
+        with patch.object(ARTIFACT, "head", return_value="new"):
+            with self.assertRaisesRegex(ValueError, "commit/plan"):
+                ARTIFACT.verify(self.channel, "ordinary", self.plan)
 
     def test_rejects_missing_parents_and_escaping_manifest(self):
         with self.assertRaises(ValueError):
@@ -165,6 +198,7 @@ class PipelineTests(unittest.TestCase):
             "build-ordinary.sh",
             "affected-plan.sh",
             "channel-artifact.py",
+            "bootstrap-fingerprint.py",
             "clean-build-outputs.py",
             "test-bootstrap-stage.sh",
         ):
@@ -178,6 +212,8 @@ class PipelineTests(unittest.TestCase):
         (self.root / "variants").mkdir()
         for stage in ("dirty", "result"):
             (self.root / "variants" / f"{stage}.yaml").write_text(stage)
+        for name in ("pixi.toml", "pixi.lock"):
+            (self.root / name).write_text("locked tools")
         self.log = self.root / "calls.jsonl"
         self.bin = self.root / "bin"
         self.bin.mkdir()
@@ -450,6 +486,61 @@ PY
         )
         self.assertEqual(state.read_bytes(), before)
 
+    def test_cached_selfhost_from_prior_commit_runs_tests_and_builds_ordinary(
+        self,
+    ):
+        self.set_plan(True, ["first"])
+        for stage in ("dirty", "result", "selfhost", "test"):
+            self.stage(stage)
+        state = self.root / "channels/result-rebuild/stage-state.json"
+        before = state.read_bytes()
+        self.run_cmd(
+            [
+                "git",
+                "-c",
+                "user.name=Pipeline Test",
+                "-c",
+                "user.email=test@example.invalid",
+                "-c",
+                "commit.gpgsign=false",
+                "commit",
+                "--allow-empty",
+                "-qm",
+                "ordinary-only follow-up",
+            ]
+        )
+        self.head = self.run_cmd(["git", "rev-parse", "HEAD"]).stdout.strip()
+        self.set_plan(True, ["first"])
+        # Only the cached selfhost channel is transferred to the new runner.
+        for name in ("seed", "dirty", "result"):
+            shutil.rmtree(self.root / "channels" / name)
+        self.log.write_text("")
+        self.stage("test")
+        self.run_cmd(["bash", "scripts/build-ordinary.sh"])
+        self.run_cmd(
+            [
+                "python3",
+                "scripts/channel-artifact.py",
+                "merge",
+                "--plan",
+                str(self.plan),
+                "--channel",
+                "channels/publication",
+                "--input",
+                "selfhost",
+                "channels/result-rebuild",
+                "--input",
+                "ordinary",
+                "channels/ordinary",
+            ]
+        )
+        calls = [c for c in self.calls() if c["tool"] == "rattler-build"]
+        self.assertTrue(any(c["args"][0] == "test" for c in calls))
+        builds = [c for c in calls if c["args"][0] == "build"]
+        self.assertEqual(len(builds), 1)
+        self.assertIn(str(self.root / "recipes/first/recipe.yaml"), builds[0]["args"])
+        self.assertEqual(state.read_bytes(), before)
+
     def plan_from_report(self, report):
         directory = self.root / "scripts/dependency-graph"
         directory.mkdir()
@@ -519,18 +610,23 @@ class JobGateTests(unittest.TestCase):
 
         self.script = textwrap.dedent(script)
 
-    def gate(self, bootstrap, ordinary, overrides=None):
+    def gate(self, bootstrap, ordinary, overrides=None, *, cache_hit=False):
         jobs = {
             "plan": {
                 "result": "success",
                 "outputs": {
                     "bootstrap_required": str(bootstrap).lower(),
+                    "bootstrap_build_required": str(
+                        bootstrap and not cache_hit
+                    ).lower(),
                     "ordinary_required": str(ordinary).lower(),
                 },
             }
         }
         for name in ("dirty", "result", "selfhost", "smoke", "ordinary"):
             required = ordinary if name == "ordinary" else bootstrap
+            if name in ("dirty", "result", "selfhost") and cache_hit:
+                required = False
             jobs[name] = {"result": "success" if required else "skipped"}
         for name, result in (overrides or {}).items():
             jobs[name]["result"] = result
@@ -544,6 +640,18 @@ class JobGateTests(unittest.TestCase):
         for bootstrap in (False, True):
             for ordinary in (False, True):
                 self.assertEqual(self.gate(bootstrap, ordinary), 0)
+
+    def test_cache_hit_skips_only_compile_jobs(self):
+        self.assertEqual(self.gate(True, True, cache_hit=True), 0)
+        self.assertEqual(self.gate(True, False, cache_hit=True), 0)
+        for job in ("smoke", "ordinary"):
+            for result in ("skipped", "failure", "cancelled"):
+                self.assertNotEqual(
+                    self.gate(True, True, {job: result}, cache_hit=True), 0
+                )
+        self.assertNotEqual(
+            self.gate(True, True, {"dirty": "success"}, cache_hit=True), 0
+        )
 
     def test_failure_cancellation_and_dependency_skip_fail_gate(self):
         for stage in (

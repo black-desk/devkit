@@ -24,6 +24,8 @@ jobs:
     timeout-minutes: 30
     outputs:
       bootstrap_required: ${{ steps.plan.outputs.bootstrap_required }}
+      bootstrap_build_required: ${{ steps.bootstrap.outputs.build_required }}
+      bootstrap_cache_key: ${{ steps.fingerprint.outputs.key }}
       ordinary_required: ${{ steps.plan.outputs.ordinary_required }}
       build_required: ${{ steps.plan.outputs.build_required }}
     steps:
@@ -52,6 +54,49 @@ jobs:
             }}
         run: pixi run bash scripts/affected-plan.sh "$BASE_SHA"
 
+      - name: Fingerprint bootstrap inputs
+        if: steps.plan.outputs.bootstrap_required == 'true'
+        id: fingerprint
+        run: python3 scripts/bootstrap-fingerprint.py
+
+      - name: Restore tested bootstrap channel
+        if: steps.plan.outputs.bootstrap_required == 'true'
+        id: bootstrap-cache
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .build-output/selfhost-channel.tar.gz
+          key: ${{ steps.fingerprint.outputs.key }}
+
+      - name: Validate cached bootstrap channel
+        if: steps.bootstrap-cache.outputs.cache-hit == 'true'
+        run: |
+          mkdir -p channels
+          tar --extract --gzip --file .build-output/selfhost-channel.tar.gz --directory channels
+          pixi run python scripts/channel-artifact.py verify --plan "$PLAN_FILE" \
+            --channel channels/result-rebuild --stage selfhost
+
+      - name: Select bootstrap execution
+        id: bootstrap
+        env:
+          REQUIRED: ${{ steps.plan.outputs.bootstrap_required }}
+          CACHE_HIT: ${{ steps.bootstrap-cache.outputs.cache-hit }}
+        run: |
+          build_required=false
+          if [[ "$REQUIRED" == true && "$CACHE_HIT" != true ]]; then
+            build_required=true
+          fi
+          echo "build_required=$build_required" >> "$GITHUB_OUTPUT"
+          echo "Bootstrap: required=$REQUIRED, cache-hit=${CACHE_HIT:-false}, build=$build_required" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload cached selfhost channel
+        if: steps.bootstrap-cache.outputs.cache-hit == 'true'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: selfhost-channel
+          path: .build-output/selfhost-channel.tar.gz
+          retention-days: 3
+          if-no-files-found: error
+
       - name: Upload build plan
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -63,7 +108,7 @@ jobs:
   dirty:
     name: Dirty
     needs: [plan]
-    if: needs.plan.outputs.bootstrap_required == 'true'
+    if: needs.plan.outputs.bootstrap_build_required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -106,7 +151,7 @@ jobs:
   result:
     name: Result
     needs: [plan, dirty]
-    if: needs.plan.outputs.bootstrap_required == 'true'
+    if: needs.plan.outputs.bootstrap_build_required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -160,7 +205,7 @@ jobs:
   selfhost:
     name: Selfhost
     needs: [plan, result]
-    if: needs.plan.outputs.bootstrap_required == 'true'
+    if: needs.plan.outputs.bootstrap_build_required == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -214,7 +259,10 @@ jobs:
   smoke:
     name: Test
     needs: [plan, selfhost]
-    if: needs.plan.outputs.bootstrap_required == 'true'
+    if: >-
+      !cancelled() && needs.plan.result == 'success' &&
+      needs.plan.outputs.bootstrap_required == 'true' &&
+      (needs.plan.outputs.bootstrap_build_required == 'false' || needs.selfhost.result == 'success')
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -251,6 +299,13 @@ jobs:
 
       - name: Test self-hosted generation
         run: pixi run bash scripts/bootstrap.sh test
+
+      - name: Cache successfully tested bootstrap channel
+        if: needs.plan.outputs.bootstrap_build_required == 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: .build-output/selfhost-channel.tar.gz
+          key: ${{ needs.plan.outputs.bootstrap_cache_key }}
 
   ordinary:
     name: Build
@@ -403,7 +458,10 @@ jobs:
           assert jobs["plan"]["result"] == "success", "Planning failed or was cancelled"
           outputs = jobs["plan"]["outputs"]
           for job in ("dirty", "result", "selfhost", "smoke", "ordinary"):
-              flag = "ordinary_required" if job == "ordinary" else "bootstrap_required"
+              if job in ("dirty", "result", "selfhost"):
+                  flag = "bootstrap_build_required"
+              else:
+                  flag = "ordinary_required" if job == "ordinary" else "bootstrap_required"
               assert outputs[flag] in ("true", "false"), f"Invalid plan output: {flag}"
               expected = "success" if outputs[flag] == "true" else "skipped"
               actual = jobs[job]["result"]
