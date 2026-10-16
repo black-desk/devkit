@@ -50,7 +50,15 @@ test -d "${SYSROOT}"
 test -x "${CC}"
 
 # Default metadata lookup is host-only; recipes opt in with PKG_CONFIG_LIBDIR.
-# These directories describe the supported x86_64 Linux hosts, not the build host.
+# Upstream defaults to {prefix}/{libdir}/pkgconfig:{prefix}/{datadir}/pkgconfig;
+# with our --prefix that would search the channel. Override it with host paths,
+# covering Debian multiarch and lib64 layouts on supported x86_64 Linux hosts.
+# Do not derive this list from the build machine.
+# with-system-libdir/includedir below filter redundant -L/-I output; they do
+# not add metadata search paths. Leave /usr/local paths out of those filters:
+# its library directories are not necessarily host linker defaults, and even
+# /usr/local/include depends on the host compiler configuration. Preserve the
+# explicit flags from .pc files rather than assume those paths are implicit.
 meson setup build \
   --buildtype=release \
   --default-library=static \
