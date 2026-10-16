@@ -20,7 +20,7 @@ outputs:
   - package:
       name: gettext
     build:
-      number: 2
+      number: 3
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         binary_relocation: false
@@ -90,7 +90,7 @@ outputs:
   - package:
       name: gettext-tools
     build:
-      number: 2
+      number: 3
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

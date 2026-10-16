@@ -40,7 +40,7 @@ export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
 export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH
 export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/lib/devkit/include/openssl-3.5.9 -I${PREFIX}/lib/devkit/include/keyutils-1.6.3"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/src/lib"
+export LDFLAGS="${LDFLAGS} -lgcc_s -Wl,-rpath,${SRC_DIR}/src/lib"
 cd src
 # MIT's official release includes configure; unlike the Git snapshot used by
 # forge, it does not require autoreconf. Keep forge's native feature baseline.

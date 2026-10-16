@@ -19,7 +19,7 @@ CXX_FLAGS="${COMMON_FLAGS}"
 if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
   CXX_FLAGS="${CXX_FLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 fi
-LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -L${PREFIX}/lib/devkit/lib/llvm-runtime -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
+LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
 
 cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \

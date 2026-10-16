@@ -48,7 +48,7 @@ test -x "${CC}"
 # <form.h>; retain both the isolated root and its ncurses subdirectory.
 export CFLAGS="${CFLAGS} -isystem ${PREFIX}/lib/devkit/include/ncurses-6.6"
 export CXXFLAGS="${CXXFLAGS} -isystem ${PREFIX}/lib/devkit/include/ncurses-6.6"
-export LDFLAGS="${LDFLAGS} -pthread -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s"
+export LDFLAGS="${LDFLAGS} -pthread -lgcc_s"
 export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
 export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH

@@ -44,7 +44,7 @@ export CPPFLAGS="${DEVKIT_FLAGS}"
 export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s"
+export LDFLAGS="${LDFLAGS} -lgcc_s"
 for directory in build-aux libcharset/build-aux; do
   cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" "${directory}/config.guess"
   cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" "${directory}/config.sub"

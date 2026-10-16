@@ -31,6 +31,16 @@ The development prefix is `<prefix>/lib/devkit`. CMake configuration directories
 may use `lib/cmake` or `share/cmake` beneath it, matching upstream installation.
 Metadata and aliases must remain usable after relocation.
 
+LLVM runtime development interfaces use this same `lib/devkit/lib` directory. Do
+not create an additional `llvm-runtime` link directory or add it to linker
+search flags: its entries duplicated the interfaces already present in the
+parent directory. Validation against the successful selfhost CI artifact
+compared shared libc++, static libc++/libc++abi, and GCC-compatible unwind
+linkage before and after removal, then after relocating the environment. Linker
+inputs remained identical, runtime probes passed, and
+default-host/explicit-channel Clang policy and installed-package layout checks
+passed.
+
 ## Installing development files and generating metadata
 
 Prefer configuring the upstream build system to install development files in
