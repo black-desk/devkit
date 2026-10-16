@@ -50,7 +50,7 @@ than adding zlib to the consumer's own link command.
 | libnghttp2  | Existing HTTP/2 library probe                                             |
 | libpsl      | Existing public-suffix probe                                              |
 | libssh2     | Existing probe and CMake export                                           |
-| libuv       | Existing version/runtime probe and CMake export                           |
+| libuv       | Installed-library probe compiled in recipe tests, plus CMake export       |
 | libxcrypt   | Existing password-hashing probe                                           |
 | libxml2     | Corrected source build, zlib DT_NEEDED, independent parser consumer       |
 | llvm-libgcc | Actual seed-mode package build and runtime tests; fresh-cache meta test   |
