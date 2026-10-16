@@ -1,6 +1,20 @@
 Install development interfaces and generate their paths in the upstream build.
 Keep runtime libraries in the public lib directory.
 
+TODO: Prefer a shared installation-directory convention over these direct
+layout changes. The channel could provide a pkg-config metadata file exposing
+its suggested pkgconfigdir; projects would query it through pkgconf, with the
+channel metadata directory explicitly selected through PKG_CONFIG_LIBDIR in
+recipes. Projects should also expose a configurable CMake package installation
+directory, and keep header and archive paths derived from installation settings
+rather than duplicate channel paths or version numbers in templates.
+
+Implementing that convention requires coordinated changes to the channel and
+consuming projects. For now, patch the install rules and metadata templates
+directly: they produce the same intended layout and relocatable metadata with
+less work. Keep the general convention as future work; this patch does not
+claim that the hard-coded layout is an upstream installation interface.
+
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -779,17 +779,17 @@

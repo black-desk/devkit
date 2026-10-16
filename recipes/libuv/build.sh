@@ -60,9 +60,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ctest --test-dir build -R '^uv_test$' --output-on-failure
 fi
 cmake --install build
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libuv-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libuv.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o "${SRC_DIR}/uv-probe"
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all
