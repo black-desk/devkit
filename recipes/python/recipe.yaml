@@ -21,7 +21,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -38,8 +38,9 @@ requirements:
     - uv ==0.12.22
 
 tests:
+  # Imported upstream binaries retain their own runtime search-path policy.
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package python
+      - python3 devkit-build/check-package.py "${PREFIX}" --package python --skip-runpath-check
     files:
       source:
         - devkit-build/check-package.py

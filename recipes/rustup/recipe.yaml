@@ -20,7 +20,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -38,8 +38,9 @@ requirements:
     - __glibc >=2.28
 
 tests:
+  # Imported upstream binaries retain their own runtime search-path policy.
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package rustup
+      - python3 devkit-build/check-package.py "${PREFIX}" --package rustup --skip-runpath-check
     files:
       source:
         - devkit-build/check-package.py

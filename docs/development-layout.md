@@ -126,7 +126,15 @@ paths, empty search entries, paths escaping the installed prefix, and runtime
 paths resolving into `lib/devkit`. RUNPATH entries must start with `$ORIGIN` or
 `${ORIGIN}`; ELFs without a search path are allowed. It also checks public
 development-file locations, relocatable/non-dangling development symlinks, and
-that dynamic runtime ELFs are not stored in the hidden development prefix.
+that dynamic runtime ELFs are not stored in the hidden development prefix. The
+explicit `--skip-runpath-check` option disables only RPATH/RUNPATH policy checks
+for imported binaries. Python and rustup use this option to retain their
+upstream/runtime packaging choices. File ownership, development layout and
+symlink checks, and the ban on runtime ELFs in `lib/devkit` remain enabled.
+Default invocations, including completed bootstrap-prefix audits, remain strict.
+Existing Python runtime/venv tests and rustup loader/runtime tests still run.
+The skipped check is omitted from the success message.
+
 Dependencies are present during installed tests, so a development link into a
 separate runtime package is valid. Missing ownership records fail the audit.
 

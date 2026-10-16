@@ -62,7 +62,7 @@ def runpath_errors(path, prefix, dynamic):
     return errors
 
 
-def check_prefix(prefix, files=None):
+def check_prefix(prefix, files=None, *, check_runpath=True):
     prefix = prefix.resolve()
     if files is None:
         files = [
@@ -116,7 +116,8 @@ def check_prefix(prefix, files=None):
             text=True,
             env={**os.environ, "LC_ALL": "C"},
         ).stdout
-        errors.extend(runpath_errors(path, prefix, dynamic))
+        if check_runpath:
+            errors.extend(runpath_errors(path, prefix, dynamic))
         if relative.is_relative_to(DEVELOPMENT) and "Dynamic section at" in dynamic:
             errors.append(f"runtime ELF in development prefix: {path}")
     return errors
@@ -126,15 +127,27 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("prefix", type=Path)
     parser.add_argument("--package", help="audit only this installed package's files")
+    parser.add_argument(
+        "--skip-runpath-check",
+        action="store_true",
+        help="preserve upstream RPATH/RUNPATH for imported binaries; still check layout",
+    )
     args = parser.parse_args()
     try:
         files = package_files(args.prefix, args.package) if args.package else None
-        errors = check_prefix(args.prefix, files)
+        errors = check_prefix(
+            args.prefix, files, check_runpath=not args.skip_runpath_check
+        )
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:
         parser.exit(1, f"package audit failed: {exc}\n")
     if errors:
         parser.exit(1, "\n".join(errors) + "\n")
-    print(f"package layout and ELF RUNPATH: OK ({args.package or 'completed prefix'})")
+    checks = (
+        "package layout"
+        if args.skip_runpath_check
+        else "package layout and ELF RUNPATH"
+    )
+    print(f"{checks}: OK ({args.package or 'completed prefix'})")
 
 
 if __name__ == "__main__":
