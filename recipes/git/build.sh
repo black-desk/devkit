@@ -126,7 +126,11 @@ CC = ${CC}
 AR = ${AR}
 STRIP = ${STRIP}
 CFLAGS = ${CFLAGS}
-LDFLAGS = ${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN/../lib:\$\$ORIGIN/../../lib'
+# Git installs bin programs as symlink targets for their git-core aliases.
+# Select RUNPATH at link time using upstream's list of bin programs.
+DEVKIT_RUNPATH = \$(if \$(filter \$@,\$(addsuffix \$X,\$(BINDIR_PROGRAMS_NEED_X))),../lib,../../lib)
+LDFLAGS = ${LDFLAGS}
+LDFLAGS_APPEND = -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN/\$(DEVKIT_RUNPATH)'
 PERL_PATH = ${PREFIX}/bin/perl
 SHELL_PATH = /bin/sh
 CURL_CONFIG = ${CURL_CONFIG}

@@ -193,3 +193,28 @@ explicitly; they do not use a temporary installed-package CMake fixture.
 No second instance of zlib's missing nested installation prefix was found. This
 source/recipe audit does not claim all upstream suites have run locally;
 selfhost and the later smoke/ordinary jobs remain required validation.
+
+## Git executable RUNPATH
+
+The post-bootstrap Git audit rejected the old combined
+`$ORIGIN/../lib:$ORIGIN/../../lib` RUNPATH: the second entry escapes the
+installation prefix for programs in `bin`. Generate one path at native link time
+through Git's `LDFLAGS_APPEND`. Select `../lib` for upstream's
+`BINDIR_PROGRAMS_NEED_X` targets and `../../lib` for git-core helpers. Keep
+`INSTALL_SYMLINKS`: aliases in `libexec/git-core` resolve to the actual bin
+program instead of copying a binary with the wrong directory-relative RUNPATH.
+No ELF postprocessing or audit exception is needed.
+
+Checked every recipe's relative RUNPATH definitions for the same depth error.
+Git was the only recipe combining a two-parent library path with bin programs;
+the other shared bin/lib definitions stay inside the prefix, or use the existing
+per-file finalization for deeper directories.
+
+Validated with a local Clang build and upstream installation of pinned Git
+2.56.0. `git`, `git-shell` and `scalar` contain `$ORIGIN/../lib`; git-core
+helpers contain `$ORIGIN/../../lib`. The complete installed tree passes
+`check-package.py` both before and after relocation; the relocated public Git
+and its git-core alias run successfully. This local check uses host dependencies
+and disables Rust, curl, expat, gettext and Tcl/Tk only in the temporary test
+build. The recipe retains its existing features; CI must validate the complete
+channel dependency combination. All 35 repository script tests also pass.
