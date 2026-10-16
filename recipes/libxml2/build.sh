@@ -47,7 +47,7 @@ test -x "${CC}"
 unset LD_LIBRARY_PATH LD_PRELOAD
 unset PYTHON
 export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/lib/devkit/include/libiconv-1.18 -I${PREFIX}/lib/devkit/include/zlib-1.3.2"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -liconv -Wl,-rpath,${SRC_DIR}/.libs"
+export LDFLAGS="${LDFLAGS} -lgcc_s -liconv -Wl,-rpath,${SRC_DIR}/.libs"
 export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
 export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH

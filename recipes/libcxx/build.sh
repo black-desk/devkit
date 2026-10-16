@@ -58,10 +58,5 @@ cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
 cmake --build build --parallel "${CPU_COUNT}"
 cmake --install build
 
-mkdir -p "${PREFIX}/lib/devkit/lib/llvm-runtime"
-for library in libc++.so libc++.so.1 libc++.a libc++abi.so libc++abi.so.1 libc++abi.a; do
-  ln -s "../${library}" "${PREFIX}/lib/devkit/lib/llvm-runtime/${library}"
-done
-
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

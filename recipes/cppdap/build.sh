@@ -44,7 +44,7 @@ export CPPFLAGS="${DEVKIT_FLAGS}"
 export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
-export LDFLAGS="${LDFLAGS} -pthread -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s"
+export LDFLAGS="${LDFLAGS} -pthread -lgcc_s"
 # Build a test-only GTest prefix from source with the same compiler/runtime.
 cmake -S test-googletest -B gtest-build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \

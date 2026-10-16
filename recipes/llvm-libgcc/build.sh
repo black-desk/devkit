@@ -76,10 +76,5 @@ cmake --install build --component llvm-libgcc
 cmake --install build --component clang_rt.crtbegin-x86_64
 cmake --install build --component clang_rt.crtend-x86_64
 cmake --install build --component unwind-headers
-mkdir -p "${PREFIX}/lib/devkit/lib/llvm-runtime"
-for library in libgcc.a libgcc_eh.a libgcc_s.so libunwind.so libunwind.a; do
-  ln -s "../${library}" "${PREFIX}/lib/devkit/lib/llvm-runtime/${library}"
-done
-
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

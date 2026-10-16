@@ -48,7 +48,7 @@ cp "${BUILD_PREFIX}/share/gnuconfig/"config.* build-aux/
 export CPP="${CC} -E"
 export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/lib/devkit/include/libiconv-1.18 -I${PREFIX}/lib/devkit/include/ncurses-6.6"
 export CXXFLAGS="${CXXFLAGS} -I${PREFIX}/lib/devkit/include/libiconv-1.18"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/gettext-tools/src/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/intl/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/libasprintf/.libs -Wl,-rpath,${SRC_DIR}/libtextstyle/lib/.libs"
+export LDFLAGS="${LDFLAGS} -lgcc_s -Wl,-rpath,${SRC_DIR}/gettext-tools/src/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/intl/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/libasprintf/.libs -Wl,-rpath,${SRC_DIR}/libtextstyle/lib/.libs"
 # Match conda-forge 0.25.1's native tool/library feature configuration.
 # Release scripts and parsers are pre-generated; no autoreconf is required.
 ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/gettext-${LIBRARY_VERSION}" \

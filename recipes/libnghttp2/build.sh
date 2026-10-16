@@ -58,7 +58,7 @@ export CXX="${CXX} ${CXXFLAGS}"
 export CXXFLAGS="-O2 -fPIC"
 export LIBEV_CFLAGS="-I${PREFIX}/lib/devkit/include/libev-4.33"
 export LIBEV_LIBS="${PREFIX}/lib/devkit/lib/libev.so"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/lib/.libs"
+export LDFLAGS="${LDFLAGS} -lgcc_s -Wl,-rpath,${SRC_DIR}/lib/.libs"
 # Preserve the seed's native applications and dependencies. Release scripts
 # are pre-generated; Python bindings are absent from this upstream version.
 ./configure --prefix="${PREFIX}" \

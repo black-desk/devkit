@@ -40,7 +40,7 @@ test -x "${CC}"
 # https://github.com/NixOS/nixpkgs/pull/309887
 # https://github.com/NixOS/nixpkgs/issues/310727
 # https://lists.gnu.org/archive/html/bug-ncurses/2024-05/msg00086.html
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s -Wl,--undefined-version"
+export LDFLAGS="${LDFLAGS} -lgcc_s -Wl,--undefined-version"
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" config.sub
 for mode in narrow wide; do

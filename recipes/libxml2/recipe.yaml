@@ -21,7 +21,7 @@ outputs:
   - package:
       name: libxml2
     build:
-      number: 3
+      number: 4
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         binary_relocation: false
@@ -83,7 +83,7 @@ outputs:
   - package:
       name: libxml2-16
     build:
-      number: 3
+      number: 4
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

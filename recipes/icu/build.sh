@@ -39,7 +39,7 @@ unset LD_LIBRARY_PATH LD_PRELOAD ICU_DATA
 export CXXFLAGS="${CXXFLAGS} -std=c++17"
 # ICU runs newly built tools through its upstream loader-environment wrappers.
 # Keep build-tree library paths out of the exported linker configuration.
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/devkit/lib/llvm-runtime -lgcc_s"
+export LDFLAGS="${LDFLAGS} -lgcc_s"
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" source/config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" source/config.sub
 cd source
