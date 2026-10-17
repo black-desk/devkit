@@ -96,13 +96,27 @@ a test executable without running it is not itself a test-policy violation.
 
 ### R3: Static-link metadata and dependency generation
 
-`libuv-static.pc.in` drops upstream `@LIBS@` while naming the archive directly.
-Check an actual static consumer against the glibc 2.28 baseline for required
-thread/dl/rt inputs; a modern host can hide missing dependencies. Libarchive's
-`Libs.private` and curl's private dependencies/config-helper output are fixed
-lists rather than derived from enabled backends. Libarchive retains
-`Requires.private`, whereas curl clears it. These lists need consumer validation
-and a decision on how to keep feature/dependency changes synchronized.
+The maintainer approved restoring upstream `@LIBS@` in `libuv-static.pc.in`,
+retaining the hidden archive path. On Linux, upstream CMake generates
+`-lpthread -ldl -lrt -lm`; these are system libraries supplied by the glibc
+sysroot, not additional channel packages. The recipe now checks that its static
+pc file is packaged, queries its linker flags, compiles/runs the installed
+event-loop consumer using those flags, and rejects a dynamic libuv dependency in
+that consumer.
+
+Validation: a fresh result-variant libuv package was built locally against the
+previous successful selfhost channel. All package tests passed, including the
+layout/RUNPATH audit and both shared and static consumers. The static consumer
+used the channel compiler configuration with its glibc 2.28 sysroot; generated
+pkg-config output included all four system libraries. `DEVKIT_RUN_TESTS=0`
+skipped the unrelated upstream build-tree suite for this focused verification;
+installed package tests ran normally.
+
+Still pending: libarchive's `Libs.private` and curl's private
+dependencies/config-helper output are fixed lists rather than derived from
+enabled backends. Libarchive retains `Requires.private`, whereas curl clears it.
+These lists need consumer validation and a decision on how to keep
+feature/dependency changes synchronized.
 
 Other patched pc files often intentionally name a shared interface even with
 `pkg-config --static`; that switch adds private dependencies and does not by

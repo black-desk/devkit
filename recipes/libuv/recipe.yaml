@@ -15,7 +15,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -57,6 +57,7 @@ tests:
         - lib/libuv.so.1
         - lib/devkit/lib/libuv.a
         - lib/devkit/lib/pkgconfig/libuv.pc
+        - lib/devkit/lib/pkgconfig/libuv-static.pc
         - lib/devkit/lib/cmake/libuv/libuvConfig.cmake
   - script:
       - >-
@@ -71,6 +72,21 @@ tests:
       - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
       - pkg-config --cflags libuv | grep -F '/include/libuv-${{ version }}'
       - pkg-config --libs libuv | grep -F '/lib/libuv.so'
+      - static_libs="$(pkg-config --libs libuv-static)"
+      - >-
+        for library in pthread dl rt m; do
+        printf '%s\n' "$static_libs" | grep -F -- "-l${library}";
+        done
+      - >-
+        "${PREFIX}/bin/clang" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" -O2
+        $(pkg-config --cflags libuv-static) tests/probe.c
+        ${static_libs}
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o uv-static-probe
+      - ./uv-static-probe "${{ version }}"
+      - >-
+        if readelf -d uv-static-probe | grep -F 'Shared library: [libuv.so';
+        then exit 1; fi
     requirements:
       run:
         - pkgconf ==3.0.7
