@@ -1,5 +1,9 @@
 # Per-package development-prefix review
 
+The subsequent maintainer-style review of the remaining 46 recipes, accepted
+installation-patch tradeoffs and pending behavior changes is recorded in
+[recipe-review.md](recipe-review.md).
+
 The first PR revision had only a focused zlib package build and general layout
 checks. That was insufficient: dirty CI failed because llvm-libgcc called a
 helper absent from its source inputs. Review found the same omission in libcxx,

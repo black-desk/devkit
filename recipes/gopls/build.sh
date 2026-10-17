@@ -9,6 +9,7 @@ export GOENV=off
 export GOWORK=off
 export GOTOOLCHAIN=local
 export GOTELEMETRY=off
+# Match the no-cgo baseline: this application needs no C/C++ runtime linkage.
 export CGO_ENABLED=0
 export GOFLAGS="-mod=readonly"
 

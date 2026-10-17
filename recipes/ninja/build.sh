@@ -45,6 +45,8 @@ export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}
 test -d "${SYSROOT}"
 test -x "${CC}"
 export LDFLAGS="${LDFLAGS} -pthread -lgcc_s"
+# Use the release-generated lexer instead of requiring re2c to regenerate it.
+# GoogleTest comes from the pinned recipe source; FetchContent stays offline.
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \

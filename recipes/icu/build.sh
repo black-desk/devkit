@@ -46,6 +46,9 @@ cd source
 # Rattler-build may export a nonexistent host-prefix interpreter. With the
 # test-data patch, ordinary discovery is harmless and no Python is invoked.
 unset PYTHON
+# This configuration uses the release production data, with tests disabled;
+# skip-disabled-test-data.patch prevents a Python-only test-data dependency.
+# The installed runtime probe below covers selected APIs, not the ICU suite.
 ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" --disable-samples --disable-extras \
   --disable-tests
 make -j"${CPU_COUNT}"

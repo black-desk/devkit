@@ -15,6 +15,8 @@ export GOTMPDIR="${SRC_DIR}/.go-tmp"
 export GOENV=off
 export GOWORK=off
 export GOTOOLCHAIN=local
+# Keep this source-built application independent of C runtime libraries.
+# Review R4 tracks the DNS/NSS behavior difference from a cgo-enabled build.
 export CGO_ENABLED=0
 
 mkdir -p "${GOPATH}" "${GOMODCACHE}" "${GOCACHE}" "${GOTMPDIR}" "${PREFIX}/bin"
