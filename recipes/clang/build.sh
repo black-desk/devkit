@@ -89,29 +89,6 @@ source "${RECIPE_DIR}/build-runtimes.sh"
 mkdir -p "${PREFIX}/lib/clang/23/lib"
 ln -s ../../../linux "${PREFIX}/lib/clang/23/lib/linux"
 
-# Compile small probes with the newly installed compiler, not the seed.
-"${PREFIX}/bin/clang++" ${CXX_FLAGS} ${LINK_FLAGS} -fsanitize=address,undefined \
-  '-Wl,-rpath,$ORIGIN/../lib' \
-  "${RECIPE_DIR}/tests/runtime.cpp" -o runtime-probe
-"${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -fsanitize=address \
-  '-Wl,-rpath,$ORIGIN/../lib' \
-  "${RECIPE_DIR}/tests/asan-error.c" -o asan-error-probe
-"${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -stdlib=libc++ -fsanitize=fuzzer \
-  '-Wl,-rpath,$ORIGIN/../lib' \
-  "${RECIPE_DIR}/tests/fuzzer.c" -o fuzzer-probe
-"${PREFIX}/bin/clang++" ${CXX_FLAGS} ${LINK_FLAGS} -fprofile-instr-generate -fcoverage-mapping \
-  '-Wl,-rpath,$ORIGIN/../lib' \
-  "${RECIPE_DIR}/tests/runtime.cpp" -o profile-probe
-"${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -stdlib=libc++ -fxray-instrument \
-  '-Wl,-rpath,$ORIGIN/../lib' \
-  "${RECIPE_DIR}/tests/xray.c" -o xray-probe
-# Package test probes must remain runnable after the build prefixes disappear.
-mkdir -p test-probe-prefix/bin
-for probe in runtime-probe asan-error-probe fuzzer-probe profile-probe xray-probe; do
-  cp "${probe}" test-probe-prefix/bin/
-done
-cp test-probe-prefix/bin/* .
-
 install -d "${PREFIX}/share/devkit"
 install -m 0644 "${RECIPE_DIR}/clang.cfg" "${PREFIX}/share/devkit/clang.cfg"
 install -m 0644 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}/share/devkit/stage-development.py"

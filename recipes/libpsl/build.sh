@@ -66,12 +66,6 @@ rm -f "${PREFIX}/lib/libpsl.la"
 # The seed carrier excludes this Python data-regeneration helper too.
 # Retain the compiled library, built-in data and native psl command.
 rm -f "${PREFIX}/bin/psl-make-dafsa" "${PREFIX}/share/man/man1/psl-make-dafsa.1"
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libpsl-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libpsl.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libpsl.so.5" runtime-lib/libpsl.so.5
-./library-probe
 # Post-link exception: Libtool -no-install installs the testable build-tree binaries without rewriting their RUNPATH.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

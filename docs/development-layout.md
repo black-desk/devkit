@@ -160,9 +160,17 @@ Bootstrap remains a stage-level unit: dirty/result completion checks install and
 audit the completed channel; selfhost package recipe tests and runtime smoke
 checks run after its entire stage, in the independent test job. No per-package
 archive check or early installed test is added to bootstrap. Ordinary packages
-run their recipe tests immediately after packaging. The completed-channel entry
-point, `scripts/check-development-layout.py`, delegates to this same checker
-without `--package` to audit the entire installed prefix.
+run their recipe tests immediately after packaging. Installed-consumer probes
+are compiled and run together in those recipe tests, including deferred
+bootstrap recipe tests. Archive their recipe-owned source files, declare the
+channel compiler/sysroot as test inputs, and select `share/devkit/clang.cfg`
+explicitly. Do not carry uninstalled build-stage probe executables into a test
+environment or create scratch library links to keep such executables runnable. A
+test-only consumer may use an absolute RUNPATH to that environment's public lib
+directory; it is not an installed package ELF. Build-only consumer checks that
+compile and run in the same phase are a separate case. The completed-channel
+entry point, `scripts/check-development-layout.py`, delegates to this same
+checker without `--package` to audit the entire installed prefix.
 
 ## Packaging implementation
 

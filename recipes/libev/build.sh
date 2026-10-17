@@ -52,12 +52,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig"
 # All three headers, including the compatibility interface, stay version-isolated.
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libev-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libev.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libev.so.4" runtime-lib/libev.so.4
-./library-probe
 # Post-link exception: Libtool supplies install-directory paths when linking/installing its library; no separate install RUNPATH setting is exposed.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

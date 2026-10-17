@@ -87,11 +87,6 @@ cmake -S . -B static-build -G Ninja \
 cmake --build static-build --parallel "${CPU_COUNT}"
 # Preserve the installed shared target; expose static explicitly as an archive.
 install -m644 static-build/libcppdap.a "${PREFIX}/lib/libcppdap.a"
-"${CXX}" ${CXXFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/cppdap-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.cpp" "${PREFIX}/lib/libcppdap.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-ln -s "${PREFIX}/lib" runtime-lib
-./library-probe
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

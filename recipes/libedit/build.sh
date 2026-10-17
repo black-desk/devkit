@@ -56,12 +56,6 @@ fi
 make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" AM_LDFLAGS=-no-install
 # The seed also avoids the manual-page name shared with readline.
 rm -f "${PREFIX}/share/man/man3/history.3" "${PREFIX}/lib/libedit.la"
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libedit-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libedit.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libedit.so.0" runtime-lib/libedit.so.0
-./library-probe
 # Post-link exception: Libtool -no-install avoids loader wrappers for tests but does not provide separate build and install RUNPATH settings.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

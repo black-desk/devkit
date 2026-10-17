@@ -58,11 +58,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" -j"${CPU_COUNT}"
 rm -f "${PREFIX}/lib/libcrypt.la"
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libxcrypt-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libcrypt.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-ln -s "${PREFIX}/lib" runtime-lib
-./library-probe
 # Post-link exception: Libtool supplies install-directory paths rather than a separate relocatable install RUNPATH setting.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
