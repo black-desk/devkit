@@ -18,15 +18,15 @@ installed tests remain deferred until a complete stage is available. Upstream
 build-tree tests are a separate concern and must honor the selected stage test
 policy.
 
-Prefer supported installation settings; where insufficient, patch upstream
-installation and metadata generation before building. For now, direct patches
-implementing the hidden development layout are accepted. Their directory/version
-literals are a maintenance cost, not a reason to rewrite the packaging during
-this annotation pass. A future channel metadata file could expose a suggested
-`pkgconfigdir`, explicitly found through `PKG_CONFIG_LIBDIR`; projects could
-respect that suggestion and expose their own CMake config installation variable.
-The channel provider and upstream consumer work is deferred because the current
-patches produce the intended layout without that coordinated change.
+Installation policy was revised after R3 exposed hand-maintained dependency
+lists: use supported upstream options, then keep necessary moves and targeted
+metadata path fixes in each recipe. Preserve upstream dependency generation; do
+not introduce new shared layout logic until the requested channel inventory is
+complete. This supersedes the initial recommendation to patch upstream
+installation templates. See [development-layout.md](development-layout.md) and
+[recipe-local-layout-audit.md](recipe-local-layout-audit.md). A future channel
+metadata file exposing suggested installation directories remains optional
+future work, not a prerequisite for this migration.
 
 Shared runtime libraries and plugins stay public. Development metadata,
 archives, linker interfaces and versioned headers stay hidden. In the patched pc

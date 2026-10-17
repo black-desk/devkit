@@ -1,5 +1,11 @@
 # Native development installation audit
 
+Historical record: the installation policy below was superseded on 2026-10-17.
+Current policy and migration are documented in
+[development-layout.md](development-layout.md) and
+[recipe-local-layout-audit.md](recipe-local-layout-audit.md). Validation results
+below describe the earlier implementation.
+
 All 54 recipe directories were reviewed for development installation and
 metadata generation. This audit concerns installation paths, not another feature
 comparison with conda-forge. Existing feature choices and runtime/plugin layouts
