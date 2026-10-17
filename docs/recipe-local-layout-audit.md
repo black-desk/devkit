@@ -1,8 +1,10 @@
 # Recipe-local development layout migration
 
 Work starts from `1b85f68978d6` on the isolated branch
-`experiment/recipe-local-development-layout`. The existing PR branch is the
-rollback reference; this experiment does not change the seed manifest.
+`experiment/recipe-local-development-layout`. Commit `1b85f68978d6` is the
+rollback reference; this experiment does not change the seed manifest. After
+local validation, the maintainer requested publishing these commits to the
+existing PR #33 branch, `experiment/devkit-development-prefix`.
 
 ## Scope and policy
 
@@ -132,5 +134,4 @@ loaded successfully, a static LLVMSupport consumer compiled and ran, and
 llvm-config reported the hidden development directories. This checks the
 archive/export transformation against existing artifacts, not a fresh compiler
 build. A complete dirty/result/selfhost CI bootstrap and independent smoke job
-remain required before merging this experimental branch. The original PR branch
-has not been updated by this experiment.
+remain required before merging PR #33.
