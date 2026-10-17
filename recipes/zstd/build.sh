@@ -45,6 +45,8 @@ export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}
 test -d "${SYSROOT}"
 test -x "${CC}"
 export LDFLAGS="${LDFLAGS} -lgcc_s"
+# Keep the shared runtime libdir public. The layout patch separately routes
+# archives and package metadata into the hidden development prefix.
 cmake -S build/cmake -B devkit-build-tree -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \

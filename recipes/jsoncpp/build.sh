@@ -45,6 +45,10 @@ export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}
 test -d "${SYSROOT}"
 test -x "${CC}"
 export LDFLAGS="${LDFLAGS} -pthread -lgcc_s"
+# Keep the shared runtime libdir public. The layout patch separately routes
+# archives and package metadata into the hidden development prefix.
+# Review R2: POST_BUILD_UNITTEST runs during compilation, independently of
+# DEVKIT_RUN_TESTS. Changing this stage behavior needs a separate decision.
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \

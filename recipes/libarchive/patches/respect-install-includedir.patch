@@ -1,3 +1,8 @@
+Honor the existing GNUInstallDirs header installation setting.
+The recipe passes a versioned CMAKE_INSTALL_INCLUDEDIR; upstream
+otherwise installs public headers into a hard-coded include directory.
+TODO: submit this installation-variable fix upstream.
+
 --- a/libarchive/CMakeLists.txt
 +++ b/libarchive/CMakeLists.txt
 @@ -290 +290 @@

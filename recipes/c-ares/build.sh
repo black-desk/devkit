@@ -37,6 +37,8 @@ test -d "${SYSROOT}"
 test -x "${CC}"
 # Match the seed's threaded shared/tool configuration; also retain static content.
 # The seed does not enable the GoogleTest-dependent upstream test executable.
+# Keep the shared runtime libdir public. The layout patch separately routes
+# archives and package metadata into the hidden development prefix.
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \

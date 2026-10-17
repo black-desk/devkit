@@ -51,6 +51,8 @@ test -x "${CC}"
 
 # Upstream CMake installs CONFIG exports as well as pkg-config metadata.
 # Keep build/test RUNPATH on runtime directories; install relative RUNPATH.
+# Keep the shared runtime libdir public. The layout patch separately routes
+# archives and package metadata into the hidden development prefix.
 cmake -S "${SRC_DIR}" -B "${SRC_DIR}/build" -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \

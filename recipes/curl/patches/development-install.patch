@@ -4,6 +4,19 @@ regenerate with upstream Automake 1.16.5 when that generator is available.
 Install development interfaces and generate their paths in the upstream build.
 Keep runtime libraries in the public lib directory.
 
+The .pc prefix below denotes the hidden development prefix, not the
+public runtime prefix. Deriving it from pcfiledir keeps it relocatable;
+its linker interfaces resolve to runtime libraries in public lib.
+
+TODO: replace channel-specific directory/version literals with configurable
+install settings and generate metadata from those same settings. A future
+channel .pc file could suggest pkgconfigdir to projects; CMake projects
+should expose a separate package-config installation directory. Recipes
+would select the channel metadata through PKG_CONFIG_LIBDIR explicitly.
+For now, direct source-template/install-rule patches produce the intended
+layout without that coordinated upstream/channel change. See
+docs/recipe-review.md for the review decisions and deferred work.
+
 --- a/Makefile.am
 +++ b/Makefile.am
 @@ -75,6 +75,7 @@

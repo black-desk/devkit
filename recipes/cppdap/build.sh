@@ -53,6 +53,8 @@ cmake -S test-googletest -B gtest-build -G Ninja \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" -DBUILD_SHARED_LIBS=OFF
 cmake --build gtest-build --target install --parallel "${CPU_COUNT}"
+# Keep the shared runtime libdir public. The layout patch separately routes
+# archives and package metadata into the hidden development prefix.
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \

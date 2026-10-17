@@ -1,3 +1,9 @@
+Exercise a failed debugger connection without relying on DNS resolution.
+The reserved-looking hostname can be intercepted by a local proxy; use
+loopback port 1 to avoid that DNS dependency. This changes the test
+fixture only and does not change the installed debugger defaults.
+It still assumes that no service listens on that loopback port.
+
 --- a/lib/perl5db.t
 +++ b/lib/perl5db.t
 @@ -3085 +3085 @@
