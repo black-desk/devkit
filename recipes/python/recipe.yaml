@@ -12,14 +12,16 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/astral-sh/python-build-standalone/releases/download/${{ standalone_build }}/${{ archive }}
-  sha256: b373a4a4e4e70fc05f368c9b53d7738bf37637682b650d96c742805d2da26c32
-  # An explicit file_name preserves the archive for uv to unpack itself.
-  file_name: ${{ archive }}
-  target_directory: ${{ standalone_build }}
+  - url: https://github.com/astral-sh/python-build-standalone/releases/download/${{ standalone_build }}/${{ archive }}
+    sha256: b373a4a4e4e70fc05f368c9b53d7738bf37637682b650d96c742805d2da26c32
+    # An explicit file_name preserves the archive for uv to unpack itself.
+    file_name: ${{ archive }}
+    target_directory: ${{ standalone_build }}
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
-  number: 1
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -36,6 +38,12 @@ requirements:
     - uv ==0.12.22
 
 tests:
+  # Imported upstream binaries retain their own runtime search-path policy.
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package python --skip-runpath-check
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - python

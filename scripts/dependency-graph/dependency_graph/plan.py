@@ -20,20 +20,11 @@ GLOBAL_INPUTS = {
     "bootstrap-order.json",
     "seed-packages.tsv",
     "retired-packages.json",
-    "scripts/bootstrap.sh",
-    "scripts/affected-plan.sh",
-    "scripts/affected-build.sh",
-    "scripts/build-ordinary.sh",
-    "scripts/channel-artifact.py",
-    "scripts/clean-build-outputs.py",
-    "scripts/test-bootstrap-stage.sh",
-    "scripts/seed-libgcc-variant.py",
-    "scripts/fetch-seed.sh",
-    "scripts/check-seed.sh",
-    "scripts/check-result.sh",
-    "scripts/check-glibc-baseline.py",
-    "scripts/check-clang-policy.sh",
-    "scripts/check-clang-channel.sh",
+    "pixi.toml",
+    "pixi.lock",
+    ".github/workflows/packages.yml",
+    ".gitignore",
+    ".gitmodules",
 }
 
 
@@ -163,7 +154,7 @@ def repository_plan(options: RenderOptions, base: str) -> dict[str, Any]:
     changed = set()
     full = False
     for path in filter(None, paths):
-        if path in GLOBAL_INPUTS or path.startswith("variants/"):
+        if path in GLOBAL_INPUTS or path.startswith(("variants/", "scripts/")):
             full = True
         if path.startswith("recipes/"):
             parts = path.split("/")

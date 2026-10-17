@@ -9,13 +9,16 @@ source:
     sha256: 2c8294be238f03fb3fa65b8051057e5b68167f3e21f08008070cf40a7051ba22
     patches:
       - patches/clang-driver-link-policy.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 outputs:
   - package:
       name: gettext
     build:
-      number: 0
+      number: 4
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         binary_relocation: false
@@ -54,6 +57,11 @@ outputs:
         - libcxx ==23.1.3
         - llvm-libgcc ==23.1.3
     tests:
+      - script:
+          - python3 devkit-build/check-package.py "${PREFIX}" --package gettext
+        files:
+          source:
+            - devkit-build/check-package.py
       - package_contents:
           bin:
             - msgfmt
@@ -63,10 +71,10 @@ outputs:
             - gettext
             - ngettext
           files:
-            - include/gettext-${{ version }}/gettext-po.h
-            - lib/libgettextpo.so
-            - lib/libasprintf.so
-            - lib/libtextstyle.so
+            - lib/devkit/include/gettext-${{ version }}/gettext-po.h
+            - lib/devkit/lib/libgettextpo.so
+            - lib/devkit/lib/libasprintf.so
+            - lib/devkit/lib/libtextstyle.so
       - script:
           - unset LD_LIBRARY_PATH LD_PRELOAD
           - msgfmt --version | grep -F '0.25.1'
@@ -80,7 +88,7 @@ outputs:
   - package:
       name: gettext-tools
     build:
-      number: 0
+      number: 4
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

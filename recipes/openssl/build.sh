@@ -3,8 +3,11 @@ set -euxo pipefail
 
 # Bootstrap skips suites in dirty/result; standalone builds run them by default.
 case "${DEVKIT_RUN_TESTS:-1}" in
-  0|1) ;;
-  *) printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2; exit 1 ;;
+  0 | 1) ;;
+  *)
+    printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2
+    exit 1
+    ;;
 esac
 
 : "${OPENSSL_VERSION:?rattler-build must provide OPENSSL_VERSION}"
@@ -34,7 +37,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -42,7 +45,7 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
@@ -62,71 +65,13 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make test
 fi
 make install
+mkdir -p "${PREFIX}/lib/devkit/include/openssl-${OPENSSL_VERSION}"
+mv "${PREFIX}/include/openssl" "${PREFIX}/lib/devkit/include/openssl-${OPENSSL_VERSION}/"
 
 # These Perl helpers would make the OpenSSL runtime pull in Perl. The channel
 # needs the C libraries and the OpenSSL CLI here; Perl remains a build input.
 rm -f "${PREFIX}/bin/c_rehash"
 rm -rf "${PREFIX}/etc/ssl/misc"
-
-# OpenSSL installs its public headers as include/openssl/*.h. Keep that inner
-# upstream layout, but expose it only through a package- and version-specific
-# include root so a broad -I${PREFIX}/include cannot discover it accidentally.
-install -d -m 0755 "${PREFIX}/include/openssl-${OPENSSL_VERSION}"
-mv "${PREFIX}/include/openssl" \
-  "${PREFIX}/include/openssl-${OPENSSL_VERSION}/openssl"
-
-# The generated CMake package derives its interface include directory from the
-# upstream installation layout. Correct it to the isolated devkit root.
-sed -i \
-  "s#set(OPENSSL_INCLUDE_DIR \"\${_ossl_prefix}/include\")#set(OPENSSL_INCLUDE_DIR \"\${_ossl_prefix}/include/openssl-${OPENSSL_VERSION}\")#" \
-  "${PREFIX}/lib/cmake/OpenSSL/OpenSSLConfig.cmake"
-
-cat >"${PREFIX}/lib/pkgconfig/libcrypto.pc" <<EOF
-prefix=\${pcfiledir}/../..
-exec_prefix=\${prefix}
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: OpenSSL-libcrypto
-Description: OpenSSL cryptography library
-Version: ${OPENSSL_VERSION}
-License: Apache-2.0
-Cflags: -I\${includedir}/openssl-${OPENSSL_VERSION}
-Libs: \${libdir}/libcrypto.so
-Libs.private: -ldl -pthread
-EOF
-
-cat >"${PREFIX}/lib/pkgconfig/libssl.pc" <<EOF
-prefix=\${pcfiledir}/../..
-exec_prefix=\${prefix}
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: OpenSSL-libssl
-Description: Secure Sockets Layer and cryptography libraries
-Version: ${OPENSSL_VERSION}
-License: Apache-2.0
-Requires.private: libcrypto
-Cflags: -I\${includedir}/openssl-${OPENSSL_VERSION}
-Libs: \${libdir}/libssl.so
-Libs.private: \${libdir}/libcrypto.so -ldl -pthread
-EOF
-
-cat >"${PREFIX}/lib/pkgconfig/openssl.pc" <<EOF
-prefix=\${pcfiledir}/../..
-exec_prefix=\${prefix}
-libdir=\${prefix}/lib
-includedir=\${prefix}/include
-
-Name: OpenSSL
-Description: Secure Sockets Layer and cryptography libraries
-Version: ${OPENSSL_VERSION}
-License: Apache-2.0
-Requires: libssl libcrypto
-Cflags: -I\${includedir}/openssl-${OPENSSL_VERSION}
-Libs: \${libdir}/libssl.so \${libdir}/libcrypto.so
-Libs.private: -ldl -pthread
-EOF
 
 # OpenSSL looks for a single default PEM bundle beside its configuration file.
 # The ca-certificates package owns the actual pinned bundle.
@@ -155,7 +100,7 @@ EOF
 
 "${CC}" \
   ${CFLAGS} ${LDFLAGS} \
-  -I"${PREFIX}/include/openssl-${OPENSSL_VERSION}" \
+  -I"${PREFIX}/lib/devkit/include/openssl-${OPENSSL_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
   "${PREFIX}/lib/libssl.so" \
   "${PREFIX}/lib/libcrypto.so" \
@@ -166,4 +111,103 @@ EOF
 env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
+# Post-link exception: OpenSSL uses common link flags for the CLI, libraries and provider modules at different installation depths.
+# TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
+import os
+from pathlib import Path
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['ssl', 'crypto'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+import re
+# Change only location variables; upstream Libs/Requires retain their generated dependencies.
+for name in ['openssl', 'libssl', 'libcrypto']:
+    path = prefix / "lib/pkgconfig" / (name + ".pc")
+    target = dev / "lib/pkgconfig" / path.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        assert not target.exists(), target
+        shutil.move(str(path), target)
+    assert target.is_file(), target
+    text = target.read_text()
+    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
+              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/openssl-3.5.9"}
+    lines = text.splitlines(keepends=True)
+    for key, value in values.items():
+        matches = [i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)]
+        if matches:
+            assert len(matches) == 1, (target, key)
+            lines[matches[0]] = key + "=" + value + "\n"
+        elif key == "prefix":
+            lines.insert(0, key + "=" + value + "\n")
+    text = "".join(lines)
+    # Recorded input prefixes become metadata-relative paths, preserving library order.
+    text = text.replace(str(prefix) + "/lib/devkit", "${prefix}")
+    text = text.replace(str(prefix) + "/lib", "${libdir}")
+    text = text.replace(str(prefix) + "/include", "${includedir}")
+    target.write_text(text)
+# A moved export's computed _IMPORT_PREFIX/PACKAGE_PREFIX_DIR now denotes lib/devkit.
+for name in ['OpenSSL']:
+    source = prefix / "lib/cmake" / name
+    target = dev / "lib/cmake" / name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if source.exists():
+        assert not target.exists(), target
+        shutil.move(str(source), target)
+    assert target.is_dir(), target
+    for path in target.rglob("*.cmake"):
+        text = path.read_text()
+        for variable in ["_IMPORT_PREFIX", "PACKAGE_PREFIX_DIR"]:
+            text = text.replace("${" + variable + "}/lib/devkit/", "${" + variable + "}/")
+            text = text.replace("${" + variable + "}/bin/", "${" + variable + "}/../../bin/")
+        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(prefix, path.parent)
+        text = text.replace(str(prefix), runtime)
+        path.write_text(text)
+# Upstream OpenSSL computes its prefix by ascending from the config directory.
+# The unchanged three-parent ascent now resolves to the development prefix.
+path = dev / "lib/cmake/OpenSSL/OpenSSLConfig.cmake"
+text = path.read_text().replace('${_ossl_prefix}/include', '${_ossl_prefix}/include/openssl-3.5.9')
+path.write_text(text)
+path = dev / "lib/pkgconfig/libcrypto.pc"
+text = path.read_text()
+for key in ["enginesdir", "modulesdir"]:
+    text = re.sub(r"(?m)^" + key + r"=.*$", lambda m: m[0].replace('${libdir}', '${prefix}/../../lib'), text)
+path.write_text(text)
+PYCODE

@@ -17,13 +17,19 @@ fi
 COMMON_FLAGS="--start-no-unused-arguments ${COMMON_FLAGS} --end-no-unused-arguments"
 CXX_FLAGS="${COMMON_FLAGS}"
 if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
-  CXX_FLAGS="${CXX_FLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  CXX_FLAGS="${CXX_FLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 fi
-LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib -L${PREFIX}/lib/llvm-runtime -Wl,-rpath,${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
+LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
 
 cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_INSTALL_INCLUDEDIR=lib/devkit/include \
+  -DCMAKE_INSTALL_PACKAGEDIR=lib/devkit/lib/cmake \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_ASM_COMPILER="${CC}" \
@@ -50,14 +56,14 @@ cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
   -DLLVM_INCLUDE_EXAMPLES=OFF \
   -DLLVM_ENABLE_BINDINGS=OFF \
   -DLLVM_ENABLE_ZLIB=FORCE_ON \
-  -DZLIB_INCLUDE_DIR="${PREFIX}/include/zlib-1.3.2" \
-  -DZLIB_LIBRARY="${PREFIX}/lib/libz.so" \
+  -DZLIB_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zlib-1.3.2" \
+  -DZLIB_LIBRARY="${PREFIX}/lib/devkit/lib/libz.so" \
   -DLLVM_ENABLE_ZSTD=FORCE_ON \
-  -Dzstd_INCLUDE_DIR="${PREFIX}/include/zstd-1.5.7" \
-  -Dzstd_LIBRARY="${PREFIX}/lib/libzstd.so" \
+  -Dzstd_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zstd-1.5.7" \
+  -Dzstd_LIBRARY="${PREFIX}/lib/devkit/lib/libzstd.so" \
   -DLLVM_ENABLE_LIBXML2=FORCE_ON \
-  -DLIBXML2_INCLUDE_DIR="${PREFIX}/include/libxml2-2.15.4" \
-  -DLIBXML2_LIBRARY="${PREFIX}/lib/libxml2.so" \
+  -DLIBXML2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/libxml2-2.15.4" \
+  -DLIBXML2_LIBRARY="${PREFIX}/lib/devkit/lib/libxml2.so" \
   -DLLVM_ENABLE_RTTI=ON \
   -DLLVM_ENABLE_BACKTRACES=ON \
   -DLLVM_ENABLE_DUMP=ON \
@@ -83,29 +89,70 @@ source "${RECIPE_DIR}/build-runtimes.sh"
 mkdir -p "${PREFIX}/lib/clang/23/lib"
 ln -s ../../../linux "${PREFIX}/lib/clang/23/lib/linux"
 
-# Compile small probes with the newly installed compiler, not the seed.
-"${PREFIX}/bin/clang++" ${CXX_FLAGS} ${LINK_FLAGS} -fsanitize=address,undefined \
-  "${RECIPE_DIR}/tests/runtime.cpp" -o runtime-probe
-"${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -fsanitize=address \
-  "${RECIPE_DIR}/tests/asan-error.c" -o asan-error-probe
-"${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -stdlib=libc++ -fsanitize=fuzzer \
-  "${RECIPE_DIR}/tests/fuzzer.c" -o fuzzer-probe
-"${PREFIX}/bin/clang++" ${CXX_FLAGS} ${LINK_FLAGS} -fprofile-instr-generate -fcoverage-mapping \
-  "${RECIPE_DIR}/tests/runtime.cpp" -o profile-probe
-"${PREFIX}/bin/clang" ${COMMON_FLAGS} ${LINK_FLAGS} -stdlib=libc++ -fxray-instrument \
-  "${RECIPE_DIR}/tests/xray.c" -o xray-probe
-# Package test probes must remain runnable after the build prefixes disappear.
-mkdir -p test-probe-prefix/bin
-for probe in runtime-probe asan-error-probe fuzzer-probe profile-probe xray-probe; do
-  cp "${probe}" test-probe-prefix/bin/
-done
-python3 "${RECIPE_DIR}/finalize-elf.py" test-probe-prefix
-cp test-probe-prefix/bin/* .
-
 install -d "${PREFIX}/share/devkit"
 install -m 0644 "${RECIPE_DIR}/clang.cfg" "${PREFIX}/share/devkit/clang.cfg"
-install -m 0644 "${RECIPE_DIR}/finalize-elf.py" "${PREFIX}/share/devkit/finalize-elf.py"
+install -m 0644 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}/share/devkit/finalize-elf.py"
 for driver in clang clang++; do
   install -m 0644 "${RECIPE_DIR}/host.cfg" "${PREFIX}/bin/${driver}.cfg"
 done
-python "${PREFIX}/share/devkit/finalize-elf.py" "${PREFIX}"
+
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
+import os
+from pathlib import Path
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# LLVM's native install options already place headers and package configs in lib/devkit.
+# Move only the compiler's libraries; do not touch dependencies or compiler-rt resources.
+stems = sorted({path.name[3:].split('.so', 1)[0].split('.a', 1)[0] for pattern in
+                ['libLLVM*', 'libclang*', 'liblld*', 'libLTO*', 'libRemarks*']
+                for path in (prefix / 'lib').glob(pattern) if path.is_file() or path.is_symlink()})
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in stems for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+for package in ['llvm', 'clang', 'lld']:
+    for path in (dev / 'lib/cmake' / package).rglob('*.cmake'):
+        text = path.read_text()
+        # Archives moved; runtime DSOs and exported executable paths did not.
+        lines = text.splitlines(keepends=True)
+        for i, line in enumerate(lines):
+            if '.a' in line and '/lib/' in line:
+                lines[i] = line.replace('/lib/', '/lib/devkit/lib/')
+        text = ''.join(lines)
+        if path.name == 'LLVMConfig.cmake':
+            text = text.replace('set(LLVM_LIBRARY_DIRS "${LLVM_INSTALL_PREFIX}/lib', 'set(LLVM_LIBRARY_DIRS "${LLVM_INSTALL_PREFIX}/lib/devkit/lib')
+            text = text.replace('set(LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib', 'set(LLVM_LIBRARY_DIR "${LLVM_INSTALL_PREFIX}/lib/devkit/lib')
+        path.write_text(text)
+PYCODE

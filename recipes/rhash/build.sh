@@ -3,8 +3,11 @@ set -euxo pipefail
 
 # Bootstrap skips suites in dirty/result; standalone builds run them by default.
 case "${DEVKIT_RUN_TESTS:-1}" in
-  0|1) ;;
-  *) printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2; exit 1 ;;
+  0 | 1) ;;
+  *)
+    printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2
+    exit 1
+    ;;
 esac
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
@@ -30,7 +33,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -38,34 +41,92 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 # The exact seed conda-forge recipe also disables the optional OpenSSL backend.
 # Keep the built-in algorithms, shared/static libraries and command-line tool.
-./configure --prefix="${PREFIX}" --cc="${CC}" --ar="${AR}" \
+INSTALL_INCDIR="${PREFIX}/lib/devkit/include/rhash-${LIBRARY_VERSION}" \
+  ./configure --prefix="${PREFIX}" --pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" --cc="${CC}" --ar="${AR}" \
   --extra-cflags="${CFLAGS}" --extra-ldflags="${LDFLAGS} -Wl,-rpath,${SRC_DIR}/librhash" \
   --disable-openssl --enable-lib-static --enable-lib-shared
 make -j"${CPU_COUNT}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make test-libs test-full
 fi
-make install
+# The default install target omits the generated library pkg-config file.
+make install install-pkg-config
 make -C librhash install-lib-headers install-so-link
-mkdir -p "${PREFIX}/lib/pkgconfig"
-cp dist/librhash.pc "${PREFIX}/lib/pkgconfig/"
-mkdir -p "${PREFIX}/include/rhash-${LIBRARY_VERSION}"
-mv "${PREFIX}/include/"rhash*.h "${PREFIX}/include/rhash-${LIBRARY_VERSION}/"
-python3 - <<'PYCONFIG'
+# Post-link exception: Upstream configuration uses common link flags for build-tree librhash and installed library/tool.
+# TODO: replace with target-specific upstream install/relink support.
+python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
 import os
 from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/librhash.pc'
-s = p.read_text().splitlines()
-s = ['prefix=${pcfiledir}/../..' if line.startswith('prefix=') else
-     'exec_prefix=${prefix}' if line.startswith('exec_prefix=') else
-     'libdir=${prefix}/lib' if line.startswith('libdir=') else
-     'includedir=${prefix}/include/rhash-' + os.environ['LIBRARY_VERSION']
-     if line.startswith('includedir=') else line for line in s]
-p.write_text(('\n'.join(s) + '\n').replace('-L${libdir} -lrhash', '${libdir}/librhash.so'))
-PYCONFIG
-python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['rhash'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+import re
+# Change only location variables; upstream Libs/Requires retain their generated dependencies.
+for name in ['librhash']:
+    path = prefix / "lib/pkgconfig" / (name + ".pc")
+    target = dev / "lib/pkgconfig" / path.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        assert not target.exists(), target
+        shutil.move(str(path), target)
+    assert target.is_file(), target
+    text = target.read_text()
+    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
+              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/rhash-1.4.6"}
+    lines = text.splitlines(keepends=True)
+    for key, value in values.items():
+        matches = [i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)]
+        if matches:
+            assert len(matches) == 1, (target, key)
+            lines[matches[0]] = key + "=" + value + "\n"
+        elif key == "prefix":
+            lines.insert(0, key + "=" + value + "\n")
+    text = "".join(lines)
+    # Recorded input prefixes become metadata-relative paths, preserving library order.
+    text = text.replace(str(prefix) + "/lib/devkit", "${prefix}")
+    text = text.replace(str(prefix) + "/lib", "${libdir}")
+    text = text.replace(str(prefix) + "/include", "${includedir}")
+    target.write_text(text)
+PYCODE

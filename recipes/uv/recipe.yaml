@@ -8,11 +8,13 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/astral-sh/uv/archive/refs/tags/${{ version }}.tar.gz
-  sha256: 056ef9a33d6812a51153799ce5b35b08f02f4f37b32a26d22e99245a1f16b77c
+  - url: https://github.com/astral-sh/uv/archive/refs/tags/${{ version }}.tar.gz
+    sha256: 056ef9a33d6812a51153799ce5b35b08f02f4f37b32a26d22e99245a1f16b77c
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
-  number: 1
+  number: 2
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -31,6 +33,11 @@ requirements:
   run:
     - llvm-libgcc ==23.1.3
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package uv
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - uv

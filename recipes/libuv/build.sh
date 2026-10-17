@@ -3,8 +3,11 @@ set -euxo pipefail
 
 # Bootstrap skips suites in dirty/result; standalone builds run them by default.
 case "${DEVKIT_RUN_TESTS:-1}" in
-  0|1) ;;
-  *) printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2; exit 1 ;;
+  0 | 1) ;;
+  *)
+    printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2
+    exit 1
+    ;;
 esac
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
@@ -30,7 +33,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -38,12 +41,14 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 cmake -S . -B build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="include/libuv-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/libuv-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_C_FLAGS="${CFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
@@ -55,22 +60,38 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ctest --test-dir build -R '^uv_test$' --output-on-failure
 fi
 cmake --install build
-python3 - <<'PY'
+
+# Keep layout handling local: preserve upstream-generated dependency lists.
+mkdir -p "${PREFIX}/lib/devkit/lib/cmake" "${PREFIX}/lib/devkit/lib/pkgconfig"
+mv "${PREFIX}/lib/cmake/libuv" "${PREFIX}/lib/devkit/lib/cmake/"
+mv "${PREFIX}/lib/pkgconfig/libuv.pc" "${PREFIX}/lib/pkgconfig/libuv-static.pc" "${PREFIX}/lib/devkit/lib/pkgconfig/"
+mv "${PREFIX}/lib/libuv.a" "${PREFIX}/lib/devkit/lib/"
+# Preserve SONAME links and the actual DSO in public lib, with hidden aliases.
+for library in "${PREFIX}"/lib/libuv.so*; do
+  name="${library##*/}"
+  target="$(readlink -f "${library}")"
+  ln -s "../../${target##*/}" "${PREFIX}/lib/devkit/lib/${name}"
+  if [[ "${name}" == libuv.so ]]; then rm "${library}"; fi
+done
+python3 - <<'PYCODE'
 import os
 from pathlib import Path
-prefix = Path(os.environ['PREFIX'])
-for path in (prefix / 'lib/pkgconfig').glob('libuv*.pc'):
-    lines = path.read_text().splitlines()
-    lines = ['prefix=${pcfiledir}/../..' if line.startswith('prefix=') else
-             'libdir=${prefix}/lib' if line.startswith('libdir=') else
-             'includedir=${prefix}/include/libuv-' + os.environ['LIBRARY_VERSION']
-             if line.startswith('includedir=') else line for line in lines]
-    text = '\n'.join(lines) + '\n'
-    text = text.replace('-L${libdir} -l:libuv.a', '${libdir}/libuv.a')
-    text = text.replace('-L${libdir} -luv', '${libdir}/libuv.so')
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+for name in ["libuv.pc", "libuv-static.pc"]:
+    path = dev / "lib/pkgconfig" / name
+    text = path.read_text()
+    # Only variable assignments change; keep upstream Libs (including @LIBS@).
+    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
+              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/libuv-" + os.environ["LIBRARY_VERSION"]}
+    for key, value in values.items():
+        lines = text.splitlines(keepends=True)
+        matches = [i for i, line in enumerate(lines) if line.startswith(key + "=")]
+        assert len(matches) == 1, (path, key)
+        lines[matches[0]] = key + "=" + value + "\n"
+        text = "".join(lines)
     path.write_text(text)
-PY
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libuv-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libuv.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o "${SRC_DIR}/uv-probe"
-python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+for path in (dev / "lib/cmake/libuv").glob("*.cmake"):
+    text = path.read_text().replace("${_IMPORT_PREFIX}/lib/devkit/", "${_IMPORT_PREFIX}/")
+    path.write_text(text)
+PYCODE

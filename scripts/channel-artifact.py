@@ -3,6 +3,7 @@
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -10,6 +11,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 STAGES = ("dirty", "result", "selfhost", "ordinary")
+
+
+# Keep the standalone scripts importable without changing runner PYTHONPATH.
+SPEC = importlib.util.spec_from_file_location(
+    "bootstrap_fingerprint", ROOT / "scripts/bootstrap-fingerprint.py"
+)
+FINGERPRINT = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(FINGERPRINT)
+
+
+def bootstrap_digest():
+    return FINGERPRINT.fingerprint(ROOT)
 
 
 def digest(path):
@@ -96,13 +109,16 @@ def verify(channel, stage, plan):
     report = validate_plan(plan)
     state = json.loads((channel / "stage-state.json").read_text())
     if (
-        state["schema"] != 1
+        state["schema"] != 2
         or state["stage"] != stage
-        or state["head_sha"] != head()
-        or state["plan_sha256"] != digest(plan)
         or state["seed_manifest_sha256"] != digest(ROOT / "seed-packages.tsv")
     ):
-        raise ValueError("channel stage/commit/plan/seed provenance mismatch")
+        raise ValueError("channel stage/seed provenance mismatch")
+    if stage == "ordinary":
+        if state["head_sha"] != head() or state["plan_sha256"] != digest(plan):
+            raise ValueError("channel commit/plan provenance mismatch")
+    elif state["bootstrap_input_sha256"] != bootstrap_digest():
+        raise ValueError("channel bootstrap input provenance mismatch")
     if set(state["inputs"]) != expected_parents(stage, report):
         raise ValueError("channel has incorrect input stage provenance")
     if state["files"] != channel_files(channel):
@@ -121,11 +137,12 @@ def seal(channel, stage, plan, inputs):
         verify(path, expected, plan)
         parents[expected] = digest(path / "stage-state.json")
     state = {
-        "schema": 1,
+        "schema": 2,
         "stage": stage,
         "head_sha": head(),
         "plan_sha256": digest(plan),
         "seed_manifest_sha256": digest(ROOT / "seed-packages.tsv"),
+        "bootstrap_input_sha256": (bootstrap_digest() if stage != "ordinary" else None),
         "inputs": parents,
         "files": channel_files(channel),
     }

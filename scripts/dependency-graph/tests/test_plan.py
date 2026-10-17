@@ -8,6 +8,7 @@ from contextlib import redirect_stdout, redirect_stderr
 import subprocess
 import tempfile
 import unittest
+from unittest.mock import patch
 from dataclasses import replace
 from pathlib import Path
 
@@ -153,6 +154,31 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(
             {e.provider for e in graph.edges}, {"b", "c", "d", "e", "test-tool"}
         )
+
+    def test_shared_cache_inputs_request_planning_instead_of_empty_skip(self):
+        options = RenderOptions(
+            "/fixture",
+            "linux-64",
+            (),
+            "/fixture/variants/result.yaml",
+            frozenset(),
+            "rattler-build",
+        )
+        for name in (
+            "pixi.lock",
+            "pixi.toml",
+            ".github/workflows/packages.yml",
+            "scripts/bootstrap-fingerprint.py",
+            "scripts/packaging/new-helper.py",
+        ):
+            with self.subTest(name=name), patch(
+                "dependency_graph.plan.git", side_effect=["base", name, ""]
+            ), patch(
+                "dependency_graph.plan.render_outputs",
+                side_effect=RenderError("render requested"),
+            ):
+                with self.assertRaisesRegex(RenderError, "render requested"):
+                    repository_plan(options, "base")
 
     @unittest.skipUnless(
         shutil.which("rattler-build") and shutil.which("rattler-index"),

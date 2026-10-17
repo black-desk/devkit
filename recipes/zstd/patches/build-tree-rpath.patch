@@ -1,5 +1,5 @@
 Use CMake's build-tree RUNPATH so tests load the just-built shared library.
-Installed ELF RUNPATH is handled by the recipe's finalizer.
+Installed ELF RUNPATH is supplied by the recipe through CMAKE_INSTALL_RPATH.
 
 --- a/build/cmake/CMakeLists.txt
 +++ b/build/cmake/CMakeLists.txt

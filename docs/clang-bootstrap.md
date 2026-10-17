@@ -92,12 +92,12 @@ from its installation prefix.
 The `recipes/libcxx` experiment built and passed its installed-package test,
 combining libc++ and libc++abi while using the separately installed llvm-libgcc
 via its gcc_s compatibility interface. It does not build a second unwinder.
-Development headers are isolated under `include/libcxx-23.1.3/c++/v1`; CMake
-export paths follow that layout. The test covers C++20 algorithms, exceptions,
-threads, and filesystem operations, and verifies that the loaded C++ libraries
-and sole unwinder come from the prefix. llvm-libgcc also now supplies
-compiler-rt crtbegin/crtend objects under `lib/linux` for the later removal of
-seed GCC development files.
+Development headers are isolated under
+`lib/devkit/include/libcxx-23.1.3/c++/v1`; CMake export paths follow that
+layout. The test covers C++20 algorithms, exceptions, threads, and filesystem
+operations, and verifies that the loaded C++ libraries and sole unwinder come
+from the prefix. llvm-libgcc also now supplies compiler-rt crtbegin/crtend
+objects under `lib/linux` for the later removal of seed GCC development files.
 
 The next experiment is `recipes/clang`: a single provisional carrier builds
 Clang, LLD, and LLVM binary tools from the same 23.1.3 source. It builds against
@@ -1350,27 +1350,23 @@ local bootstrap remains stopped.
 
 ## Default host development discovery
 
-Channel CMake excludes its own installation prefix from implicit system-prefix
-and PATH-derived package, library and header searches. Paths are canonicalized
-so symlinks into that prefix are also excluded. Program searches retain PATH;
-channel Clang, Ninja and other tools remain available. Explicit package roots,
-package directories, CMAKE_PREFIX_PATH, hints and project installation prefixes
-retain upstream behavior and can select channel development interfaces. Metadata
-stays in its existing locations; recipes explicitly select their dependency
-prefixes rather than relying on CMake's installation location.
+Development interfaces now live in `lib/devkit`; CMake's previous
+`default-host-discovery.patch` is removed. Upstream implicit prefix/PATH
+searches do not expose hidden linker interfaces, metadata or versioned headers.
+Explicit CMAKE_PREFIX_PATH selects the development prefix. CONFIG packages and
+pkg-config preserve versioned include roots; Find modules that do not use those
+interfaces receive exact dependency paths in recipes.
 
-Channel pkgconf uses upstream with-pkg-config-dir to search host /usr/local and
-/usr metadata directories, including x86_64-linux-gnu and lib64 locations. On
-Linux pkgconf does not derive these paths from PATH. PKG_CONFIG_LIBDIR replaces
-the default directories and PKG_CONFIG_PATH adds explicit overrides. The system
-include/library options only control flag filtering, not metadata discovery.
-These changes affect development discovery, not tool runtime dependencies.
+Pkgconf retains its upstream host metadata search configuration. Recipes opt in
+with PKG_CONFIG_LIBDIR pointing to `lib/devkit/lib/pkgconfig`. Program discovery
+and runtime modules are unchanged. See
+[the layout policy](development-layout.md) for the complete decisions and
+[focused validation](development-prefix-experiment.md).
 
-Focused validation compiles patched CMake 3.31.8 and pkgconf 3.0.7 from source.
-Synthetic metadata tests cover default exclusion, symlinked PATH entries,
-explicit prefix/environment overrides, retained program searches and searches
-outside the tool prefix. Both recipes include these discovery checks as package
-tests. Full bootstrap validation has not been repeated for this policy change.
+CMake, Cargo and Meson packages now use native relative RUNPATH configuration.
+Some existing Libtool/mixed-depth install recipes retain explicitly documented
+post-link exceptions. This migration changes all input generations and requires
+a fresh CI bootstrap; local checks do not replace dirty/result/selfhost testing.
 
 The CI run on 4c2c0f933686 reached the result-stage libnghttp2 build and failed
 because its CXX override added a host-prefix libc++ header tree alongside the
@@ -1399,3 +1395,49 @@ separate overlay; publication merges verified applicable artifacts. See
 [package CI](package-ci.md) for skip conditions, file protocol and local
 commands. No full local bootstrap is restarted to verify this orchestration
 change.
+
+### Why separate prefixes do not replace the dirty libgcc meta
+
+Build and host environments share the configured channel list. With dirty
+preferred over seed, even seed Clang can select dirty libxml2 transitively;
+rebuilt Ninja also brings in llvm-libgcc. Seed libstdcxx still requires GNU
+libgcc with an exact version/build pin. Without the metadata-only replacement,
+both runtimes would own `lib/libgcc_s.so.1` in the build environment. The dirty
+meta satisfies that pin while LLVM-libgcc owns the files; seed tools in this
+mixed environment therefore use LLVM-libgcc too. Removing the meta requires a
+supported way to keep the complete build-tool dependency closure in seed, not
+just separate build/host prefixes or a seed pin on Clang itself.
+
+The dirty Clang is intentionally linked against channel LLVM-libgcc. The
+metadata-only `libgcc` output prevents seed GNU libgcc from being installed
+alongside it in a mixed prefix; it owns no runtime files and depends on the
+matching llvm-libgcc output. `scripts/seed-libgcc-variant.py` copies the seed
+libgcc version, build string and build number, because seed libstdcxx requires
+an exact version/build identity. The recipe omits this meta from result and
+selfhost outputs.
+
+This is a compatibility substitution, not a claim of complete binary
+compatibility. Six quad-precision functions lack the `GCC_4.3.0` symbol versions
+required by seed libstdcxx. The dirty-only `--allow-shlib-undefined` option in
+`recipes/llvm-libgcc/build.sh` relaxes LLD's shared-library check; it neither
+adds those versions nor guarantees full ABI parity. The rationale is also
+recorded immediately above the meta output in `recipes/llvm-libgcc/recipe.yaml`.
+
+The installed LLVM runtime probe is compiled in the recipe test environment
+using channel Clang, rather than passed from the build environment.
+
+The libcxx runtime probe is likewise compiled during installed-package tests,
+using channel Clang and its explicit configuration. It links the installed
+libc++, libc++abi and LLVM-libgcc and uses the test prefix's library directory
+as RUNPATH; no build-stage probe or runtime-lib symlink is carried into tests.
+
+## Native development installation
+
+The repository-wide review moves versioned header and metadata installation into
+upstream build options and source templates. See
+[native-install-audit.md](native-install-audit.md) for all recipe treatments and
+validation scope. ICU generates a separate installed pkgdata configuration; Perl
+normalizes installed XS Config modules inside installperl, preserving its
+build-time modules. Remaining staging handles runtime aliases and installers
+that share one libdir for both shared and static libraries. This does not change
+stage dependency selection or the dirty-only libgcc compatibility output.

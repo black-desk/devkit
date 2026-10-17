@@ -33,11 +33,13 @@ if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
   LINK_FLAGS+=" -Wl,--allow-shlib-undefined"
 fi
 
-
 cmake -S "${SRC_DIR}/llvm-libgcc" -B build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  '-DCMAKE_INSTALL_RPATH=$ORIGIN' \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_INSTALL_RPATH='$ORIGIN' \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_ASM_COMPILER="${CC}" \
@@ -66,6 +68,7 @@ cmake -S "${SRC_DIR}/llvm-libgcc" -B build -G Ninja \
   -DCOMPILER_RT_BUILD_PROFILE=OFF \
   -DCOMPILER_RT_BUILD_ORC=OFF \
   -DCOMPILER_RT_INCLUDE_TESTS=OFF \
+  -DLIBUNWIND_INSTALL_INCLUDE_DIR="lib/devkit/include/libunwind-23.1.3" \
   -DLIBUNWIND_INCLUDE_TESTS=OFF
 
 cmake --build build --target llvm-libgcc crt --parallel "${CPU_COUNT}"
@@ -73,16 +76,45 @@ cmake --install build --component llvm-libgcc
 cmake --install build --component clang_rt.crtbegin-x86_64
 cmake --install build --component clang_rt.crtend-x86_64
 cmake --install build --component unwind-headers
-mkdir -p "${PREFIX}/include/libunwind-23.1.3" "${PREFIX}/lib/llvm-runtime"
-for header in "${PREFIX}"/include/*; do
-  [[ "${header}" == "${PREFIX}/include/libunwind-23.1.3" ]] && continue
-  mv "${header}" "${PREFIX}/include/libunwind-23.1.3/"
-done
-for library in libgcc.a libgcc_eh.a libgcc_s.so libunwind.so libunwind.a; do
-  ln -s "../${library}" "${PREFIX}/lib/llvm-runtime/${library}"
-done
-
-# The installed-package test needs no compiler or GNU runtime in its environment.
-"${CC}" ${COMMON_FLAGS} ${LINK_FLAGS} \
-  "${RECIPE_DIR}/tests/runtime.c" -ldl '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' \
-  -o "${SRC_DIR}/runtime-probe"
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
+import os
+from pathlib import Path
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['gcc', 'gcc_eh', 'gcc_s', 'unwind'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+PYCODE

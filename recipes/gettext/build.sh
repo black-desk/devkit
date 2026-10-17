@@ -3,8 +3,11 @@ set -euxo pipefail
 
 # Bootstrap skips suites in dirty/result; standalone builds run them by default.
 case "${DEVKIT_RUN_TESTS:-1}" in
-  0|1) ;;
-  *) printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2; exit 1 ;;
+  0 | 1) ;;
+  *)
+    printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2
+    exit 1
+    ;;
 esac
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
@@ -30,7 +33,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -38,18 +41,18 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 cp "${BUILD_PREFIX}/share/gnuconfig/"config.* build-aux/
 export CPP="${CC} -E"
-export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/include/libiconv-1.18 -I${PREFIX}/include/ncurses-6.6"
-export CXXFLAGS="${CXXFLAGS} -I${PREFIX}/include/libiconv-1.18"
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/gettext-tools/src/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/intl/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/libasprintf/.libs -Wl,-rpath,${SRC_DIR}/libtextstyle/lib/.libs"
+export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/lib/devkit/include/libiconv-1.18 -I${PREFIX}/lib/devkit/include/ncurses-6.6"
+export CXXFLAGS="${CXXFLAGS} -I${PREFIX}/lib/devkit/include/libiconv-1.18"
+export LDFLAGS="${LDFLAGS} -lgcc_s -Wl,-rpath,${SRC_DIR}/gettext-tools/src/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/intl/.libs -Wl,-rpath,${SRC_DIR}/gettext-runtime/libasprintf/.libs -Wl,-rpath,${SRC_DIR}/libtextstyle/lib/.libs"
 # Match conda-forge 0.25.1's native tool/library feature configuration.
 # Release scripts and parsers are pre-generated; no autoreconf is required.
-./configure --prefix="${PREFIX}" --includedir="${PREFIX}/include/gettext-${LIBRARY_VERSION}" \
-  --with-libiconv-prefix="${PREFIX}" --disable-static --disable-csharp \
+./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/gettext-${LIBRARY_VERSION}" \
+  --with-libiconv-prefix="${PREFIX}/lib/devkit" --disable-static --disable-csharp \
   --disable-dependency-tracking --disable-java --disable-native-java \
   --disable-openmp --enable-fast-install --without-emacs
 make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
@@ -58,7 +61,56 @@ make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make check
 fi
-make install AM_LDFLAGS=-no-install
+make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" AM_LDFLAGS=-no-install
 rm -f "${PREFIX}/share/info/dir"
 find "${PREFIX}" -name '*.la' -delete
+# Post-link exception: Libtool -no-install is needed by in-tree tools; installed gettext/libtextstyle programs retain build-tree paths.
+# TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
+import os
+from pathlib import Path
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['asprintf', 'gettextpo', 'textstyle', 'gettextlib', 'gettextsrc', 'gettextlib-0.25.1', 'gettextsrc-0.25.1'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                if elf:
+                    assert path.name in ["libgettextlib-0.25.1.so", "libgettextsrc-0.25.1.so"], path
+                    target.symlink_to(os.path.relpath(path, target.parent))
+                    continue
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+# This selected gettext install does not export a pkg-config file.
+PYCODE

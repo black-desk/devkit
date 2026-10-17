@@ -1,5 +1,0 @@
---- a/libarchive/CMakeLists.txt
-+++ b/libarchive/CMakeLists.txt
-@@ -290 +290 @@
--  INSTALL(FILES ${include_HEADERS} DESTINATION include)
-+  INSTALL(FILES ${include_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})

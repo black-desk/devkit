@@ -7,10 +7,13 @@ package:
 source:
   - url: https://github.com/rhash/RHash/archive/refs/tags/v${{ version }}.tar.gz
     sha256: 9f6019cfeeae8ace7067ad22da4e4f857bb2cfa6c2deaa2258f55b2227ec937a
-  - path: ../clang
+  - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
 build:
-  number: 0
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -38,16 +41,21 @@ requirements:
   run:
     - __glibc >=2.28
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package rhash
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - rhash
       files:
-        - include/rhash-${{ version }}/rhash.h
-        - include/rhash-${{ version }}/rhash_torrent.h
-        - lib/librhash.so
+        - lib/devkit/include/rhash-${{ version }}/rhash.h
+        - lib/devkit/include/rhash-${{ version }}/rhash_torrent.h
+        - lib/devkit/lib/librhash.so
         - lib/librhash.so.1
-        - lib/librhash.a
-        - lib/pkgconfig/librhash.pc
+        - lib/devkit/lib/librhash.a
+        - lib/devkit/lib/pkgconfig/librhash.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - rhash --version

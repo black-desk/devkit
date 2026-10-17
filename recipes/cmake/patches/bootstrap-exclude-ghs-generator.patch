@@ -1,3 +1,9 @@
+Guard the Green Hills generator include in upstream bootstrap mode.
+
+The current recipe uses the previous-stage CMake, not ./bootstrap, so
+this guard is inactive in the normal package build. Review R8 tracks
+whether this historical bootstrap-only patch is still worth retaining.
+
 --- a/Source/cmake.cxx
 +++ b/Source/cmake.cxx
 @@ -129,7 +129,8 @@

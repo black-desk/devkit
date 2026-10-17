@@ -8,14 +8,13 @@ package:
   version: ${{ version }}
 
 source:
-  url: https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${{ version }}/pcre2-${{ version }}.tar.gz
-  sha256: 929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae
-  patches:
-    - patches/cmake-install-includedir.patch
-    - patches/pcre2-config-exact-paths.patch
+  - url: https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${{ version }}/pcre2-${{ version }}.tar.gz
+    sha256: 929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
 
 build:
-  number: 1
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -44,37 +43,42 @@ requirements:
       - pcre2 >=10.49,<11
 
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package pcre2
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - pcre2grep
         - pcre2test
       files:
-        - include/pcre2-${{ version }}/pcre2.h
-        - include/pcre2-${{ version }}/pcre2posix.h
-        - lib/libpcre2-8.so
+        - lib/devkit/include/pcre2-${{ version }}/pcre2.h
+        - lib/devkit/include/pcre2-${{ version }}/pcre2posix.h
+        - lib/devkit/lib/libpcre2-8.so
         - lib/libpcre2-8.so.0
         - lib/libpcre2-8.so.0.16.1
-        - lib/libpcre2-8.a
-        - lib/libpcre2-16.so
+        - lib/devkit/lib/libpcre2-8.a
+        - lib/devkit/lib/libpcre2-16.so
         - lib/libpcre2-16.so.0
-        - lib/libpcre2-16.a
-        - lib/libpcre2-32.so
+        - lib/devkit/lib/libpcre2-16.a
+        - lib/devkit/lib/libpcre2-32.so
         - lib/libpcre2-32.so.0
-        - lib/libpcre2-32.a
-        - lib/libpcre2-posix.so
+        - lib/devkit/lib/libpcre2-32.a
+        - lib/devkit/lib/libpcre2-posix.so
         - lib/libpcre2-posix.so.3
-        - lib/libpcre2-posix.a
-        - lib/pkgconfig/libpcre2-8.pc
-        - lib/pkgconfig/libpcre2-16.pc
-        - lib/pkgconfig/libpcre2-32.pc
-        - lib/cmake/pcre2/pcre2-config.cmake
-        - lib/cmake/pcre2/pcre2-config-version.cmake
-        - lib/cmake/pcre2/pcre2-targets.cmake
-        - lib/pkgconfig/libpcre2-posix.pc
+        - lib/devkit/lib/libpcre2-posix.a
+        - lib/devkit/lib/pkgconfig/libpcre2-8.pc
+        - lib/devkit/lib/pkgconfig/libpcre2-16.pc
+        - lib/devkit/lib/pkgconfig/libpcre2-32.pc
+        - lib/devkit/lib/cmake/pcre2/pcre2-config.cmake
+        - lib/devkit/lib/cmake/pcre2/pcre2-config-version.cmake
+        - lib/devkit/lib/cmake/pcre2/pcre2-targets.cmake
+        - lib/devkit/lib/pkgconfig/libpcre2-posix.pc
         - libexec/pcre2/bin/pcre2-config
 
   - script:
-      - export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+      - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
       - test "$(command -v pkg-config)" = "${PREFIX}/bin/pkg-config"
       - pc_path="$("${PREFIX}/bin/pkg-config" --path libpcre2-8)"
       - cflags="$("${PREFIX}/bin/pkg-config" --cflags libpcre2-8)"
@@ -82,27 +86,27 @@ tests:
       - test "$cflags" = "-I$(dirname "$pc_path")/../../include/pcre2-${{ version }}"
       - libs="$("${PREFIX}/bin/pkg-config" --libs libpcre2-8)"
       - libs="${libs% }"
-      - test "$libs" = "$(dirname "$pc_path")/../../lib/libpcre2-8.so"
+      - test "$libs" = "-L$(dirname "$pc_path")/../../lib -lpcre2-8"
       - >-
         test "$("${PREFIX}/bin/pkg-config" --modversion libpcre2-8)" =
         "${{ version }}"
       - posix_libs="$("${PREFIX}/bin/pkg-config" --libs libpcre2-posix)"
       - posix_libs="${posix_libs% }"
-      - test "$posix_libs" = "$(dirname "$pc_path")/../../lib/libpcre2-posix.so"
+      - test "$posix_libs" = "-L$(dirname "$pc_path")/../../lib -lpcre2-posix"
       - test ! -e "${PREFIX}/include/pcre2.h"
       - test ! -e "${PREFIX}/bin/pcre2-config"
       - pcre2_config="${PREFIX}/libexec/pcre2/bin/pcre2-config"
       - test "$("${pcre2_config}" --prefix)" = "${PREFIX}"
       - test "$("${pcre2_config}" --exec-prefix)" = "${PREFIX}"
       - test "$("${pcre2_config}" --version)" = "${{ version }}"
-      - test "$("${pcre2_config}" --cflags)" = "-I${PREFIX}/include/pcre2-${{ version }}"
-      - test "$("${pcre2_config}" --libs8)" = "${PREFIX}/lib/libpcre2-8.so"
+      - test "$("${pcre2_config}" --cflags)" = "-I${PREFIX}/lib/devkit/include/pcre2-${{ version }}"
+      - test "$("${pcre2_config}" --libs8)" = "-L${PREFIX}/lib/devkit/lib -lpcre2-8"
       - >-
-        test "$("${pcre2_config}" --cflags-posix)" = "-I${PREFIX}/include/pcre2-${{
+        test "$("${pcre2_config}" --cflags-posix)" = "-I${PREFIX}/lib/devkit/include/pcre2-${{
         version }} -DPCRE2POSIX_SHARED"
       - >-
         test "$("${pcre2_config}" --libs-posix)" =
-        "${PREFIX}/lib/libpcre2-posix.so ${PREFIX}/lib/libpcre2-8.so"
+        "-L${PREFIX}/lib/devkit/lib -lpcre2-posix -lpcre2-8"
       - >-
         test "$("${pcre2_config}" --prefix=/opt/pcre2-override --prefix)" =
         "/opt/pcre2-override"
@@ -111,9 +115,9 @@ tests:
         --exec-prefix)" = "/opt/pcre2-override"
       - >-
         test "$("${pcre2_config}" --version --libs8)" =
-        "$(printf '%s\n%s' '${{ version }}' "${PREFIX}/lib/libpcre2-8.so")"
-      - test "$("${pcre2_config}" --libs16)" = "${PREFIX}/lib/libpcre2-16.so"
-      - test "$("${pcre2_config}" --libs32)" = "${PREFIX}/lib/libpcre2-32.so"
+        "$(printf '%s\n%s' '${{ version }}' "-L${PREFIX}/lib/devkit/lib -lpcre2-8")"
+      - test "$("${pcre2_config}" --libs16)" = "-L${PREFIX}/lib/devkit/lib -lpcre2-16"
+      - test "$("${pcre2_config}" --libs32)" = "-L${PREFIX}/lib/devkit/lib -lpcre2-32"
       - if "${pcre2_config}" --not-an-option >/dev/null; then exit 1; fi
     requirements:
       run:

@@ -18,11 +18,14 @@ else
   COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-toolchain=${BUILD_PREFIX}/share/devkit/no-gcc -O2 -fPIC --rtlib=compiler-rt"
 fi
 COMMON_FLAGS="--start-no-unused-arguments ${COMMON_FLAGS} --end-no-unused-arguments"
-LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64"
+LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64"
 
 cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
   '-DCMAKE_INSTALL_RPATH=$ORIGIN' \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
@@ -41,6 +44,8 @@ cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
   -DCMAKE_MODULE_LINKER_FLAGS="${LINK_FLAGS}" \
   -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" \
   -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF \
+  -DLIBCXX_INSTALL_INCLUDE_DIR="lib/devkit/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
+  -DLIBCXXABI_INSTALL_INCLUDE_DIR="lib/devkit/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
   -DLIBCXX_INCLUDE_TESTS=OFF \
   -DLIBCXXABI_INCLUDE_TESTS=OFF \
   -DLIBCXX_USE_COMPILER_RT=ON \
@@ -53,20 +58,45 @@ cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
 cmake --build build --parallel "${CPU_COUNT}"
 cmake --install build
 
-mkdir -p "${PREFIX}/include/libcxx-${LIBCXX_VERSION}"
-mv "${PREFIX}/include/c++" "${PREFIX}/include/libcxx-${LIBCXX_VERSION}/c++"
-if [[ -d "${PREFIX}/lib/cmake" ]]; then
-  while IFS= read -r -d '' metadata; do
-    sed -i "s|/include/c++/v1|/include/libcxx-${LIBCXX_VERSION}/c++/v1|g" "${metadata}"
-  done < <(find "${PREFIX}/lib/cmake" -type f -name '*.cmake' -print0)
-fi
-mkdir -p "${PREFIX}/lib/llvm-runtime"
-for library in libc++.so libc++.so.1 libc++.a libc++abi.so libc++abi.so.1 libc++abi.a; do
-  ln -s "../${library}" "${PREFIX}/lib/llvm-runtime/${library}"
-done
-
-"${CXX}" ${COMMON_FLAGS} ${LINK_FLAGS} -std=c++20 -nostdinc++ -nostdlib++ \
-  -isystem "${PREFIX}/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
-  "${RECIPE_DIR}/tests/runtime.cpp" -lc++ -lc++abi -lgcc_s -ldl -pthread \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' \
-  -o "${SRC_DIR}/libcxx-probe"
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
+import os
+from pathlib import Path
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['c++', 'c++abi', 'c++experimental'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+PYCODE

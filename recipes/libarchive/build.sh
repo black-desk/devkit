@@ -3,8 +3,11 @@ set -euxo pipefail
 
 # Bootstrap skips suites in dirty/result; standalone builds run them by default.
 case "${DEVKIT_RUN_TESTS:-1}" in
-  0|1) ;;
-  *) printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2; exit 1 ;;
+  0 | 1) ;;
+  *)
+    printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2
+    exit 1
+    ;;
 esac
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
@@ -30,7 +33,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -38,15 +41,18 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
-export PKG_CONFIG_LIBDIR="${PREFIX}/lib/pkgconfig"
+export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH
 cmake -S . -B build -G Ninja \
+  -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
+  -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="include/libarchive-${LIBRARY_VERSION}" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/libarchive-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_C_FLAGS="${CFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
@@ -58,46 +64,98 @@ cmake -S . -B build -G Ninja \
   -DENABLE_ZSTD=ON -DENABLE_ZLIB=ON -DENABLE_BZip2=ON -DENABLE_OPENSSL=ON \
   -DENABLE_LIBXML2=ON -DENABLE_EXPAT=OFF -DENABLE_NETTLE=OFF -DENABLE_CNG=OFF \
   -DENABLE_ICONV=ON \
-  -DICONV_INCLUDE_DIR="${PREFIX}/include/libiconv-1.18" -DLIBICONV_PATH="${PREFIX}/lib/libiconv.so" \
-  -DZLIB_INCLUDE_DIR="${PREFIX}/include/zlib-1.3.2" -DZLIB_LIBRARY="${PREFIX}/lib/libz.so" \
-  -DBZIP2_INCLUDE_DIR="${PREFIX}/include/bzip2-1.0.8" -DBZIP2_LIBRARY_RELEASE="${PREFIX}/lib/libbz2.so" \
-  -DLIBLZMA_INCLUDE_DIR="${PREFIX}/include/liblzma-5.8.3" -DLIBLZMA_LIBRARY="${PREFIX}/lib/liblzma.so" \
-  -DLZO2_INCLUDE_DIR="${PREFIX}/include/lzo-2.10" -DLZO2_LIBRARY="${PREFIX}/lib/liblzo2.so" \
-  -DLZ4_INCLUDE_DIR="${PREFIX}/include/lz4-1.10.0" -DLZ4_LIBRARY="${PREFIX}/lib/liblz4.so" \
-  -DZSTD_INCLUDE_DIR="${PREFIX}/include/zstd-1.5.7" -DZSTD_LIBRARY="${PREFIX}/lib/libzstd.so" \
-  -DOPENSSL_INCLUDE_DIR="${PREFIX}/include/openssl-3.5.9" \
-  -DOPENSSL_CRYPTO_LIBRARY="${PREFIX}/lib/libcrypto.so" -DOPENSSL_SSL_LIBRARY="${PREFIX}/lib/libssl.so" \
-  -DLIBXML2_INCLUDE_DIR="${PREFIX}/include/libxml2-2.15.4" -DLIBXML2_LIBRARY="${PREFIX}/lib/libxml2.so"
+  -DICONV_INCLUDE_DIR="${PREFIX}/lib/devkit/include/libiconv-1.18" -DLIBICONV_PATH="${PREFIX}/lib/devkit/lib/libiconv.so" \
+  -DZLIB_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zlib-1.3.2" -DZLIB_LIBRARY="${PREFIX}/lib/devkit/lib/libz.so" \
+  -DBZIP2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/bzip2-1.0.8" -DBZIP2_LIBRARY_RELEASE="${PREFIX}/lib/devkit/lib/libbz2.so" \
+  -DLIBLZMA_INCLUDE_DIR="${PREFIX}/lib/devkit/include/liblzma-5.8.3" -DLIBLZMA_LIBRARY="${PREFIX}/lib/devkit/lib/liblzma.so" \
+  -DLZO2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/lzo-2.10" -DLZO2_LIBRARY="${PREFIX}/lib/devkit/lib/liblzo2.so" \
+  -DLZ4_INCLUDE_DIR="${PREFIX}/lib/devkit/include/lz4-1.10.0" -DLZ4_LIBRARY="${PREFIX}/lib/devkit/lib/liblz4.so" \
+  -DZSTD_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zstd-1.5.7" -DZSTD_LIBRARY="${PREFIX}/lib/devkit/lib/libzstd.so" \
+  -DOPENSSL_INCLUDE_DIR="${PREFIX}/lib/devkit/include/openssl-3.5.9" \
+  -DOPENSSL_CRYPTO_LIBRARY="${PREFIX}/lib/devkit/lib/libcrypto.so" -DOPENSSL_SSL_LIBRARY="${PREFIX}/lib/devkit/lib/libssl.so" \
+  -DLIBXML2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/libxml2-2.15.4" -DLIBXML2_LIBRARY="${PREFIX}/lib/devkit/lib/libxml2.so"
 # CMake requires iconv for the libxml2 backend, unlike the forge Autotools
 # configuration. Use the existing channel libiconv to preserve XML support.
 # Expat and Nettle remain disabled as in forge; retain the GPL/LZO backends.
 for feature in HAVE_LIBLZO2 HAVE_LIBLZ4 HAVE_LIBLZMA HAVE_LIBZSTD HAVE_LIBZ HAVE_LIBBZ2 HAVE_LIBXML2; do
   grep -q "^#define ${feature} 1" build/config.h
- done
+done
 cmake --build build --parallel "${CPU_COUNT}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ctest --test-dir build --output-on-failure --parallel "${CPU_COUNT}"
 fi
 cmake --install build
-python3 - <<'PY'
+
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
 import os
 from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/libarchive.pc'
-lines = p.read_text().splitlines()
-backends = ['z', 'bz2', 'lzma', 'zstd', 'xml2', 'iconv', 'lzo2', 'lz4', 'crypto']
-lines = ['prefix=${pcfiledir}/../..' if x.startswith('prefix=') else
-         'exec_prefix=${prefix}' if x.startswith('exec_prefix=') else
-         'libdir=${prefix}/lib' if x.startswith('libdir=') else
-         'includedir=${prefix}/include/libarchive-' + os.environ['LIBRARY_VERSION']
-         if x.startswith('includedir=') else
-         'Libs: ${libdir}/libarchive.so' if x.startswith('Libs:') else
-         'Libs.private: ' + ' '.join('${libdir}/lib'+n+'.so' for n in backends)
-         if x.startswith('Libs.private:') else x for x in lines]
-p.write_text('\n'.join(lines)+'\n')
-PY
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/libarchive-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libarchive.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-ln -s "${PREFIX}/lib" runtime-lib
-./library-probe
-python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Upstream's header install rule ignores CMAKE_INSTALL_INCLUDEDIR.
+(dev / "include/libarchive-3.8.9").mkdir(parents=True, exist_ok=True)
+for name in ["archive.h", "archive_entry.h"]:
+    shutil.move(str(prefix / "include" / name), dev / "include/libarchive-3.8.9" / name)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['archive'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+import re
+# Change only location variables; upstream Libs/Requires retain their generated dependencies.
+for name in ['libarchive']:
+    path = prefix / "lib/pkgconfig" / (name + ".pc")
+    target = dev / "lib/pkgconfig" / path.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        assert not target.exists(), target
+        shutil.move(str(path), target)
+    assert target.is_file(), target
+    text = target.read_text()
+    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
+              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/libarchive-3.8.9"}
+    lines = text.splitlines(keepends=True)
+    for key, value in values.items():
+        matches = [i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)]
+        if matches:
+            assert len(matches) == 1, (target, key)
+            lines[matches[0]] = key + "=" + value + "\n"
+        elif key == "prefix":
+            lines.insert(0, key + "=" + value + "\n")
+    text = "".join(lines)
+    # Recorded input prefixes become metadata-relative paths, preserving library order.
+    text = text.replace(str(prefix) + "/lib/devkit", "${prefix}")
+    text = text.replace(str(prefix) + "/lib", "${libdir}")
+    text = text.replace(str(prefix) + "/include", "${includedir}")
+    target.write_text(text)
+PYCODE

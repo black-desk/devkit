@@ -24,7 +24,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -32,73 +32,121 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 unset LD_LIBRARY_PATH LD_PRELOAD ICU_DATA
 export CXXFLAGS="${CXXFLAGS} -std=c++17"
-# ICU invokes its newly built tools before installing them. Their dependencies
-# live in the build tree; use RUNPATH rather than ICU's loader-env wrappers.
-export LDFLAGS="${LDFLAGS} -L${PREFIX}/lib/llvm-runtime -lgcc_s -Wl,-rpath,${SRC_DIR}/source/lib -Wl,-rpath,${SRC_DIR}/source/stubdata -Wl,-rpath,${SRC_DIR}/source/tools/ctestfw"
+# ICU runs newly built tools through its upstream loader-environment wrappers.
+# Keep build-tree library paths out of the exported linker configuration.
+export LDFLAGS="${LDFLAGS} -lgcc_s"
 cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" source/config.guess
 cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" source/config.sub
 cd source
 # Rattler-build may export a nonexistent host-prefix interpreter. With the
 # test-data patch, ordinary discovery is harmless and no Python is invoked.
 unset PYTHON
-./configure --prefix="${PREFIX}" --disable-samples --disable-extras \
+# This configuration uses the release production data, with tests disabled;
+# skip-disabled-test-data.patch prevents a Python-only test-data dependency.
+# The recipe test runtime probe covers selected APIs, not the ICU suite.
+./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" --disable-samples --disable-extras \
   --disable-tests
-make -j"${CPU_COUNT}" INVOKE= PKGDATA_INVOKE= INSTALLED_INVOKE=
-make install INVOKE= PKGDATA_INVOKE= INSTALLED_INVOKE=
-mkdir -p "${PREFIX}/include/icu-${LIBRARY_VERSION}"
-mv "${PREFIX}/include/unicode" "${PREFIX}/include/icu-${LIBRARY_VERSION}/"
-# Adjust generated consumer metadata for the isolated headers and stage tools.
-python3 - <<'PY'
+make -j"${CPU_COUNT}"
+make install \
+  pkglibdir="${PREFIX}/lib/devkit/lib/icu/${LIBRARY_VERSION}"
+# Post-link exception: ICU has no per-tool relative installed RUNPATH setting.
+# Build-time tools use upstream loader wrappers; installed tools must load
+# channel dependencies without those wrappers.
+# TODO: replace with target-specific upstream install/relink support.
+python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
 import os
 from pathlib import Path
-prefix = Path(os.environ['PREFIX'])
-version = os.environ['LIBRARY_VERSION']
-for path in (prefix / 'lib/pkgconfig').glob('icu*.pc'):
-    path.write_text(path.read_text().replace('${prefix}/include', '${prefix}/include/icu-' + version))
-path = prefix / 'bin/icu-config'
-text = path.read_text().replace('${prefix}/include', '${prefix}/include/icu-' + version)
-lines = []
-tools = {'CC': 'clang', 'CXX': 'clang++', 'AR': 'llvm-ar', 'RANLIB': 'llvm-ranlib'}
-for line in text.splitlines():
-    key = line.split('=', 1)[0]
-    if key in tools:
-        line = key + '="' + tools[key] + '"'
-    lines.append(line)
-path.write_text('\n'.join(lines) + '\n')
-path = prefix / 'lib/icu' / version / 'Makefile.inc'
-text = path.read_text().replace('$(prefix)/include', '$(prefix)/include/icu-' + version)
-text = text.replace('${prefix}/include', '${prefix}/include/icu-' + version)
-lines = []
-for line in text.splitlines():
-    key = line.split('=', 1)[0].strip()
-    if key in tools:
-        line = key + ' = ' + tools[key]
-    elif key == 'CPP':
-        line = 'CPP = clang -E'
-    lines.append(line)
-path.write_text('\n'.join(lines) + '\n')
-path = prefix / 'lib/icu' / version / 'pkgdata.inc'
-replacements = {
-    'COMPILE': 'clang -O2 -c',
-    'GENLIB': 'clang -shared -Wl,-Bsymbolic',
-    'LIBFLAGS': '-I' + str(prefix / ('include/icu-' + version)) + ' -DPIC -fPIC',
-    'AR': 'llvm-ar', 'RANLIB': 'llvm-ranlib',
-}
-lines = []
-for line in path.read_text().splitlines():
-    key = line.split('=', 1)[0]
-    if key in replacements:
-        line = key + '=' + replacements[key]
-    lines.append(line)
-path.write_text('\n'.join(lines) + '\n')
-PY
-python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-"${CXX}" ${CXXFLAGS} "${SRC_DIR}/devkit-tests/runtime.cpp" \
-  -I"${PREFIX}/include/icu-${LIBRARY_VERSION}" ${LDFLAGS} \
-  -licui18n -licuuc -licudata -o "${SRC_DIR}/icu-runtime-probe"
-patchelf --set-rpath '$ORIGIN/runtime-lib' "${SRC_DIR}/icu-runtime-probe"
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['icudata', 'icui18n', 'icuio', 'icutest', 'icutu', 'icuuc'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+import re
+# Change only location variables; upstream Libs/Requires retain their generated dependencies.
+for name in ['icu-i18n', 'icu-io', 'icu-uc']:
+    path = prefix / "lib/pkgconfig" / (name + ".pc")
+    target = dev / "lib/pkgconfig" / path.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        assert not target.exists(), target
+        shutil.move(str(path), target)
+    assert target.is_file(), target
+    text = target.read_text()
+    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
+              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/icu-78.3"}
+    lines = text.splitlines(keepends=True)
+    for key, value in values.items():
+        matches = [i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)]
+        if matches:
+            assert len(matches) == 1, (target, key)
+            lines[matches[0]] = key + "=" + value + "\n"
+        elif key == "prefix":
+            lines.insert(0, key + "=" + value + "\n")
+    text = "".join(lines)
+    # Recorded input prefixes become metadata-relative paths, preserving library order.
+    text = text.replace(str(prefix) + "/lib/devkit", "${prefix}")
+    text = text.replace(str(prefix) + "/lib", "${libdir}")
+    text = text.replace(str(prefix) + "/include", "${includedir}")
+    target.write_text(text)
+config = dev / "lib/icu/78.3"
+path = config / "Makefile.inc"
+text = path.read_text()
+values = {'exec_prefix':'$(prefix)', 'libdir':'$(prefix)/lib/devkit/lib',
+          'includedir':'$(prefix)/lib/devkit/include/icu-78.3',
+          'pkglibdir':'$(prefix)/lib/devkit/lib/$(PACKAGE)$(ICULIBSUFFIX)/$(VERSION)',
+          'AR':'llvm-ar', 'CC':'clang', 'CPP':'clang -E', 'CXX':'clang++', 'RANLIB':'llvm-ranlib'}
+for key, value in values.items():
+    text, count = re.subn(r'(?m)^' + key + r' = .*$', key + ' = ' + value, text)
+    assert count == 1, (path, key, count)
+text = text.replace('$(LD_RPATH_PRE)$(libdir)', '$(LD_RPATH_PRE)$(prefix)/lib')
+text = text.replace('-I$(prefix)/include', '-I$(prefix)/lib/devkit/include/icu-78.3')
+path.write_text(text)
+path = config / "pkgdata.inc"
+text = path.read_text()
+values = {'COMPILE':'clang -O2 -c', 'GENLIB':'clang -shared -Wl,-Bsymbolic',
+          'LIBFLAGS':'-I' + str(dev / 'include/icu-78.3') + ' -DPIC -fPIC',
+          'AR':'llvm-ar', 'RANLIB':'llvm-ranlib', 'INSTALL_CMD':'install -c'}
+for key, value in values.items():
+    text, count = re.subn(r'(?m)^' + key + r'=.*$', key + '=' + value, text)
+    assert count == 1, (path, key, count)
+path.write_text(text)
+PYCODE

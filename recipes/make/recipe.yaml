@@ -11,14 +11,16 @@ source:
   - url: https://ftp.gnu.org/gnu/make/make-${{ version }}.tar.gz
     sha256: dd16fb1d67bfab79a72f5e8390735c49e3e8e70b4945a15ab1f81ddb78658fb3
 
-  - path: ../clang
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
+
 build:
-  number: 1
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
     env:
+      LIBRARY_VERSION: ${{ version }}
       DEVKIT_RUN_TESTS: ${{ env.get("DEVKIT_RUN_TESTS", default="1") }}
       SYSROOT_TRIPLET: "${{ sysroot_triplet }}"
 
@@ -37,9 +39,16 @@ requirements:
     - gnuconfig ==2025.07.09
     - sysroot_linux-64
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package make
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - make
+      files:
+        - lib/devkit/include/make-${{ version }}/gnumake.h
 
   - script:
       - make --version

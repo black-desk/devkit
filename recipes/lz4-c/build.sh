@@ -3,8 +3,11 @@ set -euxo pipefail
 
 # Bootstrap skips suites in dirty/result; standalone builds run them by default.
 case "${DEVKIT_RUN_TESTS:-1}" in
-  0|1) ;;
-  *) printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2; exit 1 ;;
+  0 | 1) ;;
+  *)
+    printf 'error: DEVKIT_RUN_TESTS must be 0 or 1\n' >&2
+    exit 1
+    ;;
 esac
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
@@ -30,7 +33,7 @@ export LD="${BUILD_PREFIX}/bin/ld.lld"
 export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
+  export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
   # clang.cfg already selects libc++ headers. Adding a second copy from the
   # native host prefix breaks C wrapper include_next. Both prefixes select
@@ -38,12 +41,16 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+# Make expands $$ once; shell quotes preserve the literal loader token.
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
-make -j"${CPU_COUNT}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
+# Keep flags in the environment: command-line LDFLAGS suppress upstream
+# target-specific additions, including -pthread for the multithreaded CLI.
+NATIVE_LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN:\$\$ORIGIN/../lib'"
+LDFLAGS="${NATIVE_LDFLAGS}" make -j"${CPU_COUNT}" PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/lib/devkit/include/lz4-${LIBRARY_VERSION}"
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
-  make -C tests datagen
+  LDFLAGS="${NATIVE_LDFLAGS}" make -C tests datagen
   # Preserve conda-forge's corpus, including large and linked blocks.
   tests/datagen -g0 | ./lz4 -v | ./lz4 -t
   tests/datagen -g16KB | ./lz4 -9 | ./lz4 -t
@@ -53,22 +60,74 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   tests/datagen -g33M | ./lz4 --no-frame-crc | ./lz4 -t
   tests/datagen -g256MB | ./lz4 -vqB4D | ./lz4 -t
 fi
-make install PREFIX="${PREFIX}" INCLUDEDIR="${PREFIX}/include/lz4-${LIBRARY_VERSION}"
-python3 - <<'PY'
+LDFLAGS="${NATIVE_LDFLAGS}" make install PREFIX="${PREFIX}" PKGCONFIGDIR="${PREFIX}/lib/devkit/lib/pkgconfig" INCLUDEDIR="${PREFIX}/lib/devkit/include/lz4-${LIBRARY_VERSION}"
+
+# Keep development layout handling in this recipe until channel coverage is complete.
+python3 - <<'PYCODE'
 import os
 from pathlib import Path
-p = Path(os.environ['PREFIX']) / 'lib/pkgconfig/liblz4.pc'
-lines = p.read_text().splitlines()
-lines = ['prefix=${pcfiledir}/../..' if x.startswith('prefix=') else
-         'exec_prefix=${prefix}' if x.startswith('exec_prefix=') else
-         'libdir=${prefix}/lib' if x.startswith('libdir=') else
-         'includedir=${prefix}/include/lz4-' + os.environ['LIBRARY_VERSION']
-         if x.startswith('includedir=') else x for x in lines]
-p.write_text(('\n'.join(lines) + '\n').replace('-L${libdir} -llz4', '${libdir}/liblz4.so'))
-PY
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/include/lz4-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/liblz4.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-ln -s "${PREFIX}/lib" runtime-lib
-./library-probe
-python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
+import re
+import shutil
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+(dev / "lib").mkdir(parents=True, exist_ok=True)
+# Resolve every alias before removing any public linker symlinks.
+libraries = [path for stem in ['lz4'] for path in (prefix / "lib").glob("lib" + stem + ".*")]
+shared = {path: path.resolve(strict=True) for path in libraries if ".so" in path.name and path.is_symlink()}
+for path in libraries:
+    target = dev / "lib" / path.name
+    if path.name.endswith((".a", ".la")):
+        assert not target.exists(), target
+        if path.is_symlink():
+            original = Path(os.path.abspath(path.parent / path.readlink()))
+            if original in libraries:
+                original = dev / "lib" / original.name
+            target.symlink_to(os.path.relpath(original, target.parent))
+            path.unlink()
+        else:
+            shutil.move(str(path), target)
+        if target.suffix == ".la":
+            target.write_text(re.sub(re.escape(str(prefix)) + r"/lib(?!/devkit)(?=/|['\s])", str(dev) + "/lib", target.read_text()))
+    elif ".so" in path.name:
+        if path in shared:
+            runtime = shared[path]
+            target.symlink_to(os.path.relpath(runtime, target.parent))
+            if path.name.endswith(".so"):
+                path.unlink()
+        else:
+            with path.open("rb") as stream:
+                elf = stream.read(4) == b"\x7fELF"
+            if not path.name.endswith(".so"):
+                target.symlink_to(os.path.relpath(path, target.parent))
+            else:
+                assert not elf, ("unreviewed unversioned runtime ELF", path)
+                shutil.move(str(path), target)
+                target.write_text(target.read_text().replace(str(prefix) + "/lib/", str(dev) + "/lib/"))
+import re
+# Change only location variables; upstream Libs/Requires retain their generated dependencies.
+for name in ['liblz4']:
+    path = prefix / "lib/pkgconfig" / (name + ".pc")
+    target = dev / "lib/pkgconfig" / path.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if path.is_file():
+        assert not target.exists(), target
+        shutil.move(str(path), target)
+    assert target.is_file(), target
+    text = target.read_text()
+    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
+              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/lz4-1.10.0"}
+    lines = text.splitlines(keepends=True)
+    for key, value in values.items():
+        matches = [i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)]
+        if matches:
+            assert len(matches) == 1, (target, key)
+            lines[matches[0]] = key + "=" + value + "\n"
+        elif key == "prefix":
+            lines.insert(0, key + "=" + value + "\n")
+    text = "".join(lines)
+    # Recorded input prefixes become metadata-relative paths, preserving library order.
+    text = text.replace(str(prefix) + "/lib/devkit", "${prefix}")
+    text = text.replace(str(prefix) + "/lib", "${libdir}")
+    text = text.replace(str(prefix) + "/include", "${includedir}")
+    target.write_text(text)
+PYCODE

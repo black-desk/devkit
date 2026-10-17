@@ -14,15 +14,16 @@ source:
     sha256: f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7
     patches:
       - patches/clang-driver-link-policy.patch
-      - patches/curl-config-exact-paths.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 outputs:
   - package:
       name: curl
     build:
-      number: 2
+      number: 6
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -72,27 +73,32 @@ outputs:
         - libnghttp2 ==1.68.1
         - libpsl ==0.23.1
     tests:
+      - script:
+          - python3 devkit-build/check-package.py "${PREFIX}" --package curl
+        files:
+          source:
+            - devkit-build/check-package.py
       - package_contents:
           bin:
             - curl
           files:
-            - include/curl-${{ version }}/curl/curl.h
-            - include/curl-${{ version }}/curl/curlver.h
-            - include/curl-${{ version }}/curl/easy.h
-            - include/curl-${{ version }}/curl/header.h
-            - include/curl-${{ version }}/curl/multi.h
-            - include/curl-${{ version }}/curl/mprintf.h
-            - include/curl-${{ version }}/curl/options.h
-            - include/curl-${{ version }}/curl/stdcheaders.h
-            - include/curl-${{ version }}/curl/system.h
-            - include/curl-${{ version }}/curl/typecheck-gcc.h
-            - include/curl-${{ version }}/curl/urlapi.h
-            - include/curl-${{ version }}/curl/websockets.h
-            - lib/libcurl.so
+            - lib/devkit/include/curl-${{ version }}/curl/curl.h
+            - lib/devkit/include/curl-${{ version }}/curl/curlver.h
+            - lib/devkit/include/curl-${{ version }}/curl/easy.h
+            - lib/devkit/include/curl-${{ version }}/curl/header.h
+            - lib/devkit/include/curl-${{ version }}/curl/multi.h
+            - lib/devkit/include/curl-${{ version }}/curl/mprintf.h
+            - lib/devkit/include/curl-${{ version }}/curl/options.h
+            - lib/devkit/include/curl-${{ version }}/curl/stdcheaders.h
+            - lib/devkit/include/curl-${{ version }}/curl/system.h
+            - lib/devkit/include/curl-${{ version }}/curl/typecheck-gcc.h
+            - lib/devkit/include/curl-${{ version }}/curl/urlapi.h
+            - lib/devkit/include/curl-${{ version }}/curl/websockets.h
+            - lib/devkit/lib/libcurl.so
             - lib/libcurl.so.4
             - lib/libcurl.so.4.8.0
-            - lib/libcurl.a
-            - lib/pkgconfig/libcurl.pc
+            - lib/devkit/lib/libcurl.a
+            - lib/devkit/lib/pkgconfig/libcurl.pc
             - libexec/curl/bin/curl-config
 
       - script:
@@ -100,12 +106,25 @@ outputs:
           - test ! -e "${PREFIX}/bin/curl-config"
           - test ! -e "${PREFIX}/bin/wcurl"
           - test ! -e "${PREFIX}/include/curl"
-          - test ! -e "${PREFIX}/lib/cmake/CURL"
-          - test "$(readlink "${PREFIX}/lib/libcurl.so")" = "libcurl.so.4.8.0"
+          - test ! -e "${PREFIX}/lib/devkit/lib/cmake/CURL"
+          - test "$(readlink "${PREFIX}/lib/devkit/lib/libcurl.so")" = "../../libcurl.so.4.8.0"
           - >-
             test "$(readlink "${PREFIX}/lib/libcurl.so.4")" =
             "libcurl.so.4.8.0"
           - unset LD_LIBRARY_PATH LD_PRELOAD
+          - curl_config="${PREFIX}/libexec/curl/bin/curl-config"
+          - >-
+            "${PREFIX}/bin/clang" --no-default-config
+            --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
+            $("${curl_config}" --cflags) tests/probe.c
+            $("${curl_config}" --libs)
+            "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o library-probe
+          - >-
+            "${PREFIX}/bin/clang" --no-default-config
+            --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
+            $("${curl_config}" --cflags) tests/probe.c
+            $("${curl_config}" --static-libs)
+            "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o static-probe
           - ./library-probe
           - ./static-probe
           - curl_version="$("${PREFIX}/bin/curl" --version)"
@@ -130,12 +149,13 @@ outputs:
           - >-
             test "$("${curl_config}" --version)" =
             "libcurl ${{ version }}"
+          - curl_cflags="$("${curl_config}" --cflags)"
           - >-
-            test "$("${curl_config}" --cflags)" =
-            "-I${PREFIX}/include/curl-${{ version }}"
+            test "${curl_cflags# }" =
+            "-I${PREFIX}/lib/devkit/include/curl-${{ version }}"
           - >-
             test "$("${curl_config}" --libs)" =
-            "${PREFIX}/lib/libcurl.so"
+            "-L${PREFIX}/lib/devkit/lib -lcurl"
           - >-
             test "$("${curl_config}" --ca)" =
             "${PREFIX}/etc/ssl/certs/ca-certificates.crt"
@@ -156,8 +176,10 @@ outputs:
           - >-
             "${curl_config}" --protocols | grep -Fx SFTP
           - >-
-            test "$("${curl_config}" --static-libs)" =
-            "${PREFIX}/lib/libcurl.a ${PREFIX}/lib/libssl.so ${PREFIX}/lib/libcrypto.so ${PREFIX}/lib/libz.so ${PREFIX}/lib/libnghttp2.so ${PREFIX}/lib/libssh2.so ${PREFIX}/lib/libgssapi_krb5.so ${PREFIX}/lib/libkrb5.so ${PREFIX}/lib/libk5crypto.so ${PREFIX}/lib/libcom_err.so ${PREFIX}/lib/libpsl.so ${PREFIX}/lib/libzstd.so -ldl -pthread"
+            "${curl_config}" --static-libs | grep -F "${PREFIX}/lib/devkit/lib/libcurl.a"
+          - >-
+            if readelf -d static-probe | grep -F 'Shared library: [libcurl.so';
+            then exit 1; fi
           - >-
             "${curl_config}" --checkfor ${{ version }}
           - >-
@@ -168,24 +190,34 @@ outputs:
           - >-
             if "${curl_config}" --not-an-option >/dev/null 2>&1;
             then exit 1; fi
-          - export PKG_CONFIG_PATH="${PREFIX}/lib/pkgconfig"
+          - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
           - pc_path="$("${PREFIX}/bin/pkg-config" --path libcurl)"
           - pc_root="$(dirname "$pc_path")/../.."
           - cflags="$("${PREFIX}/bin/pkg-config" --cflags libcurl)"
           - cflags="${cflags% }"
           - >-
-            test "$cflags" =
-            "-I${pc_root}/include/curl-${{ version }}"
+            printf '%s\n' $cflags |
+            grep -Fx -- "-I${pc_root}/include/curl-${{ version }}"
           - libs="$("${PREFIX}/bin/pkg-config" --libs libcurl)"
           - libs="${libs% }"
-          - test "$libs" = "${pc_root}/lib/libcurl.so"
+          - test "$libs" = "-L${pc_root}/lib -lcurl"
           - static_libs="$("${PREFIX}/bin/pkg-config" --static --libs libcurl)"
           - static_libs="${static_libs% }"
-          - printf '%s\n' "$static_libs" | grep -F "${pc_root}/lib/libcurl.so"
-          - printf '%s\n' "$static_libs" | grep -F "${pc_root}/lib/libnghttp2.so"
+          - printf '%s\n' "$static_libs" | grep -F -- "-lcurl"
+          - printf '%s\n' "$static_libs" | grep -F -- "-lnghttp2"
           - >-
             test "$("${PREFIX}/bin/pkg-config" --modversion libcurl)" =
             "${{ version }}"
+          - static_libs="${static_libs/-lcurl/${PREFIX}/lib/devkit/lib/libcurl.a}"
+          - >-
+            "${PREFIX}/bin/clang" --no-default-config
+            --config="${PREFIX}/share/devkit/clang.cfg" -O2
+            $("${PREFIX}/bin/pkg-config" --cflags libcurl) tests/probe.c ${static_libs}
+            "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o pc-static-probe
+          - ./pc-static-probe
+          - >-
+            if readelf -d pc-static-probe | grep -F 'Shared library: [libcurl.so';
+            then exit 1; fi
           - curl_dependencies="$(ldd "${PREFIX}/bin/curl")"
           - >-
             echo "$curl_dependencies" | grep -F 'libcurl.so.4 =>' |
@@ -201,16 +233,17 @@ outputs:
             grep -F "${PREFIX}/"
           - test -f "${PREFIX}/etc/ssl/certs/ca-certificates.crt"
         files:
-          source:
-            - library-probe
-            - static-probe
+          recipe:
+            - tests/probe.c
         requirements:
           run:
+            - clang ==23.1.3
+            - sysroot_linux-64 ==2.28
             - pkgconf ==3.0.7
   - package:
       name: libcurl
     build:
-      number: 2
+      number: 6
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

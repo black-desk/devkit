@@ -7,12 +7,11 @@ package:
 source:
   - url: https://github.com/libarchive/libarchive/archive/v${{ version }}.tar.gz
     sha256: 744346f6bca195c8f894f847bb32a16e9bcae6002624a58fadc81e80f595b3cb
-    patches:
-      - patches/respect-install-includedir.patch
-  - path: ../clang
+  - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
+
 build:
-  number: 0
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -61,6 +60,11 @@ requirements:
     - lz4-c >=1.10.0,<2
     - lzo >=2.10,<3
 tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libarchive
+    files:
+      source:
+        - devkit-build/check-package.py
   - package_contents:
       bin:
         - bsdtar
@@ -68,23 +72,45 @@ tests:
         - bsdcat
         - bsdunzip
       files:
-        - include/libarchive-${{ version }}/*.h
-        - lib/libarchive.so
+        - lib/devkit/include/libarchive-${{ version }}/*.h
+        - lib/devkit/lib/libarchive.so
         - lib/libarchive.so.*
-        - lib/libarchive.a
-        - lib/pkgconfig/libarchive.pc
+        - lib/devkit/lib/libarchive.a
+        - lib/devkit/lib/pkgconfig/libarchive.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
-      - ln -s "${PREFIX}/lib" runtime-lib
+      - >-
+        "${PREFIX}/bin/clang" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
+        -I"${PREFIX}/lib/devkit/include/libarchive-${{ version }}"
+        tests/probe.c "${PREFIX}/lib/devkit/lib/libarchive.so"
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o library-probe
       - ./library-probe
+      - export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
+      - static_libs="$(pkgconf --static --libs libarchive)"
+      - static_libs="${static_libs/-larchive/${PREFIX}/lib/devkit/lib/libarchive.a}"
+      - >-
+        "${PREFIX}/bin/clang" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" -O2
+        $(pkgconf --cflags libarchive) tests/probe.c ${static_libs}
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o static-probe
+      - ./static-probe
+      - >-
+        if readelf -d static-probe | grep -F 'Shared library: [libarchive.so';
+        then exit 1; fi
       - bsdtar --version | grep -F libarchive
       - bsdcpio --version
       - bsdcat --version
       - bsdunzip --version
-      - readelf -d "${PREFIX}/lib/libarchive.so" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libarchive.so" | grep -F '(RUNPATH)'
     files:
-      source:
-        - library-probe
+      recipe:
+        - tests/probe.c
+    requirements:
+      run:
+        - clang ==23.1.3
+        - sysroot_linux-64 ==2.28
+        - pkgconf ==3.0.7
 about:
   homepage: https://www.libarchive.org/
   license: BSD-2-Clause AND GPL-2.0-or-later
