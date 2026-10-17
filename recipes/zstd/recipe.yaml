@@ -8,15 +8,12 @@ source:
   - url: https://github.com/facebook/zstd/archive/v${{ version }}.tar.gz
     sha256: 37d7284556b20954e56e1ca85b80226768902e2edabd3b649e9e72c0c9012ee3
     patches:
-      - patches/development-install.patch
       - patches/build-tree-rpath.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

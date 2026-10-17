@@ -3,6 +3,9 @@ Subject: Resolve installed LLVM development interfaces in the hidden prefix
 
 TODO: propose configurable runtime/development directory separation upstream.
 Keep build-tree llvm-config behavior unchanged and detect the staged install.
+This compiled query-tool behavior remains separate from the recipe-local file
+moves: llvm-config must resolve its include/lib/package directories together.
+Rewriting archive locations alone cannot change its executable's lookup logic.
 
 --- a/llvm/tools/llvm-config/llvm-config.cpp
 +++ b/llvm/tools/llvm-config/llvm-config.cpp

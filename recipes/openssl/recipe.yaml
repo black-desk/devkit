@@ -10,18 +10,14 @@ package:
 source:
   - url: https://github.com/openssl/openssl/releases/download/openssl-${{ version }}/openssl-${{ version }}.tar.gz
     sha256: 603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
-    patches:
-      - patches/development-install.patch
 
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -104,17 +100,17 @@ tests:
         "-I$(dirname "$pc_path")/../../include/openssl-${{ version }}"
       - libs="$("${PREFIX}/bin/pkg-config" --libs libssl)"
       - libs="${libs% }"
-      - test "$libs" = "$(dirname "$pc_path")/../../lib/libssl.so"
+      - test "$libs" = "-L$(dirname "$pc_path")/../../lib -lssl"
       - >-
         test "$("${PREFIX}/bin/pkg-config" --modversion libssl)" =
         "${{ version }}"
       - crypto_libs="$("${PREFIX}/bin/pkg-config" --libs libcrypto)"
       - crypto_libs="${crypto_libs% }"
-      - test "$crypto_libs" = "$(dirname "$pc_path")/../../lib/libcrypto.so"
+      - test "$crypto_libs" = "-L$(dirname "$pc_path")/../../lib -lcrypto"
       - test ! -e "${PREFIX}/include/openssl"
       - test ! -e "${PREFIX}/bin/c_rehash"
       - >-
-        grep -F 'set(OPENSSL_INCLUDE_DIR "${_ossl_prefix}/lib/devkit/include/openssl-${{
+        grep -F 'set(OPENSSL_INCLUDE_DIR "${_ossl_prefix}/include/openssl-${{
         version }}")' "${PREFIX}/lib/devkit/lib/cmake/OpenSSL/OpenSSLConfig.cmake"
     requirements:
       run:

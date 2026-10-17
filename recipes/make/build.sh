@@ -67,5 +67,5 @@ mv make bootstrap-make
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.
 
-# GNU Make exposes gnumake.h for dynamically loaded extensions.
-python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all
+# The supported includedir option already installs this package's only development
+# interface, gnumake.h, at its final isolated path. No post-install moves needed.

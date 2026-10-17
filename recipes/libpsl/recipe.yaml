@@ -8,17 +8,14 @@ source:
   - url: https://github.com/rockdaboot/libpsl/releases/download/${{ version }}/libpsl-${{ version }}.tar.gz
     sha256: 8fbb03054556498ba9c4cc48fcaa36a4483748c6504a65bdb9ba348f555b0e56
     patches:
-      - patches/development-install.patch
       - patches/clang-driver-link-policy.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

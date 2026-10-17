@@ -8,20 +8,17 @@ source:
   - url: https://github.com/google/cppdap/archive/c69444ed76f7468b232ac4f989cb8f2bdc100185.tar.gz
     sha256: f73953fe9c9557b6ce893a3ee90bbde5919c96e4f3603d67cdf8ed49da714529
     patches:
-      - patches/development-install.patch
       - patches/jsoncpp-config-dependency.patch
       - patches/shared-library-version.patch
   # Test-only source; not installed or a channel runtime dependency.
   - url: https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz
     sha256: 81964fe578e9bd7c94dfdb09c8e4d6e6759e19967e397dbea48d1c10e45d0df2
     target_directory: test-googletest
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

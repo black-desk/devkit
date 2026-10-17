@@ -7,15 +7,11 @@ package:
 source:
   - url: https://github.com/open-source-parsers/jsoncpp/archive/${{ version }}.tar.gz
     sha256: 51828cf3574281d2b79ec2a1c56a9e4c20cc1103711321ea96384cffb8d2d904
-    patches:
-      - patches/development-install.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
