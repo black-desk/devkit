@@ -66,16 +66,6 @@ make -j"${CPU_COUNT}" LIBCURL_PC_LIBS_PRIVATE="${private_link}"
 make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" LIBCURL_PC_LIBS_PRIVATE="${private_link}"
 rm -rf "${PREFIX}/lib/cmake/CURL"
 rm -f "${PREFIX}/lib/libcurl.la" "${PREFIX}/bin/wcurl"
-for linkage in shared static; do
-  if [[ "${linkage}" == shared ]]; then curl_library=libcurl.so; else curl_library=libcurl.a; fi
-  "${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/curl-${CURL_VERSION}" \
-    "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/${curl_library}" ${private_link} \
-    '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o "${linkage}-probe"
-done
-mv shared-probe library-probe
-ln -s "${PREFIX}/lib" runtime-lib
-./library-probe
-./static-probe
 # Post-link exception: Libtool links both library and CLI with build/host paths; it lacks CMake-style separate build and install RUNPATH settings.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

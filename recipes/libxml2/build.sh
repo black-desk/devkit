@@ -72,11 +72,6 @@ make install AM_LDFLAGS=-no-install \
   pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" \
   cmakedir="${PREFIX}/lib/devkit/lib/cmake/libxml2"
 rm -f "${PREFIX}/lib/libxml2.la"
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libxml2-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libxml2.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-ln -s "${PREFIX}/lib" runtime-lib
-./library-probe
 # Post-link exception: Libtool -no-install avoids global loader wrappers for upstream tests but installs build-tree RUNPATH unchanged.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

@@ -69,12 +69,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ctest --test-dir build --output-on-failure
 fi
 cmake --install build
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libssh2-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libssh2.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libssh2.so.1" runtime-lib/libssh2.so.1
-./library-probe
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

@@ -52,12 +52,6 @@ make -j"${CPU_COUNT}"
 # MIT Makefiles use PKGCONFIG_DIR, unlike Automake's pkgconfigdir.
 make install PKGCONFIG_DIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 cd ..
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/krb5-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libkrb5.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libkrb5.so.3" runtime-lib/libkrb5.so.3
-./library-probe
 # Post-link exception: MIT Makefiles use the same LDFLAGS for in-tree tools and installed ELF files at multiple directory depths.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

@@ -48,7 +48,7 @@ cd source
 unset PYTHON
 # This configuration uses the release production data, with tests disabled;
 # skip-disabled-test-data.patch prevents a Python-only test-data dependency.
-# The installed runtime probe below covers selected APIs, not the ICU suite.
+# The recipe test runtime probe covers selected APIs, not the ICU suite.
 ./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" --disable-samples --disable-extras \
   --disable-tests
 make -j"${CPU_COUNT}"
@@ -59,10 +59,5 @@ make install \
 # channel dependencies without those wrappers.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-"${CXX}" ${CXXFLAGS} "${SRC_DIR}/devkit-tests/runtime.cpp" \
-  -I"${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" ${LDFLAGS} \
-  -licui18n -licuuc -licudata -o "${SRC_DIR}/icu-runtime-probe"
-patchelf --set-rpath '$ORIGIN/runtime-lib' "${SRC_DIR}/icu-runtime-probe"
-
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

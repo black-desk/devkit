@@ -22,7 +22,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 6
+  number: 7
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -99,25 +99,48 @@ tests:
       - test "$(llvm-config --cmakedir)" = "${PREFIX}/lib/devkit/lib/cmake/llvm"
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
-      - mkdir -p bin
-      - cp *-probe bin/
-      - ln -s "${PREFIX}/lib" lib
-      - ./bin/runtime-probe
-      - if ./bin/asan-error-probe >asan.log 2>&1; then exit 1; fi
+      - >-
+        "${PREFIX}/bin/clang++" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        -fsanitize=address,undefined tests/runtime.cpp -lgcc_s
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o runtime-probe
+      - >-
+        "${PREFIX}/bin/clang" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        -fsanitize=address tests/asan-error.c -lgcc_s
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o asan-error-probe
+      - >-
+        "${PREFIX}/bin/clang" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        -stdlib=libc++ -fsanitize=fuzzer tests/fuzzer.c -lgcc_s
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o fuzzer-probe
+      - >-
+        "${PREFIX}/bin/clang++" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        -fprofile-instr-generate -fcoverage-mapping tests/runtime.cpp -lgcc_s
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o profile-probe
+      - >-
+        "${PREFIX}/bin/clang" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        -stdlib=libc++ -fxray-instrument tests/xray.c -lgcc_s
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o xray-probe
+      - ./runtime-probe
+      - if ./asan-error-probe >asan.log 2>&1; then exit 1; fi
       - grep -F 'AddressSanitizer' asan.log
       - grep -F 'heap-buffer-overflow' asan.log
-      - ./bin/fuzzer-probe -runs=10
-      - LLVM_PROFILE_FILE="$PWD/default.profraw" ./bin/profile-probe
+      - ./fuzzer-probe -runs=10
+      - LLVM_PROFILE_FILE="$PWD/default.profraw" ./profile-probe
       - test -s default.profraw
-      - ./bin/xray-probe
+      - ./xray-probe
     files:
-      source:
-        - runtime-probe
-        - asan-error-probe
-        - fuzzer-probe
-        - profile-probe
-        - xray-probe
-
+      recipe:
+        - tests/runtime.cpp
+        - tests/asan-error.c
+        - tests/fuzzer.c
+        - tests/xray.c
+    requirements:
+      run:
+        - sysroot_linux-64 ==2.28
 about:
   homepage: https://clang.llvm.org/
   license: Apache-2.0 WITH LLVM-exception

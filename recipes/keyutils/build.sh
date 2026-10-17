@@ -48,12 +48,6 @@ make -j"${CPU_COUNT}" "${args[@]}"
 # As in the seed recipe, do not run the kernel/root-dependent integration suite
 # in package builders. Validate the library's userspace ABI without keyring writes.
 make "${args[@]}" install
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/keyutils-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libkeyutils.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libkeyutils.so.1" runtime-lib/libkeyutils.so.1
-./library-probe
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

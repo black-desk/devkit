@@ -52,12 +52,6 @@ cmake -S . -B build -G Ninja \
   -DCARES_SHARED=ON -DCARES_STATIC=ON -DCARES_STATIC_PIC=ON -DCARES_THREADS=ON
 cmake --build build --parallel "${CPU_COUNT}"
 cmake --install build
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/c-ares-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libcares.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libcares.so.2" runtime-lib/libcares.so.2
-./library-probe
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all

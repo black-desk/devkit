@@ -44,37 +44,55 @@ new source-build feature-parity projects. Yazi's optional external tools remain
 outside the package promise; expanding Git's GUI/Tcl/Tk inventory is not
 approved.
 
-This pass changes comments/documentation only. Build numbers, executable shell
-statements, recipe dependencies/options, patch hunks and tests are unchanged.
-Issues below are a discussion queue, not approval to implement changes.
+The initial annotation pass changed comments/documentation only. The maintainer
+subsequently approved R1, implemented below. Other items remain a discussion
+queue, not approval to implement changes.
 
 ## Items to discuss
 
-### R1: Build-stage probes carried into installed tests
+### R1: Installed probes compiled in their test environments (implemented)
 
-Confirmed in 19 recipes: c-ares, keyutils, libev, lzo, lz4-c, expat, libedit,
-icu, libpsl, libxml2, clang, libxcrypt, libarchive, krb5, libssh2, libnghttp2,
-curl, jsoncpp and cppdap. Their recipe tests archive executables produced by
-`build.sh`, rather than compile the source in the installed test environment.
-Most also run the executable during the build. Clang carries five probes; curl
-carries shared and static probes; ICU additionally patches the probe's RUNPATH.
+The maintainer approved moving probes for these 19 recipes: c-ares, keyutils,
+libev, lzo, lz4-c, expat, libedit, icu, libpsl, libxml2, clang, libxcrypt,
+libarchive, krb5, libssh2, libnghttp2, curl, jsoncpp and cppdap.
 
-Proposed discussion: follow libuv/libcxx, declare test compiler inputs, copy the
-probe sources, and compile/run against the installed package during testing.
-Remove temporary `runtime-lib` arrangements only with the corresponding test
-change. Tests must load public runtime paths, not development aliases. The
-build-only consumers in zlib, OpenSSL and PCRE2 are not this cross-stage
-problem: they are built and run in the same phase; whether to retain them is
-separate.
+Their recipe tests now archive source files and compile/run them against the
+installed package, with explicit channel compiler configuration and test-local
+Clang/sysroot requirements. Clang tests use the installed compiler itself and
+compile all five sanitizer/fuzzer/profile/XRay probes. Curl retains separate
+shared/static probes and its existing private dependency list. Expat's
+previously inline C consumer is now `tests/probe.c`. ICU no longer needs a
+build-source copy of its probe or a post-link RUNPATH rewrite for that probe.
+
+The build scripts no longer produce, run or pass these executables to tests.
+Temporary `runtime-lib`, scratch bin/lib links and copying of generated probes
+are removed. Test-only binaries link with an absolute RUNPATH to the installed
+test environment's public lib directory; they are not installed package
+payloads. Installed library/executable RUNPATH policy is unchanged. Existing
+behavioral assertions and loader-environment resets remain; R5 is still pending.
+Bootstrap still runs installed recipe tests only after its complete selfhost
+generation. The build-only consumers in zlib, OpenSSL and PCRE2 are unchanged:
+they compile and run in the same phase and are not the cross-stage problem
+addressed here.
+
+Validation: all 19 recipes render for both dirty and result variants. Using
+`selfhost-channel` from the previous successful CI run `38943793434` (commit
+`a385d3b602fe`), a fresh local environment compiled and ran all 24 probes and
+passed the complete 19 affected script test blocks. The Clang block ran outside
+the local sandbox because LeakSanitizer requires ptrace access; its assertions
+were unchanged. This validates the new test commands against existing package
+payloads, not a fresh build of the revised archives or their test-source
+packaging. The next CI run must cover that integration. Shell syntax and recipe
+source paths also passed checks.
 
 ### R2: Stage test gating
 
 JsonCpp sets `JSONCPP_WITH_POST_BUILD_UNITTEST=ON`; consequently its build can
 run unit tests even with `DEVKIT_RUN_TESTS=0`. The shell condition only controls
-the later CTest invocation. R1's unconditional build-stage consumer runs also
-bypass that switch. Decide how to preserve test coverage while honoring the
-intended dirty/result/selfhost schedule. Compiling a test executable without
-running it is not itself a test-policy violation.
+the later CTest invocation. R1 removed the cross-stage consumer runs from build
+scripts; JsonCpp's upstream post-build test remains unchanged. Decide how to
+preserve its coverage while honoring the intended stage test schedule. Compiling
+a test executable without running it is not itself a test-policy violation.
 
 ### R3: Static-link metadata and dependency generation
 

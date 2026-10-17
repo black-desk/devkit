@@ -67,47 +67,6 @@ fi
 make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" \
   cmakedir="${PREFIX}/lib/devkit/lib/cmake/expat-${EXPAT_VERSION}"
 
-cat >"${SRC_DIR}/devkit-consumer.c" <<'EOF'
-#include <expat.h>
-
-#include <stdio.h>
-#include <string.h>
-
-static void XMLCALL start(void *userData, const XML_Char *name, const XML_Char **atts) {
-  (void)userData;
-  (void)atts;
-  puts(name);
-}
-
-int main(void) {
-  XML_Parser parser = XML_ParserCreate(NULL);
-  if (parser == NULL) {
-    return 1;
-  }
-  XML_SetElementHandler(parser, start, NULL);
-  const char *document = "<devkit/>";
-  if (XML_Parse(parser, document, (int)strlen(document), 1) == XML_STATUS_ERROR) {
-    XML_ParserFree(parser);
-    return 1;
-  }
-  XML_ParserFree(parser);
-  return 0;
-}
-EOF
-
-"${CC}" \
-  ${CFLAGS} ${LDFLAGS} \
-  -I"${PREFIX}/lib/devkit/include/expat-${EXPAT_VERSION}" \
-  "${SRC_DIR}/devkit-consumer.c" \
-  "${PREFIX}/lib/libexpat.so" \
-  -Wl,-rpath-link,"${SYSROOT}/lib64" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' \
-  -o "${SRC_DIR}/library-probe"
-
-ln -s "${PREFIX}/lib" runtime-lib
-
-env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/library-probe"
-
 # Post-link exception: Autotools/Libtool links xmlwf against its in-tree library; the install interface does not expose a separate relative runtime path.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

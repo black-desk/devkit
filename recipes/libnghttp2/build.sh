@@ -70,12 +70,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" AM_LDFLAGS=-no-install
 find "${PREFIX}" -name '*.la' -delete
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/libnghttp2-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/libnghttp2.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-mkdir runtime-lib
-ln -s "${PREFIX}/lib/libnghttp2.so.14" runtime-lib/libnghttp2.so.14
-./library-probe
 # Post-link exception: Libtool -no-install preserves build-tree RUNPATH in installed native applications.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"

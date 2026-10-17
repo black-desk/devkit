@@ -61,11 +61,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   tests/datagen -g256MB | ./lz4 -vqB4D | ./lz4 -t
 fi
 LDFLAGS="${NATIVE_LDFLAGS}" make install PREFIX="${PREFIX}" PKGCONFIGDIR="${PREFIX}/lib/devkit/lib/pkgconfig" INCLUDEDIR="${PREFIX}/lib/devkit/include/lz4-${LIBRARY_VERSION}"
-"${CC}" ${CFLAGS} ${LDFLAGS} -I"${PREFIX}/lib/devkit/include/lz4-${LIBRARY_VERSION}" \
-  "${RECIPE_DIR}/tests/probe.c" "${PREFIX}/lib/liblz4.so" \
-  '-Wl,--enable-new-dtags,-rpath,$ORIGIN/runtime-lib' -o library-probe
-ln -s "${PREFIX}/lib" runtime-lib
-./library-probe
 
 # Stage only this package's development interfaces; preserve runtime libraries.
 python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all
