@@ -12,8 +12,6 @@ source:
     sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
     patches:
       - patches/libgcc-soname.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
@@ -21,7 +19,7 @@ outputs:
   - package:
       name: llvm-libgcc
     build:
-      number: 8
+      number: 9
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         # CMake installs $ORIGIN RUNPATH; automatic relinking converts it to RPATH.

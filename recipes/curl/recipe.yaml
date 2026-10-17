@@ -13,11 +13,7 @@ source:
   - url: https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz
     sha256: f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7
     patches:
-      - patches/development-install.patch
       - patches/clang-driver-link-policy.patch
-      - patches/curl-config-exact-paths.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
@@ -27,7 +23,7 @@ outputs:
   - package:
       name: curl
     build:
-      number: 5
+      number: 6
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -116,23 +112,18 @@ outputs:
             test "$(readlink "${PREFIX}/lib/libcurl.so.4")" =
             "libcurl.so.4.8.0"
           - unset LD_LIBRARY_PATH LD_PRELOAD
-          - private_libraries=()
-          - >-
-            for library in ssl crypto z nghttp2 ssh2 gssapi_krb5 krb5 k5crypto com_err psl zstd; do
-            private_libraries+=("${PREFIX}/lib/devkit/lib/lib${library}.so"); done
+          - curl_config="${PREFIX}/libexec/curl/bin/curl-config"
           - >-
             "${PREFIX}/bin/clang" --no-default-config
             --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
-            -I"${PREFIX}/lib/devkit/include/curl-${{ version }}"
-            tests/probe.c "${PREFIX}/lib/devkit/lib/libcurl.so"
-            "${private_libraries[@]}" -ldl -pthread
+            $("${curl_config}" --cflags) tests/probe.c
+            $("${curl_config}" --libs)
             "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o library-probe
           - >-
             "${PREFIX}/bin/clang" --no-default-config
             --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
-            -I"${PREFIX}/lib/devkit/include/curl-${{ version }}"
-            tests/probe.c "${PREFIX}/lib/devkit/lib/libcurl.a"
-            "${private_libraries[@]}" -ldl -pthread
+            $("${curl_config}" --cflags) tests/probe.c
+            $("${curl_config}" --static-libs)
             "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o static-probe
           - ./library-probe
           - ./static-probe
@@ -158,12 +149,13 @@ outputs:
           - >-
             test "$("${curl_config}" --version)" =
             "libcurl ${{ version }}"
+          - curl_cflags="$("${curl_config}" --cflags)"
           - >-
-            test "$("${curl_config}" --cflags)" =
+            test "${curl_cflags# }" =
             "-I${PREFIX}/lib/devkit/include/curl-${{ version }}"
           - >-
             test "$("${curl_config}" --libs)" =
-            "${PREFIX}/lib/devkit/lib/libcurl.so"
+            "-L${PREFIX}/lib/devkit/lib -lcurl"
           - >-
             test "$("${curl_config}" --ca)" =
             "${PREFIX}/etc/ssl/certs/ca-certificates.crt"
@@ -184,8 +176,10 @@ outputs:
           - >-
             "${curl_config}" --protocols | grep -Fx SFTP
           - >-
-            test "$("${curl_config}" --static-libs)" =
-            "${PREFIX}/lib/devkit/lib/libcurl.a ${PREFIX}/lib/devkit/lib/libssl.so ${PREFIX}/lib/devkit/lib/libcrypto.so ${PREFIX}/lib/devkit/lib/libz.so ${PREFIX}/lib/devkit/lib/libnghttp2.so ${PREFIX}/lib/devkit/lib/libssh2.so ${PREFIX}/lib/devkit/lib/libgssapi_krb5.so ${PREFIX}/lib/devkit/lib/libkrb5.so ${PREFIX}/lib/devkit/lib/libk5crypto.so ${PREFIX}/lib/devkit/lib/libcom_err.so ${PREFIX}/lib/devkit/lib/libpsl.so ${PREFIX}/lib/devkit/lib/libzstd.so -ldl -pthread"
+            "${curl_config}" --static-libs | grep -F "${PREFIX}/lib/devkit/lib/libcurl.a"
+          - >-
+            if readelf -d static-probe | grep -F 'Shared library: [libcurl.so';
+            then exit 1; fi
           - >-
             "${curl_config}" --checkfor ${{ version }}
           - >-
@@ -202,18 +196,28 @@ outputs:
           - cflags="$("${PREFIX}/bin/pkg-config" --cflags libcurl)"
           - cflags="${cflags% }"
           - >-
-            test "$cflags" =
-            "-I${pc_root}/include/curl-${{ version }}"
+            printf '%s\n' $cflags |
+            grep -Fx -- "-I${pc_root}/include/curl-${{ version }}"
           - libs="$("${PREFIX}/bin/pkg-config" --libs libcurl)"
           - libs="${libs% }"
-          - test "$libs" = "${pc_root}/lib/libcurl.so"
+          - test "$libs" = "-L${pc_root}/lib -lcurl"
           - static_libs="$("${PREFIX}/bin/pkg-config" --static --libs libcurl)"
           - static_libs="${static_libs% }"
-          - printf '%s\n' "$static_libs" | grep -F "${pc_root}/lib/libcurl.so"
-          - printf '%s\n' "$static_libs" | grep -F "${pc_root}/lib/libnghttp2.so"
+          - printf '%s\n' "$static_libs" | grep -F -- "-lcurl"
+          - printf '%s\n' "$static_libs" | grep -F -- "-lnghttp2"
           - >-
             test "$("${PREFIX}/bin/pkg-config" --modversion libcurl)" =
             "${{ version }}"
+          - static_libs="${static_libs/-lcurl/${PREFIX}/lib/devkit/lib/libcurl.a}"
+          - >-
+            "${PREFIX}/bin/clang" --no-default-config
+            --config="${PREFIX}/share/devkit/clang.cfg" -O2
+            $("${PREFIX}/bin/pkg-config" --cflags libcurl) tests/probe.c ${static_libs}
+            "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o pc-static-probe
+          - ./pc-static-probe
+          - >-
+            if readelf -d pc-static-probe | grep -F 'Shared library: [libcurl.so';
+            then exit 1; fi
           - curl_dependencies="$(ldd "${PREFIX}/bin/curl")"
           - >-
             echo "$curl_dependencies" | grep -F 'libcurl.so.4 =>' |
@@ -239,7 +243,7 @@ outputs:
   - package:
       name: libcurl
     build:
-      number: 5
+      number: 6
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

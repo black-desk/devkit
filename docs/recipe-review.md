@@ -29,8 +29,8 @@ metadata file exposing suggested installation directories remains optional
 future work, not a prerequisite for this migration.
 
 Shared runtime libraries and plugins stay public. Development metadata,
-archives, linker interfaces and versioned headers stay hidden. In the patched pc
-files, `${pcfiledir}/../..` denotes the development prefix, not the public
+archives, linker interfaces and versioned headers stay hidden. In the installed
+pc files, `${pcfiledir}/../..` denotes the development prefix, not the public
 runtime prefix. Merely changing the shared-library install directory would mix
 these two roles again. Metadata must keep resolving after environment
 relocation.
@@ -60,9 +60,10 @@ Their recipe tests now archive source files and compile/run them against the
 installed package, with explicit channel compiler configuration and test-local
 Clang/sysroot requirements. Clang tests use the installed compiler itself and
 compile all five sanitizer/fuzzer/profile/XRay probes. Curl retains separate
-shared/static probes and its existing private dependency list. Expat's
-previously inline C consumer is now `tests/probe.c`. ICU no longer needs a
-build-source copy of its probe or a post-link RUNPATH rewrite for that probe.
+shared/static probes; the subsequent recipe-local layout migration replaces its
+fixed private list with upstream-generated consumer metadata. Expat's previously
+inline C consumer is now `tests/probe.c`. ICU no longer needs a build-source
+copy of its probe or a post-link RUNPATH rewrite for that probe.
 
 The build scripts no longer produce, run or pass these executables to tests.
 Temporary `runtime-lib`, scratch bin/lib links and copying of generated probes
@@ -112,17 +113,17 @@ pkg-config output included all four system libraries. `DEVKIT_RUN_TESTS=0`
 skipped the unrelated upstream build-tree suite for this focused verification;
 installed package tests ran normally.
 
-Still pending: libarchive's `Libs.private` and curl's private
-dependencies/config-helper output are fixed lists rather than derived from
-enabled backends. Libarchive retains `Requires.private`, whereas curl clears it.
-These lists need consumer validation and a decision on how to keep
-feature/dependency changes synchronized.
+The subsequent [recipe-local layout migration](recipe-local-layout-audit.md)
+replaces libarchive/curl's fixed lists with upstream-generated metadata and adds
+consumers that obtain dependencies from that metadata. Its validation record
+supersedes this review's original proposed follow-up. No unrelated feature
+expansion is implied.
 
-Other patched pc files often intentionally name a shared interface even with
+Earlier patched pc files often intentionally named a shared interface even with
 `pkg-config --static`; that switch adds private dependencies and does not by
 itself force archive selection. Distinguish that convention from a genuinely
-broken static interface. Keep the already accepted direct layout patch while
-discussing dependency semantics separately.
+broken static interface. The recipe-local migration now preserves upstream link
+flags and tests archive consumers explicitly.
 
 ### R4: Remaining feature differences
 
@@ -152,10 +153,10 @@ The latter has a concrete upstream-binary runtime requirement.
 ### R6: Cleanup ownership
 
 Gettext and libnghttp2 recursively delete every `.la` file below `PREFIX`, which
-can also include installed dependency files. Contrast this with the staging
-helper's ownership-based selection. Check whether to restrict cleanup to newly
-installed output files; do not assume input environments contain no Libtool
-archives just because today's packages often omit them.
+can also include installed dependency files. The recipe-local development move
+lists select only each recipe's own libraries. Check whether to restrict cleanup
+to newly installed output files; do not assume input environments contain no
+Libtool archives just because today's packages often omit them.
 
 ### R7: Parallelism limits
 
@@ -174,8 +175,8 @@ historical patch or retain it for an explicitly supported bootstrap path.
 
 ### R9: Config-helper override consistency
 
-The libxml2 patch makes default header/library paths hidden and relocatable, but
-its existing `--prefix=...` branch still assigns `libdir=$prefix/lib`. Review
+The installed libxml2 helper has hidden, relocatable default paths, but its
+existing `--prefix=...` branch still assigns `libdir=$prefix/lib`. Review
 subsequent `--libs` output under that override before changing behavior. PCRE2's
 config helper also has prefix/exec-prefix overrides: tests currently check the
 reported prefixes, but do not check all subsequent header/library outputs after
@@ -186,8 +187,9 @@ focused consumer expectations.
 
 R numbers refer to the discussion queue above; a dash means no additional
 specific issue was identified here, not proof of complete correctness. The
-installation-interface TODO applies to the annotated layout patches in addition
-to the entries below.
+installation policy is now implemented and tracked in
+[recipe-local-layout-audit.md](recipe-local-layout-audit.md); the entries below
+retain the independent review queue.
 
 | Recipe              | Review focus / discussion                                                            |
 | ------------------- | ------------------------------------------------------------------------------------ |

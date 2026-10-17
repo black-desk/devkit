@@ -61,5 +61,37 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 cmake --install build
 
-# Stage only this package's development interfaces; preserve runtime libraries.
-python3 "${SRC_DIR}/devkit-build/stage-development.py" "${PREFIX}" --all
+# Keep layout handling local: preserve upstream-generated dependency lists.
+mkdir -p "${PREFIX}/lib/devkit/lib/cmake" "${PREFIX}/lib/devkit/lib/pkgconfig"
+mv "${PREFIX}/lib/cmake/libuv" "${PREFIX}/lib/devkit/lib/cmake/"
+mv "${PREFIX}/lib/pkgconfig/libuv.pc" "${PREFIX}/lib/pkgconfig/libuv-static.pc" "${PREFIX}/lib/devkit/lib/pkgconfig/"
+mv "${PREFIX}/lib/libuv.a" "${PREFIX}/lib/devkit/lib/"
+# Preserve SONAME links and the actual DSO in public lib, with hidden aliases.
+for library in "${PREFIX}"/lib/libuv.so*; do
+  name="${library##*/}"
+  target="$(readlink -f "${library}")"
+  ln -s "../../${target##*/}" "${PREFIX}/lib/devkit/lib/${name}"
+  if [[ "${name}" == libuv.so ]]; then rm "${library}"; fi
+done
+python3 - <<'PYCODE'
+import os
+from pathlib import Path
+prefix = Path(os.environ["PREFIX"])
+dev = prefix / "lib/devkit"
+for name in ["libuv.pc", "libuv-static.pc"]:
+    path = dev / "lib/pkgconfig" / name
+    text = path.read_text()
+    # Only variable assignments change; keep upstream Libs (including @LIBS@).
+    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
+              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/libuv-" + os.environ["LIBRARY_VERSION"]}
+    for key, value in values.items():
+        lines = text.splitlines(keepends=True)
+        matches = [i for i, line in enumerate(lines) if line.startswith(key + "=")]
+        assert len(matches) == 1, (path, key)
+        lines[matches[0]] = key + "=" + value + "\n"
+        text = "".join(lines)
+    path.write_text(text)
+for path in (dev / "lib/cmake/libuv").glob("*.cmake"):
+    text = path.read_text().replace("${_IMPORT_PREFIX}/lib/devkit/", "${_IMPORT_PREFIX}/")
+    path.write_text(text)
+PYCODE

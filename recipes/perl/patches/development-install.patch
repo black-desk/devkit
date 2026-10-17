@@ -1,3 +1,9 @@
+Canonicalize installed Perl compiler configuration without changing build-time
+Config modules. This is a functional seed-to-channel toolchain conversion, not
+a development-file layout rule. Retain it during the recipe-local layout
+migration; ordinary directory moves cannot rewrite the generated Perl lookup
+semantics safely. No shared layout script is involved.
+
 Generate separate installed Config modules from config.sh and source templates.
 Keep build-time Config modules and generic installer copying unchanged.
 

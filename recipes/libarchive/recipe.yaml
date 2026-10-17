@@ -7,16 +7,11 @@ package:
 source:
   - url: https://github.com/libarchive/libarchive/archive/v${{ version }}.tar.gz
     sha256: 744346f6bca195c8f894f847bb32a16e9bcae6002624a58fadc81e80f595b3cb
-    patches:
-      - patches/development-install.patch
-      - patches/respect-install-includedir.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -91,6 +86,18 @@ tests:
         tests/probe.c "${PREFIX}/lib/devkit/lib/libarchive.so"
         "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o library-probe
       - ./library-probe
+      - export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
+      - static_libs="$(pkgconf --static --libs libarchive)"
+      - static_libs="${static_libs/-larchive/${PREFIX}/lib/devkit/lib/libarchive.a}"
+      - >-
+        "${PREFIX}/bin/clang" --no-default-config
+        --config="${PREFIX}/share/devkit/clang.cfg" -O2
+        $(pkgconf --cflags libarchive) tests/probe.c ${static_libs}
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o static-probe
+      - ./static-probe
+      - >-
+        if readelf -d static-probe | grep -F 'Shared library: [libarchive.so';
+        then exit 1; fi
       - bsdtar --version | grep -F libarchive
       - bsdcpio --version
       - bsdcat --version
@@ -103,6 +110,7 @@ tests:
       run:
         - clang ==23.1.3
         - sysroot_linux-64 ==2.28
+        - pkgconf ==3.0.7
 about:
   homepage: https://www.libarchive.org/
   license: BSD-2-Clause AND GPL-2.0-or-later

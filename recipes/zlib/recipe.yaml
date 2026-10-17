@@ -11,11 +11,8 @@ source:
   - url: https://github.com/madler/zlib/releases/download/v${{ version }}/zlib-${{ version }}.tar.xz
     sha256: d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3
     patches:
-      - patches/development-install.patch
       - patches/cmake-test-fixture.patch
 
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
@@ -23,7 +20,7 @@ outputs:
   - package:
       name: zlib
     build:
-      number: 6
+      number: 7
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -79,7 +76,7 @@ outputs:
           - test "$cflags" = "-I$(dirname "$pc_path")/../../include/zlib-${{ version }}"
           - libs="$("${PREFIX}/bin/pkgconf" --libs zlib)"
           - libs="${libs% }"
-          - test "$libs" = "$(dirname "$pc_path")/../../lib/libz.so"
+          - test "$libs" = "-L$(dirname "$pc_path")/../../lib -lz"
           - >-
             test "$("${PREFIX}/bin/pkgconf" --modversion zlib)" = "${{ version
             }}"
@@ -93,7 +90,7 @@ outputs:
   - package:
       name: libzlib
     build:
-      number: 6
+      number: 7
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

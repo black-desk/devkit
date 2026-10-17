@@ -8,17 +8,14 @@ source:
   - url: https://github.com/unicode-org/icu/releases/download/release-${{ version }}/icu4c-${{ version }}-sources.tgz
     sha256: 3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0
     patches:
-      - patches/development-install.patch
       - patches/skip-disabled-test-data.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

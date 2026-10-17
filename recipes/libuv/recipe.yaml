@@ -7,15 +7,11 @@ package:
 source:
   - url: https://dist.libuv.org/dist/v${{ version }}/libuv-v${{ version }}.tar.gz
     sha256: 66d511b9e6e334c0e62279eb234fbfb2b3110b1479c09b95b44c7afca8cff9e7
-    patches:
-      - patches/development-install.patch
-  - path: ../../scripts/packaging/stage-development.py
-    target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -71,7 +67,7 @@ tests:
       - test ! -e "${PREFIX}/include/uv.h"
       - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
       - pkg-config --cflags libuv | grep -F '/include/libuv-${{ version }}'
-      - pkg-config --libs libuv | grep -F '/lib/libuv.so'
+      - pkg-config --libs libuv | grep -F -- '-luv'
       - static_libs="$(pkg-config --libs libuv-static)"
       - >-
         for library in pthread dl rt m; do

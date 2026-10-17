@@ -178,32 +178,21 @@ checker without `--package` to audit the entire installed prefix.
 
 ## Packaging implementation
 
-`scripts/packaging/` contains the shared recipe packaging utilities. Recipes
-copy only the required scripts into their `devkit-build/` source directory; they
-do not import the clang recipe directory. Clang continues to install these
-staging/relocation utilities under `share/devkit` in its package. Changes to
-shared packaging utilities are global packaging inputs in the affected-build
-planner, so they trigger a full channel rebuild. `finalize-elf.py` implements
-the annotated post-link RUNPATH exceptions described above.
+`scripts/packaging/` contains artifact checking and the annotated ELF RUNPATH
+finalizer. Recipes copy the scripts they use into `devkit-build/`; they do not
+import the clang recipe directory. Clang installs the ELF finalizer under
+`share/devkit` for ordinary recipes. Development file moves and metadata edits
+now live in each recipe's build script. There is no shared development staging
+script, and Clang no longer exports one.
 
-`scripts/packaging/stage-development.py` stages development interfaces after
-upstream installation. Recipes call it with `--all` to select newly installed
-remaining top-level linker interfaces/archives; installed input files are
-excluded using conda-meta ownership records. Native headers and metadata already
-installed under the development prefix are left untouched. Runtime library files
-and SONAME links stay in public lib; relative development aliases preserve
-exported filenames. This is a packaging operation, not a shared
-compiler/environment setup script.
-
-Generic staging does not traverse plugin/resource directories. CMake
-object-library files are development interfaces; JsonCpp now installs them
-directly under the hidden library directory with matching exports. The generic
-fallback also understands legacy `lib/objects-*` inputs. An unversioned runtime
-ELF in public lib is rejected for explicit review rather than silently moving a
-runtime interface. Exported CMake executable locations point back to public bin,
-so LLVM and PCRE2 need no overlapping ownership of a hidden bin alias.
-Configured absolute CMake paths become relative to the configuration file.
-Compiler resources remain in their upstream locations.
+Each recipe selects its own library names and metadata files. Runtime SONAME
+files and plugins remain public; hidden aliases use relative targets. Resolve
+alias chains before removing public unversioned symlinks, and recompute relative
+archive symlinks when their directory changes. JsonCpp's exported object files
+move with its archives. CMake exports must describe moved headers/archives while
+exported tools still point at public `bin`. Compiler resource directories stay
+in their upstream locations. Ownership/layout/ELF checks remain independent of
+how a recipe achieves the layout.
 
 Native RUNPATH configuration is implemented for CMake recipes, Cargo tools,
 pkgconf/Meson, Git, Make, bzip2, keyutils and lz4. Libtool projects that use
@@ -214,7 +203,7 @@ lack support.
 
 Gettext's private runtime SONAMEs include the version before the `.so` suffix
 (`libgettextlib-0.25.1.so` and `libgettextsrc-0.25.1.so`). Its recipe explicitly
-marks those inspected runtime filenames; generic `libgettextlib.so` and
+keeps those inspected runtime filenames public; generic `libgettextlib.so` and
 `libgettextsrc.so` links are still hidden. The preloadable libintl module stays
 in place. The installed-stage smoke check rejects public developer interfaces
 and absolute/development-directory runtime paths.
