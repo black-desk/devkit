@@ -187,3 +187,29 @@ Host-source checks use host dependencies and may omit optional features/test
 suites; they do not change recipe feature options. This iteration has not run a
 fresh Conda package build or the full three-generation bootstrap. CI must still
 verify the packaged toolchain, installed behavior and environment relocation.
+
+## CI follow-up: Perl module directories
+
+Run 39156299195 reached Perl in dirty, then failed its package-content check:
+Config.pm was installed under public `lib/perl5` instead of the private tree.
+Perl Configure's `installstyle` is a style selector, not an arbitrary relative
+path. Its `*lib/perl5*` branch silently reduces the supplied value to the normal
+`lib/perl5` layout.
+
+Use the supported `privlib` and `sitelib` directory overrides explicitly, with
+the ordinary `installstyle=lib/perl5` selector. Supply the documented `.../../`
+interpreter-relative prefix, not an absolute environment path: Perl's INSTALL
+explains that only paths starting with `.../` participate in
+`userelocatableinc`. Configure derives matching architecture-specific and
+install directories from these roots. No installed-file moves or new source
+patch are needed. Perl's build number is incremented for the corrected layout.
+
+Validation uses the SHA256-verified Perl 5.44.0 release, both recipe patches,
+host Clang and the recipe's separate consumer Config generation/install path.
+The complete interpreter builds and installs successfully. Config.pm is in the
+private versioned architecture directory, and no public `lib/perl5` tree is
+created. Core and XS modules (Config, POSIX, Socket, Storable, Test::More) load
+both before and after renaming the complete installation directory, without
+PERL5LIB/PERLLIB or loader overrides. Relocated @INC points only to the new
+private module directories. Both dirty/result recipe renders pass. This is a
+host-source validation, not a fresh Conda bootstrap.
