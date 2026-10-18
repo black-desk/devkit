@@ -63,9 +63,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 cmake --install build
 
-# Native directory options do not cover these consumer-tool details.
-python3 "${RECIPE_DIR}/relocate-development.py"
-
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then

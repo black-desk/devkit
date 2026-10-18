@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.15)
+project(expat_consumer C)
+find_package(expat CONFIG REQUIRED)
+add_executable(expat-consumer probe.c)
+target_link_libraries(expat-consumer PRIVATE expat::expat)

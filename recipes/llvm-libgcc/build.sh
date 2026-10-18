@@ -57,6 +57,7 @@ cmake -S "${SRC_DIR}/llvm-libgcc" -B build -G Ninja \
   -DLIBUNWIND_INSTALL_LIBRARY_DIR=lib/devkit/lib \
   -DLLVM_LIBGCC_EXPLICIT_OPT_IN=Yes \
   -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF \
+  -DCOMPILER_RT_INSTALL_LIBRARY_DIR="${PREFIX}/lib/devkit/lib/linux" \
   -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
   -DCOMPILER_RT_BUILD_SANITIZERS=OFF \
   -DCOMPILER_RT_BUILD_XRAY=OFF \
@@ -72,10 +73,3 @@ cmake --install build --component llvm-libgcc
 cmake --install build --component clang_rt.crtbegin-x86_64
 cmake --install build --component clang_rt.crtend-x86_64
 cmake --install build --component unwind-headers
-
-# Compiler-rt's CRT component uses its own resource directory, not LLVM-libgcc's
-# library-directory option. Keep these two objects beside the installed builtins.
-mkdir -p "${PREFIX}/lib/devkit/lib/linux"
-for object in clang_rt.crtbegin-x86_64.o clang_rt.crtend-x86_64.o; do
-  mv "${PREFIX}/lib/linux/${object}" "${PREFIX}/lib/devkit/lib/linux/"
-done

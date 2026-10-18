@@ -36,6 +36,7 @@ cmake -S . -B build -G Ninja \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
   -DCMAKE_INSTALL_DATAROOTDIR=lib/devkit/share \
   -DCMAKE_INSTALL_LIBEXECDIR=lib/devkit/libexec \
+  -DPCRE2_CONFIG_INSTALL_DIR=lib/devkit/libexec/pcre2/bin \
   -DCMAKE_INSTALL_LIBDIR=lib/devkit/lib \
   -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/pcre2-${PCRE2_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" \
@@ -93,9 +94,6 @@ EOF
   -o "${SRC_DIR}/devkit-consumer"
 
 env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
-
-# Native directory options do not cover these consumer-tool details.
-python3 "${RECIPE_DIR}/relocate-development.py"
 
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.

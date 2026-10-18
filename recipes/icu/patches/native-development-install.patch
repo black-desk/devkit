@@ -1,0 +1,269 @@
+Generate installed ICU consumer settings without editing installed files.
+
+TODO: propose the build-system interface/fix upstream.
+
+configure regenerated with Autoconf 2.72. Build-time pkgdata.inc keeps
+its original compiler flags; installation generates a separate output using
+the same pkgdata rules and explicit consumer-tool variables.
+
+--- a/source/configure.ac
++++ b/source/configure.ac
+@@ -1244,6 +1244,29 @@
+ 		test/perf/utrie2perf/Makefile \
+ 		test/fuzzer/Makefile \
+ 		samples/Makefile])
++
++# Independent compiler settings for installed consumer configuration.
++AC_ARG_VAR([ICU_CONFIG_CC], [Installed ICU consumer CC (defaults to build setting)])
++ICU_CONFIG_CC=${ICU_CONFIG_CC-$CC}
++AC_ARG_VAR([ICU_CONFIG_CXX], [Installed ICU consumer CXX (defaults to build setting)])
++ICU_CONFIG_CXX=${ICU_CONFIG_CXX-$CXX}
++AC_ARG_VAR([ICU_CONFIG_CPP], [Installed ICU consumer CPP (defaults to build setting)])
++ICU_CONFIG_CPP=${ICU_CONFIG_CPP-$CPP}
++AC_ARG_VAR([ICU_CONFIG_AR], [Installed ICU consumer AR (defaults to build setting)])
++ICU_CONFIG_AR=${ICU_CONFIG_AR-$AR}
++AC_ARG_VAR([ICU_CONFIG_RANLIB], [Installed ICU consumer RANLIB (defaults to build setting)])
++ICU_CONFIG_RANLIB=${ICU_CONFIG_RANLIB-$RANLIB}
++AC_ARG_VAR([ICU_CONFIG_CFLAGS], [Installed ICU consumer CFLAGS (defaults to build setting)])
++ICU_CONFIG_CFLAGS=${ICU_CONFIG_CFLAGS-$UCONFIG_CFLAGS}
++AC_ARG_VAR([ICU_CONFIG_CXXFLAGS], [Installed ICU consumer CXXFLAGS (defaults to build setting)])
++ICU_CONFIG_CXXFLAGS=${ICU_CONFIG_CXXFLAGS-$UCONFIG_CXXFLAGS}
++AC_ARG_VAR([ICU_CONFIG_CPPFLAGS], [Installed ICU consumer CPPFLAGS (defaults to build setting)])
++ICU_CONFIG_CPPFLAGS=${ICU_CONFIG_CPPFLAGS-$UCONFIG_CPPFLAGS}
++AC_ARG_VAR([ICU_CONFIG_LDFLAGS], [Installed ICU consumer LDFLAGS (defaults to build setting)])
++ICU_CONFIG_LDFLAGS=${ICU_CONFIG_LDFLAGS-$LDFLAGS}
++AC_ARG_VAR([ICU_CONFIG_PREFIX_RELATIVE], [Path from the installed icu-config directory to prefix])
++ICU_CONFIG_PREFIX_RELATIVE=${ICU_CONFIG_PREFIX_RELATIVE-..}
++
+ AC_OUTPUT
+ 
+ if test -z "$PYTHON";
+--- a/source/config/Makefile.inc.in
++++ b/source/config/Makefile.inc.in
+@@ -27,6 +27,7 @@
+ # etc.  If ICU is not installed in this directory, you must change the
+ # following line.  There should exist $(prefix)/include/unicode/utypes.h
+ # for example.
++ICU_CONFIG_PREFIX_RELATIVE = @ICU_CONFIG_PREFIX_RELATIVE@
+ prefix = @prefix@
+ exec_prefix = @exec_prefix@
+ libdir = @libdir@
+@@ -180,16 +181,16 @@
+ #       *4*  compiler flags and misc. options
+ #
+ ##################################################################
+-AR = @AR@
++AR = @ICU_CONFIG_AR@
+ # initial tab keeps it out of the shell version.
+ 	ARFLAGS := @ARFLAGS@ $(ARFLAGS)
+ #SH#ARFLAGS="@ARFLAGS@ ${ARFLAGS}"
+-CC = @CC@
+-CPP = @CPP@
+-CFLAGS = @UCONFIG_CFLAGS@ 
+-CPPFLAGS = @UCONFIG_CPPFLAGS@ -I$(prefix)/include
+-CXXFLAGS = @UCONFIG_CXXFLAGS@
+-CXX = @CXX@
++CC = @ICU_CONFIG_CC@
++CPP = @ICU_CONFIG_CPP@
++CFLAGS = @ICU_CONFIG_CFLAGS@
++CPPFLAGS = @ICU_CONFIG_CPPFLAGS@ -I$(includedir)
++CXXFLAGS = @ICU_CONFIG_CXXFLAGS@
++CXX = @ICU_CONFIG_CXX@
+ DEFAULT_MODE = @DATA_PACKAGING_MODE@
+ DEFS = @DEFS@ 
+ # use a consistent INSTALL 
+@@ -205,7 +206,7 @@
+ LIB_VERSION = @LIB_VERSION@
+ LIB_VERSION_MAJOR = @LIB_VERSION_MAJOR@
+ MKINSTALLDIRS = $(SHELL) $(pkgdatadir)/mkinstalldirs
+-RANLIB = @RANLIB@
++RANLIB = @ICU_CONFIG_RANLIB@
+ RMV = rm -rf
+ SHELL = @SHELL@
+ SHLIB.c=      $(CC) $(DEFS) $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) -shared
+--- a/source/config/pkgdataMakefile.in
++++ b/source/config/pkgdataMakefile.in
+@@ -26,7 +26,7 @@
+ 	@echo LIBPREFIX=$(LIBPREFIX)$(STATIC_PREFIX_WHEN_USED) >> $(OUTPUTFILE)
+ 	@echo LIB_EXT_ORDER=$(FINAL_SO_TARGET) >> $(OUTPUTFILE)
+ 	@echo COMPILE="$(COMPILE.c)" >> $(OUTPUTFILE)
+-	@echo LIBFLAGS="-I$(prefix)/include $(SHAREDLIBCPPFLAGS) $(SHAREDLIBCFLAGS)" >> $(OUTPUTFILE)
++	@echo LIBFLAGS="-I$(includedir) $(SHAREDLIBCPPFLAGS) $(SHAREDLIBCFLAGS)" >> $(OUTPUTFILE)
+ 	@echo GENLIB="$(SHLIB.c)" >> $(OUTPUTFILE)
+ 	@echo LDICUDTFLAGS=$(LDFLAGSICUDT) >> $(OUTPUTFILE)
+ 	@echo LD_SONAME=$(LD_SONAME) >> $(OUTPUTFILE)
+--- a/source/Makefile.in
++++ b/source/Makefile.in
+@@ -56,7 +56,7 @@
+ ALL_PKGCONFIG_FILES=$(ALL_PKGCONFIG_SUFFIX:%=$(top_builddir)/config/icu-%.pc)
+ 
+ ## Files built (autoconfed) and installed
+-INSTALLED_BUILT_FILES = $(top_builddir)/config/Makefile.inc $(top_builddir)/config/pkgdata.inc $(top_builddir)/config/icu-config @platform_make_fragment@ $(EXTRA_DATA:%=$(DESTDIR)$(pkglibdir)/%) $(ALL_PKGCONFIG_FILES)
++INSTALLED_BUILT_FILES = $(top_builddir)/config/Makefile.inc $(top_builddir)/config/pkgdata.inc $(top_builddir)/config/pkgdata-installed.inc $(top_builddir)/config/icu-config @platform_make_fragment@ $(EXTRA_DATA:%=$(DESTDIR)$(pkglibdir)/%) $(ALL_PKGCONFIG_FILES)
+ 
+ ## Files built (autoconfed) but not installed
+ LOCAL_BUILT_FILES = icudefs.mk config/icucross.mk config/icucross.inc
+@@ -180,6 +180,8 @@
+ 	@$(MKINSTALLDIRS) $(DESTDIR)$(libdir)/pkgconfig
+ 	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(libdir)/pkgconfig/
+ 
++ICU_CONFIG_BINDIR = $(bindir)
++
+ install-icu: $(INSTALLED_BUILT_FILES)
+ 	@$(MKINSTALLDIRS) $(DESTDIR)$(pkgdatadir)/config
+ 	@$(MKINSTALLDIRS) $(DESTDIR)$(pkglibdir)
+@@ -192,10 +194,11 @@
+ 	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(libdir)/pkgconfig/
+ 	$(INSTALL_DATA) $(top_srcdir)/../LICENSE $(DESTDIR)$(pkgdatadir)/LICENSE
+ ifeq ($(INSTALL_ICU_CONFIG),true)
+-	$(INSTALL_SCRIPT) $(top_builddir)/config/icu-config $(DESTDIR)$(bindir)/icu-config
++	$(MKINSTALLDIRS) $(DESTDIR)$(ICU_CONFIG_BINDIR)
++	$(INSTALL_SCRIPT) $(top_builddir)/config/icu-config $(DESTDIR)$(ICU_CONFIG_BINDIR)/icu-config
+ endif
+ 	$(INSTALL_DATA) $(top_builddir)/config/Makefile.inc $(DESTDIR)$(pkglibdir)/Makefile.inc
+-	$(INSTALL_DATA) $(top_builddir)/config/pkgdata.inc $(DESTDIR)$(pkglibdir)/pkgdata.inc
++	$(INSTALL_DATA) $(top_builddir)/config/pkgdata-installed.inc $(DESTDIR)$(pkglibdir)/pkgdata.inc
+ #	@echo icuinfo.xml is built after make check.
+ #	-$(INSTALL_DATA) $(top_builddir)/config/icuinfo.xml $(DESTDIR)$(pkglibdir)/icuinfo.xml
+ 	cd $(DESTDIR)$(pkglibdir)/..; \
+@@ -228,7 +231,7 @@
+ 	$(RMV) Doxyfile doc $(DOCZIP)
+ 
+ distclean-local: clean-local
+-	$(RMV) $(top_builddir)/config/Makefile.inc $(top_builddir)/config/pkgdata.inc $(top_builddir)/config/icu-config $(top_builddir)/config/icu.pc $(ALL_PKGCONFIG_FILES)
++	$(RMV) $(top_builddir)/config/Makefile.inc $(top_builddir)/config/pkgdata.inc $(top_builddir)/config/pkgdata-installed.inc $(top_builddir)/config/icu-config $(top_builddir)/config/icu.pc $(ALL_PKGCONFIG_FILES)
+ 	$(RMV) config.cache config.log config.status $(top_builddir)/config/icucross.mk $(top_builddir)/config/icucross.inc autom4te.cache uconfig.h.prepend
+ 	$(RMV) Makefile config/Makefile icudefs.mk $(LIBDIR) $(BINDIR)
+ 	-$(RMV) dist
+@@ -346,6 +349,21 @@
+ $(top_builddir)/config/pkgdata.inc: icudefs.mk $(top_builddir)/config/pkgdataMakefile
+ 	cd $(top_builddir)/config; \
+ 		$(MAKE) -f pkgdataMakefile
++
++# Keep build-time pkgdata.inc intact; generate the installed form with the
++# explicitly selected consumer compiler settings using the same native rules.
++$(top_builddir)/config/pkgdata-installed.inc: icudefs.mk $(top_builddir)/config/pkgdataMakefile
++	cd $(top_builddir)/config; \
++		$(MAKE) -f pkgdataMakefile OUTPUTFILE=pkgdata-installed.inc \
++		CC="@ICU_CONFIG_CC@" \
++		CXX="@ICU_CONFIG_CXX@" \
++		CPP="@ICU_CONFIG_CPP@" \
++		AR="@ICU_CONFIG_AR@" \
++		RANLIB="@ICU_CONFIG_RANLIB@" \
++		CFLAGS="@ICU_CONFIG_CFLAGS@" \
++		CXXFLAGS="@ICU_CONFIG_CXXFLAGS@" \
++		CPPFLAGS="@ICU_CONFIG_CPPFLAGS@" \
++		LDFLAGS="@ICU_CONFIG_LDFLAGS@" INSTALL-L="install -c"
+ 
+ $(top_builddir)/config/pkgdataMakefile:
+ 	cd $(top_builddir) \
+--- a/source/config/icu-config-bottom
++++ b/source/config/icu-config-bottom
+@@ -295,9 +295,9 @@
+ 	    ;;
+ 
+ 	--detect-prefix)
+-	    HERE=`echo $0 | sed -e "s/$ME//g"`
+-	    if [ -f "${HERE}/../lib/${ICULIBS_COMMON_LIB_NAME}" -o -f  "${HERE}/../lib/${ICULIBS_COMMON_LIB_NAME_A}"  ]; then
+-		prefix="${HERE}/.."
++	    HERE="$(CDPATH= cd -- "$(dirname -- "$0")/${ICU_CONFIG_PREFIX_RELATIVE}" && pwd)"
++	    if [ -f "${libdir}/${ICULIBS_COMMON_LIB_NAME}" -o -f  "${libdir}/${ICULIBS_COMMON_LIB_NAME_A}"  ]; then
++		prefix="${HERE}"
+ 		echo "## Using --prefix=${prefix}" 1>&2
+ 	    fi
+ 	    loaddefs
+--- a/source/configure
++++ b/source/configure
+@@ -649,6 +649,16 @@
+ UCONFIG_CPPFLAGS
+ LTLIBOBJS
+ LIBOBJS
++ICU_CONFIG_PREFIX_RELATIVE
++ICU_CONFIG_LDFLAGS
++ICU_CONFIG_CPPFLAGS
++ICU_CONFIG_CXXFLAGS
++ICU_CONFIG_CFLAGS
++ICU_CONFIG_RANLIB
++ICU_CONFIG_AR
++ICU_CONFIG_CPP
++ICU_CONFIG_CXX
++ICU_CONFIG_CC
+ LIBCXXFLAGS
+ LIBCFLAGS
+ platform_make_fragment
+@@ -835,7 +845,17 @@
+ PKG_CONFIG_LIBDIR
+ ICULEHB_CFLAGS
+ ICULEHB_LIBS
+-CPP'
++CPP
++ICU_CONFIG_CC
++ICU_CONFIG_CXX
++ICU_CONFIG_CPP
++ICU_CONFIG_AR
++ICU_CONFIG_RANLIB
++ICU_CONFIG_CFLAGS
++ICU_CONFIG_CXXFLAGS
++ICU_CONFIG_CPPFLAGS
++ICU_CONFIG_LDFLAGS
++ICU_CONFIG_PREFIX_RELATIVE'
+ 
+ 
+ # Initialize some variables set by options.
+@@ -1520,6 +1540,26 @@
+   ICULEHB_LIBS
+               linker flags for ICULEHB, overriding pkg-config
+   CPP         C preprocessor
++  ICU_CONFIG_CC
++              Installed ICU consumer CC (defaults to build setting)
++  ICU_CONFIG_CXX
++              Installed ICU consumer CXX (defaults to build setting)
++  ICU_CONFIG_CPP
++              Installed ICU consumer CPP (defaults to build setting)
++  ICU_CONFIG_AR
++              Installed ICU consumer AR (defaults to build setting)
++  ICU_CONFIG_RANLIB
++              Installed ICU consumer RANLIB (defaults to build setting)
++  ICU_CONFIG_CFLAGS
++              Installed ICU consumer CFLAGS (defaults to build setting)
++  ICU_CONFIG_CXXFLAGS
++              Installed ICU consumer CXXFLAGS (defaults to build setting)
++  ICU_CONFIG_CPPFLAGS
++              Installed ICU consumer CPPFLAGS (defaults to build setting)
++  ICU_CONFIG_LDFLAGS
++              Installed ICU consumer LDFLAGS (defaults to build setting)
++  ICU_CONFIG_PREFIX_RELATIVE
++              Path from the installed icu-config directory to prefix
+ 
+ Use these variables to override the choices made by 'configure' or to help
+ it to find libraries and programs with nonstandard names/locations.
+@@ -8300,6 +8340,29 @@
+ 
+ # output the Makefiles
+ ac_config_files="$ac_config_files icudefs.mk Makefile data/pkgdataMakefile config/Makefile.inc config/icu.pc config/pkgdataMakefile data/Makefile stubdata/Makefile common/Makefile i18n/Makefile layoutex/Makefile io/Makefile extra/Makefile extra/uconv/Makefile extra/uconv/pkgdataMakefile extra/scrptrun/Makefile tools/Makefile tools/ctestfw/Makefile tools/toolutil/Makefile tools/makeconv/Makefile tools/genrb/Makefile tools/genccode/Makefile tools/gencmn/Makefile tools/gencnval/Makefile tools/gendict/Makefile tools/gentest/Makefile tools/gennorm2/Makefile tools/genbrk/Makefile tools/gensprep/Makefile tools/icuinfo/Makefile tools/icupkg/Makefile tools/icuswap/Makefile tools/pkgdata/Makefile tools/icuexportdata/Makefile tools/tzcode/Makefile tools/gencfu/Makefile tools/escapesrc/Makefile test/Makefile test/compat/Makefile test/testdata/Makefile test/testdata/pkgdataMakefile test/hdrtst/Makefile test/intltest/Makefile test/cintltst/Makefile test/iotest/Makefile test/letest/Makefile test/perf/Makefile test/perf/collationperf/Makefile test/perf/collperf/Makefile test/perf/collperf2/Makefile test/perf/dicttrieperf/Makefile test/perf/ubrkperf/Makefile test/perf/charperf/Makefile test/perf/convperf/Makefile test/perf/localecanperf/Makefile test/perf/normperf/Makefile test/perf/DateFmtPerf/Makefile test/perf/howExpensiveIs/Makefile test/perf/strsrchperf/Makefile test/perf/unisetperf/Makefile test/perf/usetperf/Makefile test/perf/ustrperf/Makefile test/perf/utfperf/Makefile test/perf/utrie2perf/Makefile test/fuzzer/Makefile samples/Makefile"
++
++
++# Independent compiler settings for installed consumer configuration.
++
++ICU_CONFIG_CC=${ICU_CONFIG_CC-$CC}
++
++ICU_CONFIG_CXX=${ICU_CONFIG_CXX-$CXX}
++
++ICU_CONFIG_CPP=${ICU_CONFIG_CPP-$CPP}
++
++ICU_CONFIG_AR=${ICU_CONFIG_AR-$AR}
++
++ICU_CONFIG_RANLIB=${ICU_CONFIG_RANLIB-$RANLIB}
++
++ICU_CONFIG_CFLAGS=${ICU_CONFIG_CFLAGS-$UCONFIG_CFLAGS}
++
++ICU_CONFIG_CXXFLAGS=${ICU_CONFIG_CXXFLAGS-$UCONFIG_CXXFLAGS}
++
++ICU_CONFIG_CPPFLAGS=${ICU_CONFIG_CPPFLAGS-$UCONFIG_CPPFLAGS}
++
++ICU_CONFIG_LDFLAGS=${ICU_CONFIG_LDFLAGS-$LDFLAGS}
++
++ICU_CONFIG_PREFIX_RELATIVE=${ICU_CONFIG_PREFIX_RELATIVE-..}
+ 
+ cat >confcache <<\_ACEOF
+ # This file is a shell script that caches the results of configure

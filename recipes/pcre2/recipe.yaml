@@ -10,11 +10,13 @@ package:
 source:
   - url: https://github.com/PCRE2Project/pcre2/releases/download/pcre2-${{ version }}/pcre2-${{ version }}.tar.gz
     sha256: 929f0b20e62879252a15886b06c89f1edef61a363cbd5826fb041080a5e557ae
+    patches:
+      - patches/native-development-install.patch
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 5
+  number: 6
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

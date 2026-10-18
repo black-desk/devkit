@@ -55,6 +55,7 @@ test -x "${CC}"
   --prefix="${PREFIX}" \
   --openssldir="${PREFIX}/lib/devkit/etc/ssl" \
   --libdir=lib/devkit/lib \
+  --includedir="lib/devkit/include/openssl-${OPENSSL_VERSION}" \
   enable-legacy \
   shared \
   no-docs \
@@ -65,8 +66,6 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make test
 fi
 make install
-mkdir -p "${PREFIX}/lib/devkit/include/openssl-${OPENSSL_VERSION}"
-mv "${PREFIX}/include/openssl" "${PREFIX}/lib/devkit/include/openssl-${OPENSSL_VERSION}/"
 
 # These Perl helpers would make the OpenSSL runtime pull in Perl. The channel
 # needs the C libraries and the OpenSSL CLI here; Perl remains a build input.
@@ -114,9 +113,6 @@ env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
 # Post-link exception: OpenSSL uses common link flags for the CLI, libraries and provider modules at different installation depths.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-
-# OpenSSL does not offer an independent include installation directory.
-python3 "${RECIPE_DIR}/relocate-development.py"
 
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.

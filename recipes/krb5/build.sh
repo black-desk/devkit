@@ -55,14 +55,11 @@ cd src
   --with-keyutils=yes --without-system-verto --enable-nls
 make -j"${CPU_COUNT}"
 # MIT Makefiles use PKGCONFIG_DIR, unlike Automake's pkgconfigdir.
-make install PKGCONFIG_DIR="${PREFIX}/lib/devkit/lib/pkgconfig"
+make install KRB5_CONFIG_BINDIR="${PREFIX}/lib/devkit/libexec/krb5/bin" PKGCONFIG_DIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 cd ..
 # Post-link exception: MIT Makefiles use the same LDFLAGS for in-tree tools and installed ELF files at multiple directory depths.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-
-# Native directory options do not cover these consumer-tool details.
-python3 "${RECIPE_DIR}/relocate-development.py"
 
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.

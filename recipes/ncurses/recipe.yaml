@@ -8,6 +8,7 @@ source:
   - url: https://invisible-island.net/archives/ncurses/ncurses-${{ version }}.tar.gz
     sha256: 355b4cbbed880b0381a04c46617b7656e362585d52e9cf84a67e2009b749ff11
     patches:
+      - patches/native-development-install.patch
       - patches/include-new.patch
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
@@ -15,7 +16,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 6
+  number: 7
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

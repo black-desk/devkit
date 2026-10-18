@@ -54,18 +54,12 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make test CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
     CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
 fi
-make install PREFIX="${PREFIX}/lib/devkit" \
+make install PREFIX="${PREFIX}" \
+  BINDIR="${PREFIX}/bin" LIBDIR="${PREFIX}/lib/devkit/lib" \
+  INCLUDEDIR="${PREFIX}/lib/devkit/include/bzip2-${LIBRARY_VERSION}" \
+  MANDIR="${PREFIX}/lib/devkit/share/man" \
   CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
-mkdir -p "${PREFIX}/bin"
-for executable in "${PREFIX}/lib/devkit/bin/"*; do
-  mv "${executable}" "${PREFIX}/bin/"
-done
-rmdir "${PREFIX}/lib/devkit/bin"
-mkdir -p "${PREFIX}/lib/devkit/share"
-mv "${PREFIX}/lib/devkit/man" "${PREFIX}/lib/devkit/share/man"
-mkdir -p "${PREFIX}/lib/devkit/include/bzip2-${LIBRARY_VERSION}"
-mv "${PREFIX}/lib/devkit/include/bzlib.h" "${PREFIX}/lib/devkit/include/bzip2-${LIBRARY_VERSION}/"
 make -f Makefile-libbz2_so -j"${CPU_COUNT}" CC="${CC}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
 cp -a libbz2.so.1.0.8 libbz2.so.1.0 "${PREFIX}/lib/devkit/lib/"
