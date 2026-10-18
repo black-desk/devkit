@@ -79,9 +79,7 @@ for name in ["icu-i18n", "icu-io", "icu-uc"]:
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)
@@ -112,9 +110,7 @@ for key, value in values.items():
     text, count = re.subn(r"(?m)^" + key + r" = .*$", key + " = " + value, text)
     assert count == 1, (path, key, count)
 text = text.replace("$(LD_RPATH_PRE)$(libdir)", "$(LD_RPATH_PRE)$(prefix)/lib")
-text = text.replace(
-    "-I$(prefix)/include", "-I$(prefix)/lib/devkit/include/icu-78.3"
-)
+text = text.replace("-I$(prefix)/include", "-I$(prefix)/lib/devkit/include/icu-78.3")
 path.write_text(text)
 path = config / "pkgdata.inc"
 text = path.read_text()

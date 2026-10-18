@@ -102,9 +102,7 @@ for name in [
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)
@@ -132,9 +130,7 @@ text = re.sub(
     text,
     count=1,
 )
-text = re.sub(
-    r"(?m)^libdir=.*$", "libdir=${prefix}/lib/devkit/lib", text, count=1
-)
+text = re.sub(r"(?m)^libdir=.*$", "libdir=${prefix}/lib/devkit/lib", text, count=1)
 # Runtime search paths still refer to public libraries.
 text = text.replace(
     r"'s#\$(PROG_RPATH)#'$libdir'#'", r"'s#\$(PROG_RPATH)#'$prefix/lib'#'"

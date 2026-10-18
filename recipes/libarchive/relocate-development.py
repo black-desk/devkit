@@ -11,14 +11,10 @@ dev = prefix / "lib/devkit"
 # Upstream's header install rule ignores CMAKE_INSTALL_INCLUDEDIR.
 (dev / "include/libarchive-3.8.9").mkdir(parents=True, exist_ok=True)
 for name in ["archive.h", "archive_entry.h"]:
-    shutil.move(
-        str(prefix / "include" / name), dev / "include/libarchive-3.8.9" / name
-    )
+    shutil.move(str(prefix / "include" / name), dev / "include/libarchive-3.8.9" / name)
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in ["archive"]
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in ["archive"] for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)
@@ -85,9 +81,7 @@ for name in ["libarchive"]:
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)

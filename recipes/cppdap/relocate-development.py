@@ -10,9 +10,7 @@ dev = prefix / "lib/devkit"
 (dev / "lib").mkdir(parents=True, exist_ok=True)
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in ["cppdap"]
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in ["cppdap"] for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)
@@ -76,8 +74,6 @@ for name in ["cppdap"]:
             text = text.replace(
                 "${" + variable + "}/bin/", "${" + variable + "}/../../bin/"
             )
-        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(
-            prefix, path.parent
-        )
+        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(prefix, path.parent)
         text = text.replace(str(prefix), runtime)
         path.write_text(text)

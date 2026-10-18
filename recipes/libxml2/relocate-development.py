@@ -10,9 +10,7 @@ dev = prefix / "lib/devkit"
 (dev / "lib").mkdir(parents=True, exist_ok=True)
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in ["xml2"]
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in ["xml2"] for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)
@@ -79,9 +77,7 @@ for name in ["libxml-2.0"]:
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)
@@ -112,9 +108,7 @@ for name in ["libxml2"]:
             text = text.replace(
                 "${" + variable + "}/bin/", "${" + variable + "}/../../bin/"
             )
-        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(
-            prefix, path.parent
-        )
+        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(prefix, path.parent)
         text = text.replace(str(prefix), runtime)
         path.write_text(text)
 headers = dev / "include/libxml2-2.15.4"
@@ -143,9 +137,7 @@ text = re.sub(
     text,
     count=1,
 )
-text = re.sub(
-    r"(?m)^libdir=.*$", "libdir=${prefix}/lib/devkit/lib", text, count=1
-)
+text = re.sub(r"(?m)^libdir=.*$", "libdir=${prefix}/lib/devkit/lib", text, count=1)
 text = text.replace(str(prefix), "${prefix}")
 text = text.replace("-I${includedir}/libxml2", "-I${includedir}")
 text = text.replace(

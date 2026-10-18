@@ -171,3 +171,9 @@ package tests (`DEVKIT_RUN_TESTS=0` skips unrelated build-tree suites). These
 builds exercise both shell/sed metadata repair and rattler-build's `RECIPE_DIR`
 call to a separate Python file. This organization-only change does not repeat a
 full bootstrap locally.
+
+CI run `39122202956` rejected 27 scripts because the local formatter API used an
+explicit 80-column mode while CI's `black --config .black.toml` uses Black's
+default width: the current standalone TOML has no `[tool.black]` section.
+Reformat these scripts with the same CLI/config as CI, without changing the
+shared formatting configuration. Parsed Python statements remain unchanged.

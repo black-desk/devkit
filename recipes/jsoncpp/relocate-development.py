@@ -12,9 +12,7 @@ for source in (prefix / "lib").glob("objects-*"):
     shutil.move(str(source), dev / "lib" / source.name)
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in ["jsoncpp"]
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in ["jsoncpp"] for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)
@@ -81,9 +79,7 @@ for name in ["jsoncpp"]:
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)
@@ -114,8 +110,6 @@ for name in ["jsoncpp"]:
             text = text.replace(
                 "${" + variable + "}/bin/", "${" + variable + "}/../../bin/"
             )
-        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(
-            prefix, path.parent
-        )
+        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(prefix, path.parent)
         text = text.replace(str(prefix), runtime)
         path.write_text(text)

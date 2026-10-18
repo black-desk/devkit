@@ -9,17 +9,13 @@ prefix = Path(os.environ["PREFIX"])
 dev = prefix / "lib/devkit"
 (dev / "lib").mkdir(parents=True, exist_ok=True)
 (dev / "include/bzip2-1.0.8").mkdir(parents=True, exist_ok=True)
-shutil.move(
-    str(prefix / "include/bzlib.h"), dev / "include/bzip2-1.0.8/bzlib.h"
-)
+shutil.move(str(prefix / "include/bzlib.h"), dev / "include/bzip2-1.0.8/bzlib.h")
 # Upstream bzip2 installs man pages under man rather than share/man.
 (prefix / "share").mkdir(exist_ok=True)
 shutil.move(str(prefix / "man"), prefix / "share/man")
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in ["bz2"]
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in ["bz2"] for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)
