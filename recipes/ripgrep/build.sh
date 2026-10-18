@@ -39,7 +39,11 @@ export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
 export PCRE2_SYS_STATIC=0
 "${PKG_CONFIG}" --exists libpcre2-8
-"${PKG_CONFIG}" --libs libpcre2-8 | grep -F "${PREFIX}/lib/devkit/lib/pkgconfig/../../lib/libpcre2-8.so"
+# Upstream metadata returns -L/-l flags, not an absolute shared-library filename.
+# Check both flags; installed package tests verify the actual dynamic dependency.
+read -r -a pcre2_libs <<<"$("${PKG_CONFIG}" --libs libpcre2-8)"
+printf '%s\n' "${pcre2_libs[@]}" | grep -Fx -- "-L${PREFIX}/lib/devkit/lib/pkgconfig/../../lib"
+printf '%s\n' "${pcre2_libs[@]}" | grep -Fx -- '-lpcre2-8'
 
 test -x "${BUILD_PREFIX}/bin/rustup"
 test -f "${BUILD_PREFIX}/share/rust-toolchain/version"
