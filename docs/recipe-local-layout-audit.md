@@ -149,3 +149,25 @@ using its pkg-config flags passed Unicode/JIT/matching checks and loaded
 `libpcre2-8.so.0` from the channel environment. Recipe rendering and shell
 syntax checks passed. This does not rebuild ripgrep itself; full application CI
 remains required after this correction.
+
+## Recipe script organization
+
+Keep straightforward substitutions in shell; libuv now checks that each pc
+location assignment occurs once, then uses sed for those assignments and the
+CMake prefix correction. Its generated dependency lists remain unchanged. The
+other 31 multiline Python layout blocks are moved to
+`recipes/<name>/relocate-development.py`, invoked by build.sh through
+`RECIPE_DIR`. Their parsed Python statements are unchanged. These remain
+independent recipe-owned scripts, with no new common staging helper. The
+bootstrap fingerprint includes the full recipe directory, including these files;
+the seed manifest is unchanged.
+
+Validation: all 31 extracted scripts retain the original parsed Python
+statements after formatting. All 32 affected recipe definitions render for both
+dirty/result variants, and shell/Python syntax checks pass. The existing 37
+repository tests pass. Fresh local result-variant builds of libuv and c-ares
+against run `39051401807`'s selfhost channel passed their complete installed
+package tests (`DEVKIT_RUN_TESTS=0` skips unrelated build-tree suites). These
+builds exercise both shell/sed metadata repair and rattler-build's `RECIPE_DIR`
+call to a separate Python file. This organization-only change does not repeat a
+full bootstrap locally.

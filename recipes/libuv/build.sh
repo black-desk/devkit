@@ -73,25 +73,19 @@ for library in "${PREFIX}"/lib/libuv.so*; do
   ln -s "../../${target##*/}" "${PREFIX}/lib/devkit/lib/${name}"
   if [[ "${name}" == libuv.so ]]; then rm "${library}"; fi
 done
-python3 - <<'PYCODE'
-import os
-from pathlib import Path
-prefix = Path(os.environ["PREFIX"])
-dev = prefix / "lib/devkit"
-for name in ["libuv.pc", "libuv-static.pc"]:
-    path = dev / "lib/pkgconfig" / name
-    text = path.read_text()
-    # Only variable assignments change; keep upstream Libs (including @LIBS@).
-    values = {"prefix": "${pcfiledir}/../..", "exec_prefix": "${prefix}",
-              "libdir": "${prefix}/lib", "includedir": "${prefix}/include/libuv-" + os.environ["LIBRARY_VERSION"]}
-    for key, value in values.items():
-        lines = text.splitlines(keepends=True)
-        matches = [i for i, line in enumerate(lines) if line.startswith(key + "=")]
-        assert len(matches) == 1, (path, key)
-        lines[matches[0]] = key + "=" + value + "\n"
-        text = "".join(lines)
-    path.write_text(text)
-for path in (dev / "lib/cmake/libuv").glob("*.cmake"):
-    text = path.read_text().replace("${_IMPORT_PREFIX}/lib/devkit/", "${_IMPORT_PREFIX}/")
-    path.write_text(text)
-PYCODE
+# Rewrite only location assignments; keep upstream Libs and dependencies intact.
+for pc in "${PREFIX}/lib/devkit/lib/pkgconfig/libuv.pc" "${PREFIX}/lib/devkit/lib/pkgconfig/libuv-static.pc"; do
+  for variable in prefix exec_prefix libdir includedir; do
+    test "$(grep -c "^${variable}=" "${pc}")" -eq 1
+  done
+  sed -i \
+    -e 's|^prefix=.*$|prefix=${pcfiledir}/../..|' \
+    -e 's|^exec_prefix=.*$|exec_prefix=${prefix}|' \
+    -e 's|^libdir=.*$|libdir=${prefix}/lib|' \
+    -e "s|^includedir=.*$|includedir=\${prefix}/include/libuv-${LIBRARY_VERSION}|" \
+    "${pc}"
+done
+# Moving the exports makes _IMPORT_PREFIX denote lib/devkit already.
+for config in "${PREFIX}/lib/devkit/lib/cmake/libuv/"*.cmake; do
+  sed -i 's|${_IMPORT_PREFIX}/lib/devkit/|${_IMPORT_PREFIX}/|g' "${config}"
+done

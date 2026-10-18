@@ -45,16 +45,21 @@ passed.
 
 Use existing upstream installation options when they express the desired layout
 without changing dependency generation. Otherwise, install normally and keep the
-necessary file moves and metadata path edits in that recipe's own build script.
-Preserve upstream-generated dependency lists, enabled features and link order;
-layout changes must not replace them with manually enumerated libraries.
+necessary file moves and metadata path edits local to that recipe. Preserve
+upstream-generated dependency lists, enabled features and link order; layout
+changes must not replace them with manually enumerated libraries.
 
 At this stage, keep this packaging logic local to each recipe, even when there
 is repetition. Do not add shared staging rules or extract new common helpers.
 Once the requested channel package inventory is complete and the actual cases
-are understood, review common patterns for possible extraction. Prefer explicit
-moves and targeted edits with checked expectations over broad substitutions
-across unrelated files. Keep runtime libraries, SONAME aliases, plugins and
+are understood, review common patterns for possible extraction. Simple
+path-assignment edits belong in `build.sh`, using shell and sed with checks for
+the expected matches. More complex filesystem/metadata handling belongs in that
+recipe's own `relocate-development.py`, invoked explicitly via
+`python3 "${RECIPE_DIR}/relocate-development.py"`. Do not embed multiline Python
+programs in shell heredocs for these operations. Prefer explicit moves and
+targeted edits with checked expectations over broad substitutions across
+unrelated files. Keep runtime libraries, SONAME aliases, plugins and
 compiler/language resources in their public upstream locations. Adjust relative
 symlink targets when moving development interfaces.
 
@@ -182,8 +187,9 @@ checker without `--package` to audit the entire installed prefix.
 finalizer. Recipes copy the scripts they use into `devkit-build/`; they do not
 import the clang recipe directory. Clang installs the ELF finalizer under
 `share/devkit` for ordinary recipes. Development file moves and metadata edits
-now live in each recipe's build script. There is no shared development staging
-script, and Clang no longer exports one.
+live in each recipe's `build.sh` for simple shell operations, or its own
+`relocate-development.py` for complex processing. There is no shared development
+staging script, and Clang no longer exports one.
 
 Each recipe selects its own library names and metadata files. Runtime SONAME
 files and plugins remain public; hidden aliases use relative targets. Resolve
