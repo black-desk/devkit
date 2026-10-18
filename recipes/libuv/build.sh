@@ -20,7 +20,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -41,18 +41,20 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/libuv-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_DATAROOTDIR=lib/devkit/share \
+  -DCMAKE_INSTALL_LIBEXECDIR=lib/devkit/libexec \
+  -DCMAKE_INSTALL_LIBDIR=lib/devkit/lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/libuv-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_C_FLAGS="${CFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
-  '-DCMAKE_INSTALL_RPATH=$ORIGIN' -DCMAKE_BUILD_RPATH="${PWD}/build;${PREFIX}/lib" \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN' -DCMAKE_BUILD_RPATH="${PWD}/build;${PREFIX}/lib/devkit/lib" \
   -DLIBUV_BUILD_SHARED=ON -DLIBUV_BUILD_TESTS=ON -DBUILD_TESTING=ON
 cmake --build build --target uv uv_a uv_run_tests --parallel "${CPU_COUNT}"
 # Run the full shared-library suite; tests run against the build-tree RUNPATH.
@@ -61,31 +63,7 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 cmake --install build
 
-# Keep layout handling local: preserve upstream-generated dependency lists.
-mkdir -p "${PREFIX}/lib/devkit/lib/cmake" "${PREFIX}/lib/devkit/lib/pkgconfig"
-mv "${PREFIX}/lib/cmake/libuv" "${PREFIX}/lib/devkit/lib/cmake/"
-mv "${PREFIX}/lib/pkgconfig/libuv.pc" "${PREFIX}/lib/pkgconfig/libuv-static.pc" "${PREFIX}/lib/devkit/lib/pkgconfig/"
-mv "${PREFIX}/lib/libuv.a" "${PREFIX}/lib/devkit/lib/"
-# Preserve SONAME links and the actual DSO in public lib, with hidden aliases.
-for library in "${PREFIX}"/lib/libuv.so*; do
-  name="${library##*/}"
-  target="$(readlink -f "${library}")"
-  ln -s "../../${target##*/}" "${PREFIX}/lib/devkit/lib/${name}"
-  if [[ "${name}" == libuv.so ]]; then rm "${library}"; fi
-done
-# Rewrite only location assignments; keep upstream Libs and dependencies intact.
-for pc in "${PREFIX}/lib/devkit/lib/pkgconfig/libuv.pc" "${PREFIX}/lib/devkit/lib/pkgconfig/libuv-static.pc"; do
-  for variable in prefix exec_prefix libdir includedir; do
-    test "$(grep -c "^${variable}=" "${pc}")" -eq 1
-  done
-  sed -i \
-    -e 's|^prefix=.*$|prefix=${pcfiledir}/../..|' \
-    -e 's|^exec_prefix=.*$|exec_prefix=${prefix}|' \
-    -e 's|^libdir=.*$|libdir=${prefix}/lib|' \
-    -e "s|^includedir=.*$|includedir=\${prefix}/include/libuv-${LIBRARY_VERSION}|" \
-    "${pc}"
-done
-# Moving the exports makes _IMPORT_PREFIX denote lib/devkit already.
-for config in "${PREFIX}/lib/devkit/lib/cmake/libuv/"*.cmake; do
-  sed -i 's|${_IMPORT_PREFIX}/lib/devkit/|${_IMPORT_PREFIX}/|g' "${config}"
-done
+# Seed tools retain public-library RPATH; omit this SONAME alias after dirty.
+if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
+  ln -sfn devkit/lib/libuv.so.1 "${PREFIX}/lib/libuv.so.1"
+fi

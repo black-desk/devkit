@@ -7,10 +7,10 @@ RUNTIME_CXX_FLAGS="--start-no-unused-arguments ${CXX_FLAGS} --end-no-unused-argu
 RUNTIME_LINK_FLAGS="--start-no-unused-arguments ${LINK_FLAGS} --end-no-unused-arguments"
 # The private fuzzer libc++ supplies its own C++ headers. In particular, do
 # not inherit the recipe's clang.cfg, which also adds installed libc++ headers.
-PRIVATE_LIBCXX_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-toolchain=${PREFIX}/share/devkit/no-gcc --rtlib=compiler-rt --end-no-unused-arguments -O2 -fPIC"
+PRIVATE_LIBCXX_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-toolchain=${PREFIX}/lib/devkit/share/devkit/no-gcc --rtlib=compiler-rt --end-no-unused-arguments -O2 -fPIC"
 cmake -S "${SRC_DIR}/compiler-rt" -B runtime-build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
-  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib/devkit/lib" \
   '-DCMAKE_INSTALL_RPATH=$ORIGIN/..' \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
@@ -41,14 +41,14 @@ cmake -S "${SRC_DIR}/compiler-rt" -B runtime-build -G Ninja \
   -DCOMPILER_RT_BUILD_ORC=ON -DCOMPILER_RT_BUILD_MEMPROF=ON \
   -DCOMPILER_RT_BUILD_CTX_PROFILE=ON -DCOMPILER_RT_INCLUDE_TESTS=OFF \
   -DSANITIZER_CXX_ABI=libcxxabi \
-  -DCOMPILER_RT_INSTALL_LIBRARY_DIR="${PREFIX}/lib/linux" \
-  -DCOMPILER_RT_INSTALL_INCLUDE_DIR="${PREFIX}/lib/clang/23/include" \
-  -DCOMPILER_RT_INSTALL_DATA_DIR="${PREFIX}/lib/clang/23/share" \
-  -DCOMPILER_RT_INSTALL_BINARY_DIR="${PREFIX}/libexec/compiler-rt/bin"
+  -DCOMPILER_RT_INSTALL_LIBRARY_DIR="${PREFIX}/lib/devkit/lib/linux" \
+  -DCOMPILER_RT_INSTALL_INCLUDE_DIR="${PREFIX}/lib/devkit/lib/clang/23/include" \
+  -DCOMPILER_RT_INSTALL_DATA_DIR="${PREFIX}/lib/devkit/lib/clang/23/share" \
+  -DCOMPILER_RT_INSTALL_BINARY_DIR="${PREFIX}/lib/devkit/libexec/compiler-rt/bin"
 cmake --build runtime-build --parallel "${JOBS}"
 cmake --install runtime-build
 # llvm-libgcc owns builtins and CRT; do not duplicate those files here.
 for runtime in asan ubsan_standalone tsan profile fuzzer xray; do
-  test -f "${PREFIX}/lib/linux/libclang_rt.${runtime}-x86_64.a"
+  test -f "${PREFIX}/lib/devkit/lib/linux/libclang_rt.${runtime}-x86_64.a"
 done
-test -f "${PREFIX}/lib/linux/liborc_rt-x86_64.a"
+test -f "${PREFIX}/lib/devkit/lib/linux/liborc_rt-x86_64.a"

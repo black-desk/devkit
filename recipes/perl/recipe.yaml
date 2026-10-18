@@ -20,7 +20,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -50,7 +50,7 @@ requirements:
     - __glibc >=2.28
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package perl
+      - python3 devkit-build/check-package.py "${PREFIX}" --package perl ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -60,7 +60,7 @@ tests:
         - pod2text
         - perlbug
       files:
-        - lib/perl5/${{ version }}/x86_64-linux-thread-multi/Config.pm
+        - lib/devkit/lib/perl5/${{ version }}/x86_64-linux-thread-multi/Config.pm
 
   - script:
       - test "$(command -v perl)" = "${PREFIX}/bin/perl"
@@ -79,7 +79,7 @@ tests:
         "dynamic-modules-ok\n"'
       - >-
         perl -e 'print "$_\n" for @INC' | grep -F
-        "${PREFIX}/lib/perl5/${{ version }}/"
+        "${PREFIX}/lib/devkit/lib/perl5/${{ version }}/"
       - test "$(perl -V:usethreads)" = "usethreads='define';"
       - >-
         test "$(perl -V:userelocatableinc)" =

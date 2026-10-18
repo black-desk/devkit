@@ -6,7 +6,7 @@ set -euxo pipefail
 export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
 export CC="${BUILD_PREFIX}/bin/clang"
 export CXX="${BUILD_PREFIX}/bin/clang++"
-DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
 export NM="${BUILD_PREFIX}/bin/llvm-nm"
@@ -19,16 +19,16 @@ export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 export CXXFLAGS="${CFLAGS}"
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib -Wl,-rpath,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
-export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,--enable-new-dtags,-rpath,\$ORIGIN/../lib"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib/devkit/lib -C link-arg=-Wl,--enable-new-dtags,-rpath,\$ORIGIN/../lib/devkit/lib"
 # Only upstream rustup/toolchain subprocesses receive this preload.
 # Installed channel applications use their linked RUNPATH instead.
 devkit_rustup() {
-  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/libgcc_s.so.1" \
+  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/devkit/lib/libgcc_s.so.1" \
     "${BUILD_PREFIX}/bin/rustup" "$@"
 }
 
@@ -46,9 +46,9 @@ printf '%s\n' "${pcre2_libs[@]}" | grep -Fx -- "-L${PREFIX}/lib/devkit/lib/pkgco
 printf '%s\n' "${pcre2_libs[@]}" | grep -Fx -- '-lpcre2-8'
 
 test -x "${BUILD_PREFIX}/bin/rustup"
-test -f "${BUILD_PREFIX}/share/rust-toolchain/version"
+test -f "${BUILD_PREFIX}/lib/devkit/share/rust-toolchain/version"
 
-RUST_TOOLCHAIN="$(cat "${BUILD_PREFIX}/share/rust-toolchain/version")"
+RUST_TOOLCHAIN="$(cat "${BUILD_PREFIX}/lib/devkit/share/rust-toolchain/version")"
 test "${RUST_TOOLCHAIN}" = 1.98.1
 
 export RUSTUP_HOME="${SRC_DIR}/.rustup"
@@ -64,10 +64,10 @@ mkdir -p \
   "${CARGO_HOME}" \
   "${CARGO_TARGET_DIR}" \
   "${PREFIX}/bin" \
-  "${PREFIX}/share/bash-completion/completions" \
-  "${PREFIX}/share/fish/vendor_completions.d" \
-  "${PREFIX}/share/man/man1" \
-  "${PREFIX}/share/zsh/site-functions"
+  "${PREFIX}/lib/devkit/share/bash-completion/completions" \
+  "${PREFIX}/lib/devkit/share/fish/vendor_completions.d" \
+  "${PREFIX}/lib/devkit/share/man/man1" \
+  "${PREFIX}/lib/devkit/share/zsh/site-functions"
 
 devkit_rustup toolchain install "${RUST_TOOLCHAIN}" \
   --profile minimal \
@@ -86,7 +86,7 @@ binary="${CARGO_TARGET_DIR}/release-lto/rg"
 test -x "${binary}"
 install -m 0755 "${binary}" "${PREFIX}/bin/rg"
 
-"${PREFIX}/bin/rg" --generate man >"${PREFIX}/share/man/man1/rg.1"
-"${PREFIX}/bin/rg" --generate complete-bash >"${PREFIX}/share/bash-completion/completions/rg"
-"${PREFIX}/bin/rg" --generate complete-fish >"${PREFIX}/share/fish/vendor_completions.d/rg.fish"
-"${PREFIX}/bin/rg" --generate complete-zsh >"${PREFIX}/share/zsh/site-functions/_rg"
+"${PREFIX}/bin/rg" --generate man >"${PREFIX}/lib/devkit/share/man/man1/rg.1"
+"${PREFIX}/bin/rg" --generate complete-bash >"${PREFIX}/lib/devkit/share/bash-completion/completions/rg"
+"${PREFIX}/bin/rg" --generate complete-fish >"${PREFIX}/lib/devkit/share/fish/vendor_completions.d/rg.fish"
+"${PREFIX}/bin/rg" --generate complete-zsh >"${PREFIX}/lib/devkit/share/zsh/site-functions/_rg"

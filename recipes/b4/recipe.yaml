@@ -76,7 +76,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     # Preserve auditwheel's relative RPATHs and bundled native libraries.
@@ -97,7 +97,7 @@ requirements:
 tests:
   # Imported manylinux wheels retain auditwheel's bundled-library RPATHs.
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package b4 --skip-runpath-check
+      - python3 devkit-build/check-package.py "${PREFIX}" --package b4 --skip-runpath-check ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -105,8 +105,8 @@ tests:
       bin:
         - b4
       files:
-        - share/devkit/python-tools/b4/uv-receipt.toml
-        - share/devkit/python-tools/b4/pyvenv.cfg
+        - lib/devkit/share/devkit/python-tools/b4/uv-receipt.toml
+        - lib/devkit/share/devkit/python-tools/b4/pyvenv.cfg
   - script:
       - bash tests/smoke.sh
     requirements:

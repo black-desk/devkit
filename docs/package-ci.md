@@ -51,8 +51,9 @@ noarch package archives and indexes, stage-packages.txt and stage-state.json.
 The relative package manifest selects freshly built outputs for independent
 package tests; seed tzdata is carried in the channel but is not an upstream test
 output. Dirty alone downloads seed; subsequent jobs carry tzdata from their
-input channel. Dirty's seed compatibility variant remains generated from the
-verified seed metadata.
+input channel. Dirty compatibility uses public SONAME aliases only; GNU libgcc
+remains a seed dependency beside private LLVM-libgcc. No seed-libgcc variant is
+generated.
 
 stage-state.json schema 2 records stage, original checkout commit, plan/seed
 manifest SHA-256, bootstrap input SHA-256, input state SHA-256 and the relative

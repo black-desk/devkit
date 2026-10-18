@@ -11,7 +11,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -41,7 +41,7 @@ requirements:
     - __glibc >=2.28
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package lz4-c
+      - python3 devkit-build/check-package.py "${PREFIX}" --package lz4-c ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -54,16 +54,16 @@ tests:
       files:
         - lib/devkit/include/lz4-${{ version }}/*.h
         - lib/devkit/lib/liblz4.so
-        - lib/liblz4.so.*
+        - lib/devkit/lib/liblz4.so.*
         - lib/devkit/lib/liblz4.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" -O2 -fPIC
         -I"${PREFIX}/lib/devkit/include/lz4-${{ version }}"
         tests/probe.c "${PREFIX}/lib/devkit/lib/liblz4.so"
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o library-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o library-probe
       - ./library-probe
       - printf 'devkit lz4 roundtrip\n' > input.txt
       - lz4 -f input.txt output.lz4

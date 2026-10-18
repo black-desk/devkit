@@ -33,7 +33,7 @@ for path in sorted(prefix.rglob("*")):
             dynamic |= struct.unpack("<I", stream.read(4))[0] == 2
         if not dynamic:
             continue
-    relative = os.path.relpath(prefix / "lib", path.parent)
+    relative = os.path.relpath(prefix / "lib/devkit/lib", path.parent)
     runpath = "$ORIGIN" if relative == "." else f"$ORIGIN:$ORIGIN/{relative}"
     mode = stat.S_IMODE(path.stat().st_mode)
     try:

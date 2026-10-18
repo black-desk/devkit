@@ -42,12 +42,14 @@ static int library(struct dl_phdr_info *info, size_t, void *data)
         const std::string path = info->dlpi_name;
         if (path.find("libgcc_s.so.1") != std::string::npos) {
                 ++libs.gcc;
-                libs.outside |= path.find(libs.prefix + "/") != 0;
+                libs.outside |= path.find(libs.prefix + "/lib/") != 0 ||
+                                path.find("/lib/devkit/") != std::string::npos;
                 std::cout << "unwinder: " << path << '\n';
         }
         if (path.find("libstdc++.so.6") != std::string::npos) {
                 ++libs.cpp;
-                libs.outside |= path.find(libs.prefix + "/") != 0;
+                libs.outside |= path.find(libs.prefix + "/lib/") != 0 ||
+                                path.find("/lib/devkit/") != std::string::npos;
                 std::cout << "GNU standard library: " << path << '\n';
         }
         return 0;

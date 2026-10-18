@@ -17,26 +17,26 @@ source:
 
 build:
   noarch: generic
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
-    - mkdir -p "${PREFIX}/share/gnuconfig"
-    - cp "${SRC_DIR}/config.guess" "${PREFIX}/share/gnuconfig/config.guess"
-    - cp "${SRC_DIR}/config.sub" "${PREFIX}/share/gnuconfig/config.sub"
-    - chmod +x "${PREFIX}/share/gnuconfig/config.guess" "${PREFIX}/share/gnuconfig/config.sub"
+    - mkdir -p "${PREFIX}/lib/devkit/share/gnuconfig"
+    - cp "${SRC_DIR}/config.guess" "${PREFIX}/lib/devkit/share/gnuconfig/config.guess"
+    - cp "${SRC_DIR}/config.sub" "${PREFIX}/lib/devkit/share/gnuconfig/config.sub"
+    - chmod +x "${PREFIX}/lib/devkit/share/gnuconfig/config.guess" "${PREFIX}/lib/devkit/share/gnuconfig/config.sub"
 
 requirements: {}
 
 tests:
   - package_contents:
       files:
-        - share/gnuconfig/config.guess
-        - share/gnuconfig/config.sub
+        - lib/devkit/share/gnuconfig/config.guess
+        - lib/devkit/share/gnuconfig/config.sub
 
   - script:
-      - "${PREFIX}/share/gnuconfig/config.guess > guessed-triplet"
+      - "${PREFIX}/lib/devkit/share/gnuconfig/config.guess > guessed-triplet"
       - test -s guessed-triplet
-      - test "$("${PREFIX}/share/gnuconfig/config.sub" x86_64-pc-linux-gnu)" = x86_64-pc-linux-gnu
+      - test "$("${PREFIX}/lib/devkit/share/gnuconfig/config.sub" x86_64-pc-linux-gnu)" = x86_64-pc-linux-gnu
 
 about:
   homepage: https://savannah.gnu.org/projects/config/

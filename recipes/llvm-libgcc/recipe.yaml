@@ -19,7 +19,7 @@ outputs:
   - package:
       name: llvm-libgcc
     build:
-      number: 9
+      number: 10
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         # CMake installs $ORIGIN RUNPATH; automatic relinking converts it to RPATH.
@@ -48,7 +48,7 @@ outputs:
 
     tests:
       - script:
-          - python3 devkit-build/check-package.py "${PREFIX}" --package llvm-libgcc
+          - python3 devkit-build/check-package.py "${PREFIX}" --package llvm-libgcc ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
         files:
           source:
             - devkit-build/check-package.py
@@ -57,20 +57,20 @@ outputs:
             - lib/devkit/lib/libgcc.a
             - lib/devkit/lib/libgcc_eh.a
             - lib/devkit/lib/libgcc_s.so
-            - lib/libgcc_s.so.1
-            - lib/libunwind.so.1
-            - lib/linux/clang_rt.crtbegin-x86_64.o
-            - lib/linux/clang_rt.crtend-x86_64.o
+            - lib/devkit/lib/libgcc_s.so.1
+            - lib/devkit/lib/libunwind.so.1
+            - lib/devkit/lib/linux/clang_rt.crtbegin-x86_64.o
+            - lib/devkit/lib/linux/clang_rt.crtend-x86_64.o
       - script:
           - >-
             "${PREFIX}/bin/clang" --no-default-config
-            --config="${PREFIX}/share/devkit/clang.cfg"
+            --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg"
             --unwindlib=none -O2
             -isystem "${PREFIX}/lib/devkit/include/libunwind-${{ version }}"
-            tests/runtime.c -ldl "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib"
+            tests/runtime.c -ldl "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib"
             -o runtime-probe
-          - readelf -d "${PREFIX}/lib/libgcc_s.so.1" | grep -F '(RUNPATH)'
-          - ./runtime-probe "${PREFIX}/lib/libgcc_s.so.1"
+          - readelf -d "${PREFIX}/lib/devkit/lib/libgcc_s.so.1" | grep -F '(RUNPATH)'
+          - ./runtime-probe "${PREFIX}/lib/devkit/lib/libgcc_s.so.1"
           - ./runtime-probe libunwind.so.1
         requirements:
           run:
@@ -79,49 +79,6 @@ outputs:
         files:
           recipe:
             - tests/runtime.c
-
-  # Seed -> dirty bootstrap: dirty Clang must link against our LLVM-libgcc,
-  # while seed tools still declare GNU libgcc/libstdcxx runtime dependencies.
-  # Rattler-build uses the SAME channel list for build and host solves; it has
-  # no separate build-only seed channel setting. Separate prefixes therefore
-  # do not guarantee seed-only tool dependencies: seed clang-23 can select dirty
-  # libxml2 transitively, and rebuilt ninja also brings in llvm-libgcc.
-  # GNU libgcc and llvm-libgcc both own lib/libgcc_s.so.1, so they cannot safely
-  # coexist in one prefix. This file-free libgcc meta satisfies the GNU package
-  # dependency while depending on llvm-libgcc, which supplies the actual files.
-  # Seed libstdcxx pins libgcc's VERSION AND BUILD STRING exactly; copy those
-  # fields (and build number) from seed metadata via seed-libgcc-variant.py.
-  # Seed tools in this mixed environment consequently also use LLVM-libgcc;
-  # this substitutes the runtime rather than isolating the original GNU one.
-  # Compatibility is not complete: six quad-precision functions lack the
-  # GCC_4.3.0 symbol versions required by seed libstdcxx. The dirty-only
-  # --allow-shlib-undefined workaround in build.sh relaxes LLD's check; it
-  # does not supply the missing symbol versions or guarantee full ABI parity.
-  # The skip condition below omits this meta from result/selfhost outputs.
-  # See docs/clang-bootstrap.md: "Why separate prefixes do not replace the
-  # dirty libgcc meta" for the dependency-source and compatibility rationale.
-  # TODO: Remove when a supported solve policy keeps the entire build-tool
-  # dependency closure in seed while allowing dirty libraries in the host prefix.
-  - package:
-      name: libgcc
-      version: ${{ seed_libgcc_version | default('0') }}
-    build:
-      skip: sysroot_triplet != 'x86_64-conda-linux-gnu'
-      number: ${{ seed_libgcc_build_number | default(0) }}
-      string: ${{ seed_libgcc_build | default('bootstrap-only') }}
-      noarch: generic
-      script:
-        - test -n "${{ seed_libgcc_version | default('') }}"
-        - test -n "${{ seed_libgcc_build | default('') }}"
-    requirements:
-      run:
-        - ${{ pin_subpackage('llvm-libgcc', exact=True) }}
-    tests:
-      - script:
-          - test -f "${PREFIX}/lib/libgcc_s.so.1"
-    about:
-      summary: Temporary seed libgcc dependency interface backed by LLVM
-      description: Metadata-only dirty bootstrap compatibility output. It matches the seed libstdcxx pin and contains no GNU library files.
 
 about:
   homepage: https://github.com/llvm/llvm-project/tree/main/llvm-libgcc

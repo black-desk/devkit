@@ -11,7 +11,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 5
+  number: 6
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -41,7 +41,7 @@ requirements:
     - __glibc >=2.28
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package libuv
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libuv ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -50,7 +50,7 @@ tests:
         - lib/devkit/include/libuv-${{ version }}/uv.h
         - lib/devkit/include/libuv-${{ version }}/uv/unix.h
         - lib/devkit/lib/libuv.so
-        - lib/libuv.so.1
+        - lib/devkit/lib/libuv.so.1
         - lib/devkit/lib/libuv.a
         - lib/devkit/lib/pkgconfig/libuv.pc
         - lib/devkit/lib/pkgconfig/libuv-static.pc
@@ -58,12 +58,12 @@ tests:
   - script:
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" -O2
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" -O2
         -I"${PREFIX}/lib/devkit/include/libuv-${{ version }}"
         tests/probe.c "${PREFIX}/lib/devkit/lib/libuv.so"
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o uv-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o uv-probe
       - ./uv-probe "${{ version }}"
-      - readelf -d "${PREFIX}/lib/libuv.so.1" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libuv.so.1" | grep -F '(RUNPATH)'
       - test ! -e "${PREFIX}/include/uv.h"
       - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
       - pkg-config --cflags libuv | grep -F '/include/libuv-${{ version }}'
@@ -75,10 +75,10 @@ tests:
         done
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" -O2
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" -O2
         $(pkg-config --cflags libuv-static) tests/probe.c
         ${static_libs}
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o uv-static-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o uv-static-probe
       - ./uv-static-probe "${{ version }}"
       - >-
         if readelf -d uv-static-probe | grep -F 'Shared library: [libuv.so';

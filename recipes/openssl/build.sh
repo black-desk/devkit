@@ -24,7 +24,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -45,7 +45,7 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib -Wl,-rpath,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
@@ -53,8 +53,8 @@ test -x "${CC}"
 "${BUILD_PREFIX}/bin/perl" ./Configure \
   linux-x86_64 \
   --prefix="${PREFIX}" \
-  --openssldir="${PREFIX}/etc/ssl" \
-  --libdir=lib \
+  --openssldir="${PREFIX}/lib/devkit/etc/ssl" \
+  --libdir=lib/devkit/lib \
   enable-legacy \
   shared \
   no-docs \
@@ -71,11 +71,11 @@ mv "${PREFIX}/include/openssl" "${PREFIX}/lib/devkit/include/openssl-${OPENSSL_V
 # These Perl helpers would make the OpenSSL runtime pull in Perl. The channel
 # needs the C libraries and the OpenSSL CLI here; Perl remains a build input.
 rm -f "${PREFIX}/bin/c_rehash"
-rm -rf "${PREFIX}/etc/ssl/misc"
+rm -rf "${PREFIX}/lib/devkit/etc/ssl/misc"
 
 # OpenSSL looks for a single default PEM bundle beside its configuration file.
 # The ca-certificates package owns the actual pinned bundle.
-ln -s certs/ca-certificates.crt "${PREFIX}/etc/ssl/cert.pem"
+ln -s certs/ca-certificates.crt "${PREFIX}/lib/devkit/etc/ssl/cert.pem"
 
 cat >"${SRC_DIR}/devkit-consumer.c" <<'EOF'
 #include <openssl/crypto.h>
@@ -102,8 +102,8 @@ EOF
   ${CFLAGS} ${LDFLAGS} \
   -I"${PREFIX}/lib/devkit/include/openssl-${OPENSSL_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
-  "${PREFIX}/lib/libssl.so" \
-  "${PREFIX}/lib/libcrypto.so" \
+  "${PREFIX}/lib/devkit/lib/libssl.so" \
+  "${PREFIX}/lib/devkit/lib/libcrypto.so" \
   -ldl \
   -pthread \
   -o "${SRC_DIR}/devkit-consumer"
@@ -115,5 +115,16 @@ env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
 
-# Keep development layout handling in this recipe until channel coverage is complete.
+# OpenSSL does not offer an independent include installation directory.
 python3 "${RECIPE_DIR}/relocate-development.py"
+
+# Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
+# aliases for them; result/selfhost install exclusively in the private libdir.
+if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
+  for library in "${PREFIX}/lib/devkit/lib/"libssl.so.* "${PREFIX}/lib/devkit/lib/"libcrypto.so.*; do
+    [[ -f "${library}" ]] || continue
+    soname="$(readelf -d "${library}" | sed -n 's/.*(SONAME).*\[\(.*\)\].*/\1/p')"
+    [[ -n "${soname}" && "${soname}" != */* ]] || continue
+    ln -sfn "devkit/lib/${soname}" "${PREFIX}/lib/${soname}"
+  done
+fi

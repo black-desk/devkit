@@ -11,8 +11,8 @@ case "${DEVKIT_RUN_TESTS:-1}" in
 esac
 
 # Refresh Autotools platform detection before configure.
-cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" ./build-aux/config.guess
-cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" ./build-aux/config.sub
+cp "${BUILD_PREFIX}/lib/devkit/share/gnuconfig/config.guess" ./build-aux/config.guess
+cp "${BUILD_PREFIX}/lib/devkit/share/gnuconfig/config.sub" ./build-aux/config.sub
 
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
@@ -25,7 +25,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -47,12 +47,17 @@ else
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
 # Make expands $$ once; shell quotes preserve the literal loader token.
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
 ./configure \
   --prefix="${PREFIX}" \
+  --datarootdir="${PREFIX}/lib/devkit/share" \
+  --libexecdir="${PREFIX}/lib/devkit/libexec" \
+  --sysconfdir="${PREFIX}/lib/devkit/etc" \
+  --localstatedir="${PREFIX}/lib/devkit/var" \
+  --sbindir="${PREFIX}/lib/devkit/sbin" --libdir="${PREFIX}/lib/devkit/lib" \
   --includedir="${PREFIX}/lib/devkit/include/make-${LIBRARY_VERSION}" \
   --disable-dependency-tracking
 
@@ -62,7 +67,7 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   ./make check
 fi
 mv make bootstrap-make
-./bootstrap-make -j"${CPU_COUNT}" LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN/../lib'"
+./bootstrap-make -j"${CPU_COUNT}" LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN/../lib/devkit/lib'"
 ./make install
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.

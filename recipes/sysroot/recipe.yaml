@@ -42,7 +42,7 @@ requirements:
     - tzdata
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

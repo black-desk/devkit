@@ -11,7 +11,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -42,7 +42,7 @@ requirements:
     - __glibc >=2.28
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package lzo
+      - python3 devkit-build/check-package.py "${PREFIX}" --package lzo ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -50,16 +50,16 @@ tests:
       files:
         - lib/devkit/include/lzo-${{ version }}/lzo/*.h
         - lib/devkit/lib/liblzo2.so
-        - lib/liblzo2.so.*
+        - lib/devkit/lib/liblzo2.so.*
         - lib/devkit/lib/liblzo2.a
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" -O2 -fPIC
         -I"${PREFIX}/lib/devkit/include/lzo-${{ version }}"
         tests/probe.c "${PREFIX}/lib/devkit/lib/liblzo2.so"
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o library-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o library-probe
       - ./library-probe
       - readelf -d "${PREFIX}/lib/devkit/lib/liblzo2.so" | grep -F '(RUNPATH)'
     files:

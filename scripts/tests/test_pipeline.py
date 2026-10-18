@@ -270,7 +270,6 @@ with open(os.environ['PIPELINE_LOG'],'a') as stream:
 PY
 """,
             )
-        (self.root / "scripts/seed-libgcc-variant.py").write_text("print('{}')")
         self.run_cmd(["git", "init", "-q"])
         self.run_cmd(["git", "add", "."])
         self.run_cmd(

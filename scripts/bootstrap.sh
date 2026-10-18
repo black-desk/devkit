@@ -97,11 +97,6 @@ build() {
   shift 3
   local -a variant_args=()
   [[ -z "$variant" ]] || variant_args=(--variant-config "$ROOT/variants/$variant.yaml")
-  if [[ "$recipe" == llvm-libgcc && "$variant" == dirty ]]; then
-    mkdir -p "$BUILD_ROOT/bootstrap"
-    python3 "$ROOT/scripts/seed-libgcc-variant.py" >"$BUILD_ROOT/bootstrap/seed-libgcc-variant.yaml"
-    variant_args+=(--variant-config "$BUILD_ROOT/bootstrap/seed-libgcc-variant.yaml")
-  fi
   local recipe_file="$ROOT/recipes/$recipe/recipe.yaml"
   clean_build_output "$BUILD_ROOT/$output"
   DEVKIT_RUN_TESTS="$RUN_UPSTREAM_TESTS" "$RBT" build \
