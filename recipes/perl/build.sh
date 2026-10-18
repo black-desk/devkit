@@ -55,11 +55,16 @@ COMMON_CFLAGS="${CFLAGS} -I${PREFIX}/lib/devkit/include/libxcrypt-4.4.38"
 
 PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-aliasing -fstack-protector-strong -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
 
+# installstyle only selects lib versus lib/perl5; it is not a directory.
+# Perl INSTALL documents .../ as relative to the interpreter directory.
+# Keep relocatable @INC; Configure derives archlib/sitearch and install paths.
 ./Configure \
   -de \
   -Dprefix="${PREFIX}" \
   -Duserelocatableinc \
-  -Dinstallstyle=lib/devkit/lib/perl5 \
+  -Dinstallstyle=lib/perl5 \
+  -Dprivlib=".../../lib/devkit/lib/perl5/${PERL_VERSION}" \
+  -Dsitelib=".../../lib/devkit/lib/perl5/site_perl/${PERL_VERSION}" \
   -Dinstallusrbinperl=n \
   -Dusethreads \
   -Dinc_version_list=none \
