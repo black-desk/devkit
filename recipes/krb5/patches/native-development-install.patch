@@ -1,0 +1,19 @@
+Allow krb5-config to install independently of client programs.
+
+TODO: propose the build-system interface/fix upstream.
+
+--- a/src/build-tools/Makefile.in
++++ b/src/build-tools/Makefile.in
+@@ -25,8 +25,11 @@
+ krb5-gssapi.pc: $(srcdir)/krb5-gssapi.pc.in
+ gssrpc.pc: $(srcdir)/gssrpc.pc.in
+ 
++KRB5_CONFIG_BINDIR = $(CLIENT_BINDIR)
++
+ install-unix:
+-	$(INSTALL_SCRIPT) krb5-config $(DESTDIR)$(CLIENT_BINDIR)/krb5-config
++	$(INSTALL) -d $(DESTDIR)$(KRB5_CONFIG_BINDIR)
++	$(INSTALL_SCRIPT) krb5-config $(DESTDIR)$(KRB5_CONFIG_BINDIR)/krb5-config
+ 	$(INSTALL_DATA) kadm-client.pc \
+ 		$(DESTDIR)$(PKGCONFIG_DIR)/kadm-client.pc
+ 	$(INSTALL_DATA) kadm-server.pc \

@@ -1,0 +1,44 @@
+Allow pcre2-config to install independently of user programs.
+
+TODO: propose the build-system interface/fix upstream.
+
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1191,8 +1191,17 @@
+ set(PACKAGE_VERSION "${PCRE2_MAJOR}.${PCRE2_MINOR}")
+ set(prefix ${CMAKE_INSTALL_PREFIX})
+ set(exec_prefix "\${prefix}")
+-set(libdir "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
+-set(includedir "\${prefix}/include")
++# GNUInstallDirs permits either relative or absolute directory overrides.
++if(IS_ABSOLUTE "${CMAKE_INSTALL_LIBDIR}")
++  set(libdir "${CMAKE_INSTALL_LIBDIR}")
++else()
++  set(libdir "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
++endif()
++if(IS_ABSOLUTE "${CMAKE_INSTALL_INCLUDEDIR}")
++  set(includedir "${CMAKE_INSTALL_INCLUDEDIR}")
++else()
++  set(includedir "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
++endif()
+ 
+ set(LIB_POSTFIX "")
+ if(WIN32 AND (CMAKE_BUILD_TYPE MATCHES Debug))
+@@ -1246,6 +1255,8 @@
+   set(enable_pcre2_32 "no")
+ endif()
+ 
++set(PCRE2_CONFIG_INSTALL_DIR "${CMAKE_INSTALL_BINDIR}" CACHE STRING
++    "Installation directory for the pcre2-config development query script")
+ configure_file(pcre2-config.in pcre2-config @ONLY NEWLINE_STYLE LF)
+ 
+ # Executables
+@@ -1455,7 +1466,7 @@
+ install(FILES ${pkg_config_files} DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+ install(
+   FILES "${PROJECT_BINARY_DIR}/pcre2-config"
+-  DESTINATION ${CMAKE_INSTALL_BINDIR}
++  DESTINATION ${PCRE2_CONFIG_INSTALL_DIR}
+   # Set 0755 permissions
+   PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+ )

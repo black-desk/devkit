@@ -1,0 +1,109 @@
+Respect native configured header, helper and terminfo installation directories.
+
+TODO: propose the build-system interface/fix upstream.
+
+The recipe uses upstream --disable-pkg-ldflags rather than deleting
+consumer linker flags after installation. Keep the dependency lists intact.
+
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -133,11 +133,14 @@
+ install.data ::
+ 	@echo "finished $@"
+ 
++CONFIG_BINDIR = $(bindir)
++
+ NCURSES_CONFIG	= ncurses@DFT_ARG_SUFFIX@@cf_cv_abi_version@@cf_config_suffix@-config
+ 
+ install \
+-install.libs :: $(BINDIR) ncurses-config
+-	$(INSTALL_SCRIPT) ncurses-config $(BINDIR)/$(NCURSES_CONFIG)
++install.libs :: ncurses-config
++	mkdir -p $(DESTDIR)$(CONFIG_BINDIR)
++	$(INSTALL_SCRIPT) ncurses-config $(DESTDIR)$(CONFIG_BINDIR)/$(NCURSES_CONFIG)
+ 
+ # Make a list of the files that gen-pkgconfig might create:
+ @MAKE_PC_FILES@PC_FILES = \
+@@ -200,7 +203,7 @@
+ @MAKE_DATABASE@	-$(SHELL) -c 'if test -f $(TICFILE) ; then rm -f $(TICFILE); fi'
+ 
+ uninstall.libs :
+-	-rm -f $(BINDIR)/$(NCURSES_CONFIG)
++	-rm -f $(DESTDIR)$(CONFIG_BINDIR)/$(NCURSES_CONFIG)
+ @MAKE_PC_FILES@	@$(SHELL) -c 'case x$(INSTALL_CONFIG) in \
+ @MAKE_PC_FILES@	x@GLOB_FULLPATH_POSIX@|x@GLOB_FULLPATH_OTHER@) \
+ @MAKE_PC_FILES@		for name in $(PC_FILES); do \
+--- a/misc/ncurses-config.in
++++ b/misc/ncurses-config.in
+@@ -74,19 +74,8 @@
+ 	RPATH_LIST="$filtered"
+ fi
+ 
+-# with --disable-overwrite, we installed into a subdirectory, but transformed
+-# the headers to include like this:
+-#	<ncurses@LIB_SUFFIX@/curses.h>
+-if [ x@WITH_OVERWRITE@ = xno ]; then
+-	includesubdir="@includedir@/${CURSES_LIB}"
+-	case $includedir in
+-	$prefix/include/ncurses@LIB_SUFFIX@@EXTRA_SUFFIX@)
+-		includedir=`echo "$includedir" | sed -e 's,/[^/]*$,,'`
+-		;;
+-	esac
+-else
+-	includesubdir="@includedir@"
+-fi
++# Configure already computes the actual header installation subdirectory.
++includesubdir="@includedir@@includesubdir@"
+ 
+ LIBS="@LIBS@"
+ if [ "@TINFO_NAME@" = "@LIB_NAME@" ]; then
+--- a/misc/run_tic.in
++++ b/misc/run_tic.in
+@@ -45,6 +45,7 @@
+ # Symbols which are not overridden by misc/Makefile:
+ : "${prefix:=@prefix@}"
+ : "${exec_prefix:=@exec_prefix@}"
++: "${libdir:=@libdir@}"
+ : "${top_srcdir:=@top_srcdir@}"
+ : "${srcdir:=@srcdir@}"
+ : "${datarootdir:=@datarootdir@}"
+@@ -120,7 +121,7 @@
+ umask 022
+ 
+ # Construct the name of the old (obsolete) pathname, e.g., /usr/lib/terminfo.
+-OLD_DIR=`echo "$TICDIR" | sed -e 's%/share/\([^/]*\)$%/lib/\1%'`
++OLD_DIR="${DESTDIR}${libdir}/terminfo"
+ 
+ # Parent directory may not exist, which would confuse the install for hashed
+ # database.  Fix.
+@@ -214,16 +215,20 @@
+ 			echo "Otherwise, remove $OLD_DIR and link it to $TICDIR."
+ 		fi
+ 	else
+-		cd "${INSTALL_PREFIX}" || exit
+-		# Construct a symbolic link that only assumes $ticdir has the
+-		# same $prefix as the other installed directories.
+-		SOURCE=`echo "$ticdir"|sed -e 's%^'"$prefix"'/%%'`
+-		if test "$SOURCE" != "$ticdir" ; then
+-			SOURCE=../`echo "$ticdir"|sed -e 's%^'"$prefix"'/%%' -e 's%^/%%'`
+-		fi
+-		test -d lib || mkdir lib
+-		cd lib || exit
+-		TARGET=`pwd`/terminfo
++        # Compute the link from the configured libdir to ticdir; preserve
++        # relative paths for relocation, including nonstandard private layouts.
++        mkdir -p "${DESTDIR}${libdir}" || exit
++        cd "${DESTDIR}${libdir}" || exit
++        SOURCE=`echo "$ticdir" | sed -e 's%^'"$libdir"'/%%'`
++        if test "$SOURCE" = "$ticdir"; then
++            SOURCE=`awk -v from="$libdir" -v to="$ticdir" 'BEGIN {
++                n=split(from,a,"/"); m=split(to,b,"/"); i=1;
++                while(i<=n && i<=m && a[i]==b[i]) i++;
++                for(j=i;j<=n;j++) printf "../";
++                for(j=i;j<=m;j++) printf "%s%s",b[j],(j<m?"/":"");
++            }'`
++        fi
++        TARGET=`pwd`/terminfo
+ 		if ( @LN_S@ "$SOURCE" terminfo )
+ 		then
+ 			echo "** sym-linked $TARGET for compatibility"

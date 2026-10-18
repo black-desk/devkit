@@ -13,6 +13,7 @@ source:
   - url: https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz
     sha256: f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7
     patches:
+      - patches/native-development-install.patch
       - patches/clang-driver-link-policy.patch
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
@@ -23,7 +24,7 @@ outputs:
   - package:
       name: curl
     build:
-      number: 7
+      number: 8
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -243,7 +244,7 @@ outputs:
   - package:
       name: libcurl
     build:
-      number: 7
+      number: 8
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

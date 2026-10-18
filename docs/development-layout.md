@@ -21,12 +21,35 @@ libraries use the same private libdir. Let upstream generate its pkg-config and
 CMake configuration from those directories, preserving generated dependencies.
 Do not move these metadata files merely to give them a private location.
 
-Keep remaining exceptions local to their recipe. OpenSSL lacks an independent
-includedir option; bzip2 lacks independent install directories; Expat's
-Autotools exports contain hardcoded header paths. These recipes retain narrowly
-scoped installation adjustments. Complex adjustments belong in recipe-owned
-Python files; simple file moves/substitutions remain in shell. Do not introduce
-a shared staging abstraction before channel coverage is complete.
+When an upstream interface is insufficient, add a focused source patch for its
+installation rules or metadata templates and pass the new option from the
+recipe. Do not move headers/helpers or rewrite installed pkg-config/CMake files
+to compensate. Keep patches recipe-owned, retain upstream defaults and record
+upstreaming TODOs and generator versions. Do not introduce a shared staging
+abstraction before channel coverage is complete.
+
+Examples include OpenSSL's Unix `--includedir`, bzip2's independent Makefile
+directory variables, and the separate development-query script directories for
+curl, libxml2, PCRE2, krb5, ncurses and ICU. Expat and PCRE2 generate metadata
+from the configured includedir. ncurses uses its existing
+`--disable-pkg-ldflags` option to omit build-only linker flags while preserving
+library dependencies; its source installation rules create the private terminfo
+compatibility link directly.
+
+ICU keeps the build-time `pkgdata.inc` intact. Source installation rules
+generate a separate consumer version through the same native generator, with
+explicit `ICU_CONFIG_*` compiler/flag settings. Both installed `icu-config` and
+the consumer make configuration use those settings. They contain no build-prefix
+compiler paths or build-only sysroot flags. These exported commands do not add a
+Clang runtime dependency to ICU. The recipe's Clang flags and library search
+policy remain explicit when using the consumer configuration.
+
+OpenSSL's initial option patch covers Unix installation; Windows/VMS
+installation rules remain outside its scope. LLVM CRT objects use the existing
+`COMPILER_RT_INSTALL_LIBRARY_DIR` option. bzip2 still explicitly installs the
+shared outputs from its separate shared-library Makefile, which provides no
+install target. Imported toolchain trees, dirty runtime aliases and documented
+ELF finalization are separate from development-file placement.
 
 Versioned header directories retain each project's native internal hierarchy.
 For example, libxml2 installs `libxml2-2.15.4/libxml2/libxml/*.h`; its generated

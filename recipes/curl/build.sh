@@ -43,7 +43,7 @@ export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/lib/devkit/include/krb5-1.22.2"
 export LDFLAGS="${LDFLAGS} -Wl,-rpath,${SRC_DIR}/lib/.libs"
 # Match the exact seed's native features. HTTP/3, IDN2, Brotli and LDAP
 # are absent from its closure; do not discover host backends.
-./configure --prefix="${PREFIX}" \
+CURL_CONFIG_CC='${prefix}/bin/clang' ./configure --prefix="${PREFIX}" \
   --datarootdir="${PREFIX}/lib/devkit/share" \
   --libexecdir="${PREFIX}/lib/devkit/libexec" \
   --sysconfdir="${PREFIX}/lib/devkit/etc" \
@@ -59,15 +59,12 @@ export LDFLAGS="${LDFLAGS} -Wl,-rpath,${SRC_DIR}/lib/.libs"
   --without-ngtcp2 --without-quiche --without-libidn2 --without-libssh \
   --without-brotli --disable-ares --disable-ldap --disable-ldaps
 make -j"${CPU_COUNT}"
-make install pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig"
+make install configbindir="${PREFIX}/lib/devkit/libexec/curl/bin" pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig"
 rm -rf "${PREFIX}/lib/cmake/CURL"
 rm -f "${PREFIX}/lib/devkit/lib/libcurl.la" "${PREFIX}/bin/wcurl"
 # Post-link exception: Libtool links both library and CLI with build/host paths; it lacks CMake-style separate build and install RUNPATH settings.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-
-# Native directory options do not cover these consumer-tool details.
-python3 "${RECIPE_DIR}/relocate-development.py"
 
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.

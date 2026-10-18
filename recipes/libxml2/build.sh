@@ -69,16 +69,13 @@ make -j"${CPU_COUNT}" AM_LDFLAGS=-no-install
 if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make check AM_LDFLAGS=-no-install
 fi
-make install AM_LDFLAGS=-no-install \
+make install configbindir="${PREFIX}/lib/devkit/libexec/libxml2/bin" AM_LDFLAGS=-no-install \
   pkgconfigdir="${PREFIX}/lib/devkit/lib/pkgconfig" \
   cmakedir="${PREFIX}/lib/devkit/lib/cmake/libxml2"
 rm -f "${PREFIX}/lib/devkit/lib/libxml2.la"
 # Post-link exception: Libtool -no-install avoids global loader wrappers for upstream tests but installs build-tree RUNPATH unchanged.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-
-# Native directory options do not cover these consumer-tool details.
-python3 "${RECIPE_DIR}/relocate-development.py"
 
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.
