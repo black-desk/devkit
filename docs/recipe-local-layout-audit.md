@@ -85,7 +85,7 @@ seed compiler information encoded in Perl's Config modules.
 | `pkgconf`             | CLI-only install; internal static libpkgconf is not exported. Existing host-default search configuration remains.                                                                              |
 | `python`              | Imported uv-managed Python tree; retain language-internal headers/libraries and existing imported-payload check scope.                                                                         |
 | `rhash`               | Keep supported header install options; move this recipe's selected development interfaces and repair installed pc/CMake location fields locally. Preserve generated dependencies.              |
-| `ripgrep`             | Application-only install; retain existing executable/resources layout and RUNPATH handling. No ordinary development metadata or library interfaces exported.                                   |
+| `ripgrep`             | Application-only layout; retain RUNPATH. Update the channel PCRE2 preflight for upstream -L/-l metadata; installed tests require a channel libpcre2 dynamic dependency.                        |
 | `rust-toolchain-lock` | Metadata/lock carrier; no development interface move.                                                                                                                                          |
 | `rustup`              | Imported upstream manager; retain private runtime payload and public launcher. No development interface move.                                                                                  |
 | `sysroot`             | Imported Rocky filesystem/sysroot layout; no staging or ELF rewrite.                                                                                                                           |
@@ -127,11 +127,25 @@ prefix. This does not claim that absolute paths in every auxiliary file survive
 a raw directory move: Conda prefix replacement remains necessary for recorded
 absolute prefixes.
 
-Clang was not rebuilt in full. A separate fixture reconstructed upstream
+Clang was not rebuilt locally in full. A separate fixture reconstructed upstream
 library/export locations from the previous successful Clang payload and ran the
 exact new recipe-local install transformation. LLVM, Clang and LLD CMake exports
 loaded successfully, a static LLVMSupport consumer compiled and ran, and
 llvm-config reported the hidden development directories. This checks the
 archive/export transformation against existing artifacts, not a fresh compiler
-build. A complete dirty/result/selfhost CI bootstrap and independent smoke job
-remain required before merging PR #33.
+build. The subsequent full bootstrap CI result is recorded below.
+
+## CI integration follow-up
+
+Run `39051401807` passed dirty, result, selfhost and the independent test job,
+including the full compiler rebuild. The subsequent application build stopped at
+ripgrep's pre-Cargo PCRE2 check: it still required an absolute `.so` filename
+from pkg-config. Check the upstream `-L` and `-lpcre2-8` tokens instead; keep
+`PCRE2_SYS_STATIC=0` and the installed ELF dependency assertion. A repository
+search found no other pkg-config assertions requiring that old exact-DSO output.
+Local validation reproduced the old failed assertion against the newly built
+PCRE2 package, then passed the corrected recipe preflight. A consumer compiled
+using its pkg-config flags passed Unicode/JIT/matching checks and loaded
+`libpcre2-8.so.0` from the channel environment. Recipe rendering and shell
+syntax checks passed. This does not rebuild ripgrep itself; full application CI
+remains required after this correction.
