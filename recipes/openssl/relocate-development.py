@@ -79,9 +79,7 @@ for name in ["openssl", "libssl", "libcrypto"]:
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)
@@ -112,9 +110,7 @@ for name in ["OpenSSL"]:
             text = text.replace(
                 "${" + variable + "}/bin/", "${" + variable + "}/../../bin/"
             )
-        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(
-            prefix, path.parent
-        )
+        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(prefix, path.parent)
         text = text.replace(str(prefix), runtime)
         path.write_text(text)
 # Upstream OpenSSL computes its prefix by ascending from the config directory.

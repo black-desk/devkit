@@ -105,9 +105,7 @@ for name in [
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)
@@ -158,8 +156,7 @@ for path in (dev / "lib/pkgconfig").glob("*.pc"):
             allowed = [
                 flag
                 for flag in flags
-                if flag.startswith(("-l", "-L", "-I", "-D", "-U"))
-                or flag == "-pthread"
+                if flag.startswith(("-l", "-L", "-I", "-D", "-U")) or flag == "-pthread"
             ]
             lines[i] = key + ": " + " ".join(allowed) + "\n"
     path.write_text("".join(lines))
@@ -172,9 +169,7 @@ for name in ["ncurses6-config", "ncursesw6-config"]:
         text,
         count=1,
     )
-    text = re.sub(
-        r"(?m)^exec_prefix=.*$", 'exec_prefix="${prefix}"', text, count=1
-    )
+    text = re.sub(r"(?m)^exec_prefix=.*$", 'exec_prefix="${prefix}"', text, count=1)
     text = text.replace(
         str(prefix) + "/include", "${prefix}/lib/devkit/include/ncurses-6.6"
     )
@@ -187,8 +182,7 @@ for name in ["ncurses6-config", "ncursesw6-config"]:
             allowed = [
                 flag
                 for flag in flags
-                if flag.startswith(("-l", "-L", "-I", "-D", "-U"))
-                or flag == "-pthread"
+                if flag.startswith(("-l", "-L", "-I", "-D", "-U")) or flag == "-pthread"
             ]
             return key + '="' + " ".join(allowed) + '"'
 

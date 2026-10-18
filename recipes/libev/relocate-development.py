@@ -10,9 +10,7 @@ dev = prefix / "lib/devkit"
 (dev / "lib").mkdir(parents=True, exist_ok=True)
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in ["ev"]
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in ["ev"] for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)

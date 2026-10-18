@@ -26,9 +26,7 @@ stems = sorted(
 )
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in stems
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in stems for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)

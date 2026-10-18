@@ -10,9 +10,7 @@ dev = prefix / "lib/devkit"
 (dev / "lib").mkdir(parents=True, exist_ok=True)
 # Resolve every alias before removing any public linker symlinks.
 libraries = [
-    path
-    for stem in ["psl"]
-    for path in (prefix / "lib").glob("lib" + stem + ".*")
+    path for stem in ["psl"] for path in (prefix / "lib").glob("lib" + stem + ".*")
 ]
 shared = {
     path: path.resolve(strict=True)
@@ -79,9 +77,7 @@ for name in ["libpsl"]:
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)

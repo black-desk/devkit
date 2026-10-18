@@ -79,9 +79,7 @@ for name in ["libpcre2-8", "libpcre2-16", "libpcre2-32", "libpcre2-posix"]:
     lines = text.splitlines(keepends=True)
     for key, value in values.items():
         matches = [
-            i
-            for i, line in enumerate(lines)
-            if re.match(r"^" + key + r"\s*=", line)
+            i for i, line in enumerate(lines) if re.match(r"^" + key + r"\s*=", line)
         ]
         if matches:
             assert len(matches) == 1, (target, key)
@@ -112,9 +110,7 @@ for name in ["pcre2"]:
             text = text.replace(
                 "${" + variable + "}/bin/", "${" + variable + "}/../../bin/"
             )
-        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(
-            prefix, path.parent
-        )
+        runtime = "${CMAKE_CURRENT_LIST_DIR}/" + os.path.relpath(prefix, path.parent)
         text = text.replace(str(prefix), runtime)
         path.write_text(text)
 source = prefix / "bin/pcre2-config"
@@ -135,8 +131,6 @@ text = text.replace(
     str(prefix) + "/include", "${prefix}/lib/devkit/include/pcre2-10.49"
 )
 text = text.replace(str(prefix), "${prefix}")
-text = text.replace(
-    "${prefix}/include", "${prefix}/lib/devkit/include/pcre2-10.49"
-)
+text = text.replace("${prefix}/include", "${prefix}/lib/devkit/include/pcre2-10.49")
 text = text.replace("${exec_prefix}/lib", "${exec_prefix}/lib/devkit/lib")
 path.write_text(text)
