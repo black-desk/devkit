@@ -54,26 +54,19 @@ for mode in narrow wide; do
     --sysconfdir="${PREFIX}/lib/devkit/etc" \
     --localstatedir="${PREFIX}/lib/devkit/var" \
     --sbindir="${PREFIX}/lib/devkit/sbin" --libdir="${PREFIX}/lib/devkit/lib" --includedir="${PREFIX}/lib/devkit/include/ncurses-6.6/${header_subdir}" \
-    --without-debug --without-ada --with-shared \
+    --without-debug --without-ada --with-shared --disable-pkg-ldflags \
     --with-pkg-config --with-pkg-config-libdir="${PREFIX}/lib/devkit/lib/pkgconfig" \
     --disable-overwrite --enable-symlinks --enable-termcap --enable-pc-files \
     --with-termlib --with-versioned-syms --disable-mixed-case \
     --enable-relative-terminfo "${wide_option}"
   make -j"${CPU_COUNT}"
-  make install
-  # Upstream run_tic assumes libdir is prefix/lib. Its compatibility link is
-  # redundant here; on the second install it follows that link and nests a
-  # broken terminfo link inside the database. Keep only the native data path.
-  rm -f "${PREFIX}/lib/terminfo"
+  make install CONFIG_BINDIR="${PREFIX}/lib/devkit/libexec/ncurses/bin"
   make distclean
 done
 # Post-link exception: narrow/wide builds install utilities and libraries with
 # shared link flags; retain per-file paths until native install relinking is set.
 # TODO: configure upstream target-specific install RUNPATH.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-
-# Native directory options do not cover these consumer-tool details.
-python3 "${RECIPE_DIR}/relocate-development.py"
 
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.

@@ -1,0 +1,124 @@
+Honor the configured includedir in Autotools-generated CMake exports.
+
+TODO: propose the build-system interface/fix upstream.
+
+--- a/cmake/autotools/expat__linux.cmake.in
++++ b/cmake/autotools/expat__linux.cmake.in
+@@ -55,11 +55,24 @@
+   set(_IMPORT_PREFIX "")
+ endif()
+ 
++# Honor Autotools' includedir, including versioned or independent directories.
++set(_expat_config_libdir [=[@libdir@]=])
++set(_expat_config_includedir [=[@includedir@]=])
++foreach(_expat_config_dir IN ITEMS libdir includedir)
++  string(REPLACE "\${exec_prefix}" [=[@exec_prefix@]=]
++    _expat_config_${_expat_config_dir} "${_expat_config_${_expat_config_dir}}")
++  string(REPLACE "\${prefix}" [=[@prefix@]=]
++    _expat_config_${_expat_config_dir} "${_expat_config_${_expat_config_dir}}")
++endforeach()
++get_filename_component(_expat_config_root "${_expat_config_libdir}" DIRECTORY)
++file(RELATIVE_PATH _expat_relative_include "${_expat_config_root}"
++  "${_expat_config_includedir}")
++
+ # Create imported target expat::expat
+ add_library(expat::expat SHARED IMPORTED)
+ 
+ set_target_properties(expat::expat PROPERTIES
+-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_expat_relative_include}"
+   INTERFACE_LINK_LIBRARIES "m"
+ )
+ 
+@@ -72,6 +85,11 @@
+ unset(_cmake_config_files)
+ 
+ # Cleanup temporary variables.
++unset(_expat_config_libdir)
++unset(_expat_config_includedir)
++unset(_expat_config_dir)
++unset(_expat_config_root)
++unset(_expat_relative_include)
+ set(_IMPORT_PREFIX)
+ 
+ # Loop over all imported files and verify that they actually exist
+--- a/cmake/autotools/expat__macos.cmake.in
++++ b/cmake/autotools/expat__macos.cmake.in
+@@ -55,11 +55,24 @@
+   set(_IMPORT_PREFIX "")
+ endif()
+ 
++# Honor Autotools' includedir, including versioned or independent directories.
++set(_expat_config_libdir [=[@libdir@]=])
++set(_expat_config_includedir [=[@includedir@]=])
++foreach(_expat_config_dir IN ITEMS libdir includedir)
++  string(REPLACE "\${exec_prefix}" [=[@exec_prefix@]=]
++    _expat_config_${_expat_config_dir} "${_expat_config_${_expat_config_dir}}")
++  string(REPLACE "\${prefix}" [=[@prefix@]=]
++    _expat_config_${_expat_config_dir} "${_expat_config_${_expat_config_dir}}")
++endforeach()
++get_filename_component(_expat_config_root "${_expat_config_libdir}" DIRECTORY)
++file(RELATIVE_PATH _expat_relative_include "${_expat_config_root}"
++  "${_expat_config_includedir}")
++
+ # Create imported target expat::expat
+ add_library(expat::expat SHARED IMPORTED)
+ 
+ set_target_properties(expat::expat PROPERTIES
+-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_expat_relative_include}"
+   INTERFACE_LINK_LIBRARIES "m"
+ )
+ 
+@@ -72,6 +85,11 @@
+ unset(_cmake_config_files)
+ 
+ # Cleanup temporary variables.
++unset(_expat_config_libdir)
++unset(_expat_config_includedir)
++unset(_expat_config_dir)
++unset(_expat_config_root)
++unset(_expat_relative_include)
+ set(_IMPORT_PREFIX)
+ 
+ # Loop over all imported files and verify that they actually exist
+--- a/cmake/autotools/expat__windows.cmake.in
++++ b/cmake/autotools/expat__windows.cmake.in
+@@ -55,11 +55,24 @@
+   set(_IMPORT_PREFIX "")
+ endif()
+ 
++# Honor Autotools' includedir, including versioned or independent directories.
++set(_expat_config_libdir [=[@libdir@]=])
++set(_expat_config_includedir [=[@includedir@]=])
++foreach(_expat_config_dir IN ITEMS libdir includedir)
++  string(REPLACE "\${exec_prefix}" [=[@exec_prefix@]=]
++    _expat_config_${_expat_config_dir} "${_expat_config_${_expat_config_dir}}")
++  string(REPLACE "\${prefix}" [=[@prefix@]=]
++    _expat_config_${_expat_config_dir} "${_expat_config_${_expat_config_dir}}")
++endforeach()
++get_filename_component(_expat_config_root "${_expat_config_libdir}" DIRECTORY)
++file(RELATIVE_PATH _expat_relative_include "${_expat_config_root}"
++  "${_expat_config_includedir}")
++
+ # Create imported target expat::expat
+ add_library(expat::expat SHARED IMPORTED)
+ 
+ set_target_properties(expat::expat PROPERTIES
+-  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
++  INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/${_expat_relative_include}"
+   INTERFACE_LINK_LIBRARIES "m"
+ )
+ 
+@@ -72,6 +85,11 @@
+ unset(_cmake_config_files)
+ 
+ # Cleanup temporary variables.
++unset(_expat_config_libdir)
++unset(_expat_config_includedir)
++unset(_expat_config_dir)
++unset(_expat_config_root)
++unset(_expat_relative_include)
+ set(_IMPORT_PREFIX)
+ 
+ # Loop over all imported files and verify that they actually exist

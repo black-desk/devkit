@@ -9,13 +9,14 @@ source:
     sha256: 3a2e7a47604ba702f345878308e6fefeca612ee895cf4a5f222e7955fabfe0c0
     patches:
       - patches/skip-disabled-test-data.patch
+      - patches/native-development-install.patch
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 6
+  number: 7
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -59,6 +60,16 @@ tests:
         "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o icu-runtime-probe
       - ./icu-runtime-probe
       - icuinfo
+      - icu_config="${PREFIX}/lib/devkit/libexec/icu/bin/icu-config"
+      - test ! -e "${PREFIX}/bin/icu-config"
+      - test "$("${icu_config}" --prefix)" = "${PREFIX}"
+      - icu_cc="$("${icu_config}" --cc)"
+      - icu_cxx="$("${icu_config}" --cxx)"
+      - test "${icu_cc% }" = clang
+      - test "${icu_cxx% }" = clang++
+      - test "$("${icu_config}" --detect-prefix --prefix)" = "${PREFIX}"
+      - test -f "${PREFIX}/lib/devkit/lib/icu/${{ version }}/pkgdata.inc"
+      - '! grep -E "build_env|host_env|gcc-install-dir|--config=|rattler-build" "${PREFIX}/lib/devkit/lib/icu/${{ version }}/pkgdata.inc"'
       - test -f "${PREFIX}/lib/devkit/include/icu-${{ version }}/unicode/ucnv.h"
       - for library in icudata icuuc icui18n icuio icutu; do readelf -d "${PREFIX}/lib/devkit/lib/lib${library}.so" | grep -F '(RUNPATH)'; done
     files:

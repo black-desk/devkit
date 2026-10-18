@@ -1,0 +1,136 @@
+Support a separate public-header installation directory on Unix.
+
+Let header install/uninstall rules and generated consumer metadata use the
+same Configure option. Keep the existing include directory as the default;
+source-tree include paths remain unchanged. Both relative and absolute
+installation directories retain DESTDIR support.
+
+TODO: propose this option upstream. This first patch covers Unix Makefiles;
+Windows/VMS installation rules need corresponding support before proposing
+it as a cross-platform option.
+
+--- a/Configure
++++ b/Configure
+@@ -27,7 +27,7 @@
+ my $orig_death_handler = $SIG{__DIE__};
+ $SIG{__DIE__} = \&death_handler;
+ 
+-my $usage="Usage: Configure [no-<feature> ...] [enable-<feature> ...] [-Dxxx] [-lxxx] [-Lxxx] [-fxxx] [-Kxxx] [no-hw-xxx|no-hw] [[no-]threads] [[no-]thread-pool] [[no-]default-thread-pool] [[no-]shared] [[no-]zlib|zlib-dynamic] [no-asm] [no-egd] [sctp] [386] [--prefix=DIR] [--openssldir=OPENSSLDIR] [--with-xxx[=vvv]] [--config=FILE] os/compiler[:flags]\n";
++my $usage="Usage: Configure [no-<feature> ...] [enable-<feature> ...] [-Dxxx] [-lxxx] [-Lxxx] [-fxxx] [-Kxxx] [no-hw-xxx|no-hw] [[no-]threads] [[no-]thread-pool] [[no-]default-thread-pool] [[no-]shared] [[no-]zlib|zlib-dynamic] [no-asm] [no-egd] [sctp] [386] [--prefix=DIR] [--includedir=DIR] [--openssldir=OPENSSLDIR] [--with-xxx[=vvv]] [--config=FILE] os/compiler[:flags]\n";
+ 
+ my $banner = <<"EOF";
+ 
+@@ -414,6 +414,7 @@
+ $config{openssldir}="";
+ $config{processor}="";
+ $config{libdir}="";
++$config{includedir}="";
+ my $auto_threads=1;    # enable threads automatically? true by default
+ my $default_ranlib;
+ 
+@@ -1047,6 +1048,10 @@
+                         {
+                         $config{libdir}=$1;
+                         }
++                elsif (/^--includedir=(.*)$/)
++                        {
++                        $config{includedir}=$1;
++                        }
+                 elsif (/^--openssldir=(.*)$/)
+                         {
+                         $config{openssldir}=$1;
+--- a/Configurations/unix-Makefile.tmpl
++++ b/Configurations/unix-Makefile.tmpl
+@@ -334,6 +334,11 @@
+ # $(libdir) is chosen to be compatible with the GNU coding standards
+ libdir={- file_name_is_absolute($libdir)
+           ? $libdir : '$(INSTALLTOP)/$(LIBDIR)' -}
++# Public headers may be installed independently from libraries and executables.
++INCLUDEDIR={- our $includedir = $config{includedir} || "include";
++              $includedir -}
++includedir={- file_name_is_absolute($includedir)
++              ? $includedir : '$(INSTALLTOP)/$(INCLUDEDIR)' -}
+ ENGINESDIR=$(libdir)/engines-{- $sover_dirname -}
+ MODULESDIR=$(libdir)/ossl-modules
+ 
+@@ -752,18 +757,18 @@
+ install_dev: install_runtime_libs
+ 	@[ -n "$(INSTALLTOP)" ] || (echo INSTALLTOP should not be empty; exit 1)
+ 	@$(ECHO) "*** Installing development files"
+-	@$(PERL) $(SRCDIR)/util/mkdir-p.pl "$(DESTDIR)$(INSTALLTOP)/include/openssl"
++	@$(PERL) $(SRCDIR)/util/mkdir-p.pl "$(DESTDIR)$(includedir)/openssl"
+ 	@ : {- output_off() if $disabled{uplink}; "" -}
+-	@$(ECHO) "install $(SRCDIR)/ms/applink.c -> $(DESTDIR)$(INSTALLTOP)/include/openssl/applink.c"
+-	@cp $(SRCDIR)/ms/applink.c "$(DESTDIR)$(INSTALLTOP)/include/openssl/applink.c"
+-	@chmod 644 "$(DESTDIR)$(INSTALLTOP)/include/openssl/applink.c"
++	@$(ECHO) "install $(SRCDIR)/ms/applink.c -> $(DESTDIR)$(includedir)/openssl/applink.c"
++	@cp $(SRCDIR)/ms/applink.c "$(DESTDIR)$(includedir)/openssl/applink.c"
++	@chmod 644 "$(DESTDIR)$(includedir)/openssl/applink.c"
+ 	@ : {- output_on() if $disabled{uplink}; "" -}
+ 	@set -e; for i in $(SRCDIR)/include/openssl/*.h \
+ 			  $(BLDDIR)/include/openssl/*.h; do \
+ 		fn=`basename $$i`; \
+-		$(ECHO) "install $$i -> $(DESTDIR)$(INSTALLTOP)/include/openssl/$$fn"; \
+-		cp $$i "$(DESTDIR)$(INSTALLTOP)/include/openssl/$$fn"; \
+-		chmod 644 "$(DESTDIR)$(INSTALLTOP)/include/openssl/$$fn"; \
++		$(ECHO) "install $$i -> $(DESTDIR)$(includedir)/openssl/$$fn"; \
++		cp $$i "$(DESTDIR)$(includedir)/openssl/$$fn"; \
++		chmod 644 "$(DESTDIR)$(includedir)/openssl/$$fn"; \
+ 	done
+ 	@$(PERL) $(SRCDIR)/util/mkdir-p.pl "$(DESTDIR)$(libdir)"
+ 	@set -e; for l in $(INSTALL_LIBS); do \
+@@ -832,17 +837,17 @@
+ uninstall_dev: uninstall_runtime_libs
+ 	@$(ECHO) "*** Uninstalling development files"
+ 	@ : {- output_off() if $disabled{uplink}; "" -}
+-	@$(ECHO) "$(RM) $(DESTDIR)$(INSTALLTOP)/include/openssl/applink.c"
+-	@$(RM) "$(DESTDIR)$(INSTALLTOP)/include/openssl/applink.c"
++	@$(ECHO) "$(RM) $(DESTDIR)$(includedir)/openssl/applink.c"
++	@$(RM) "$(DESTDIR)$(includedir)/openssl/applink.c"
+ 	@ : {- output_on() if $disabled{uplink}; "" -}
+ 	@set -e; for i in $(SRCDIR)/include/openssl/*.h \
+ 			  $(BLDDIR)/include/openssl/*.h; do \
+ 		fn=`basename $$i`; \
+-		$(ECHO) "$(RM) $(DESTDIR)$(INSTALLTOP)/include/openssl/$$fn"; \
+-		$(RM) "$(DESTDIR)$(INSTALLTOP)/include/openssl/$$fn"; \
+-	done
+-	-$(RMDIR) "$(DESTDIR)$(INSTALLTOP)/include/openssl"
+-	-$(RMDIR) "$(DESTDIR)$(INSTALLTOP)/include"
++		$(ECHO) "$(RM) $(DESTDIR)$(includedir)/openssl/$$fn"; \
++		$(RM) "$(DESTDIR)$(includedir)/openssl/$$fn"; \
++	done
++	-$(RMDIR) "$(DESTDIR)$(includedir)/openssl"
++	-$(RMDIR) "$(DESTDIR)$(includedir)"
+ 	@set -e; for l in $(INSTALL_LIBS); do \
+ 		fn=`basename $$l`; \
+ 		$(ECHO) "$(RM) $(DESTDIR)$(libdir)/$$fn"; \
+--- a/exporters/build.info
++++ b/exporters/build.info
+@@ -20,7 +20,8 @@
+ 
+ GENERATE[../installdata.pm]=../util/mkinstallvars.pl \
+     "PREFIX=$(INSTALLTOP)" BINDIR=bin "LIBDIR=$(LIBDIR)" "libdir=$(libdir)" \
+-    INCLUDEDIR=include APPLINKDIR=include/openssl \
++    "INCLUDEDIR={- $config{includedir} || 'include' -}" \
++    "APPLINKDIR={- $config{includedir} || 'include' -}/openssl" \
+     "ENGINESDIR=$(ENGINESDIR)" "MODULESDIR=$(MODULESDIR)" \
+     "PKGCONFIGDIR=$(PKGCONFIGDIR)" "CMAKECONFIGDIR=$(CMAKECONFIGDIR)" \
+     "LDLIBS=$(LIB_EX_LIBS)" "VERSION=$(VERSION)"
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -337,6 +337,15 @@
+ 
+ Directories
+ -----------
++
++### includedir
++
++    --includedir=DIR
++
++Directory for public headers when using the Unix Makefile build system.
++Relative paths are interpreted relative to `--prefix`; absolute paths are
++used as given. The default is `include`. The generated pkg-config and CMake
++files describe this directory as well.
+ 
+ ### libdir
+ 

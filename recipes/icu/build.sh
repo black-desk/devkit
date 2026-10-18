@@ -49,7 +49,12 @@ unset PYTHON
 # This configuration uses the release production data, with tests disabled;
 # skip-disabled-test-data.patch prevents a Python-only test-data dependency.
 # The recipe test runtime probe covers selected APIs, not the ICU suite.
-./configure --prefix="${PREFIX}" \
+ICU_CONFIG_CC=clang ICU_CONFIG_CXX=clang++ ICU_CONFIG_CPP='clang -E' \
+  ICU_CONFIG_AR=llvm-ar ICU_CONFIG_RANLIB=llvm-ranlib \
+  ICU_CONFIG_CFLAGS=-O2 ICU_CONFIG_CXXFLAGS='-O2 -std=c++17' \
+  ICU_CONFIG_CPPFLAGS='' ICU_CONFIG_LDFLAGS='' \
+  ICU_CONFIG_PREFIX_RELATIVE=../../../../.. \
+  ./configure --prefix="${PREFIX}" \
   --datarootdir="${PREFIX}/lib/devkit/share" \
   --libexecdir="${PREFIX}/lib/devkit/libexec" \
   --sysconfdir="${PREFIX}/lib/devkit/etc" \
@@ -57,16 +62,13 @@ unset PYTHON
   --sbindir="${PREFIX}/lib/devkit/sbin" --libdir="${PREFIX}/lib/devkit/lib" --includedir="${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" --disable-samples --disable-extras \
   --disable-tests
 make -j"${CPU_COUNT}"
-make install \
+make install ICU_CONFIG_BINDIR="${PREFIX}/lib/devkit/libexec/icu/bin" \
   pkglibdir="${PREFIX}/lib/devkit/lib/icu/${LIBRARY_VERSION}"
 # Post-link exception: ICU has no per-tool relative installed RUNPATH setting.
 # Build-time tools use upstream loader wrappers; installed tools must load
 # channel dependencies without those wrappers.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-
-# Native directory options do not cover these consumer-tool details.
-python3 "${RECIPE_DIR}/relocate-development.py"
 
 # Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
 # aliases for them; result/selfhost install exclusively in the private libdir.

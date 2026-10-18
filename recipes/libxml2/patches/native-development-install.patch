@@ -1,0 +1,161 @@
+Install the development query script independently of user programs.
+
+TODO: propose the build-system interface/fix upstream.
+
+Makefile.in regenerated with Automake 1.18.1.
+
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -32,7 +32,8 @@
+ 
+ bin_PROGRAMS = xmllint
+ 
+-bin_SCRIPTS = xml2-config
++configbindir = $(bindir)
++configbin_SCRIPTS = xml2-config
+ 
+ lib_LTLIBRARIES = libxml2.la
+ libxml2_la_CFLAGS = $(AM_CFLAGS) $(XML_PRIVATE_CFLAGS)
+--- a/Makefile.in
++++ b/Makefile.in
+@@ -139,7 +139,7 @@
+ CONFIG_CLEAN_VPATH_FILES =
+ @WITH_CATALOG_SOURCES_TRUE@@WITH_OUTPUT_SOURCES_TRUE@am__EXEEXT_1 = xmlcatalog$(EXEEXT)
+ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libdir)" \
+-	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(cmakedir)" \
++	"$(DESTDIR)$(configbindir)" "$(DESTDIR)$(cmakedir)" \
+ 	"$(DESTDIR)$(pkgconfigdir)"
+ PROGRAMS = $(bin_PROGRAMS)
+ am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
+@@ -262,7 +262,7 @@
+ xmllint_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
+ 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(xmllint_CFLAGS) \
+ 	$(CFLAGS) $(AM_LDFLAGS) $(LDFLAGS) -o $@
+-SCRIPTS = $(bin_SCRIPTS)
++SCRIPTS = $(configbin_SCRIPTS)
+ AM_V_P = $(am__v_P_@AM_V@)
+ am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
+ am__v_P_0 = false
+@@ -400,7 +400,7 @@
+ am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/config.h.in \
+ 	$(srcdir)/libxml-2.0.pc.in $(srcdir)/libxml2-config.cmake.in \
+ 	$(srcdir)/xml2-config.in NEWS README.md compile config.guess \
+-	config.sub depcomp install-sh ltmain.sh missing
++	config.sub depcomp install-sh ltmain.sh missing py-compile
+ DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
+ distdir = $(PACKAGE)-$(VERSION)
+ top_distdir = $(distdir)
+@@ -646,7 +646,8 @@
+ 	$(am__append_3)
+ DIST_SUBDIRS = include . doc example fuzz python
+ AM_CPPFLAGS = -I$(builddir)/include -I$(srcdir)/include
+-bin_SCRIPTS = xml2-config
++configbindir = $(bindir)
++configbin_SCRIPTS = xml2-config
+ lib_LTLIBRARIES = libxml2.la
+ libxml2_la_CFLAGS = $(AM_CFLAGS) $(XML_PRIVATE_CFLAGS)
+ libxml2_la_LIBADD = $(XML_PRIVATE_LIBS)
+@@ -947,12 +948,12 @@
+ xmllint$(EXEEXT): $(xmllint_OBJECTS) $(xmllint_DEPENDENCIES) $(EXTRA_xmllint_DEPENDENCIES) 
+ 	@rm -f xmllint$(EXEEXT)
+ 	$(AM_V_CCLD)$(xmllint_LINK) $(xmllint_OBJECTS) $(xmllint_LDADD) $(LIBS)
+-install-binSCRIPTS: $(bin_SCRIPTS)
++install-configbinSCRIPTS: $(configbin_SCRIPTS)
+ 	@$(NORMAL_INSTALL)
+-	@list='$(bin_SCRIPTS)'; test -n "$(bindir)" || list=; \
++	@list='$(configbin_SCRIPTS)'; test -n "$(configbindir)" || list=; \
+ 	if test -n "$$list"; then \
+-	  echo " $(MKDIR_P) '$(DESTDIR)$(bindir)'"; \
+-	  $(MKDIR_P) "$(DESTDIR)$(bindir)" || exit 1; \
++	  echo " $(MKDIR_P) '$(DESTDIR)$(configbindir)'"; \
++	  $(MKDIR_P) "$(DESTDIR)$(configbindir)" || exit 1; \
+ 	fi; \
+ 	for p in $$list; do \
+ 	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+@@ -971,17 +972,17 @@
+ 	while read type dir files; do \
+ 	     if test "$$dir" = .; then dir=; else dir=/$$dir; fi; \
+ 	     test -z "$$files" || { \
+-	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(bindir)$$dir'"; \
+-	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(bindir)$$dir" || exit $$?; \
++	       echo " $(INSTALL_SCRIPT) $$files '$(DESTDIR)$(configbindir)$$dir'"; \
++	       $(INSTALL_SCRIPT) $$files "$(DESTDIR)$(configbindir)$$dir" || exit $$?; \
+ 	     } \
+ 	; done
+ 
+-uninstall-binSCRIPTS:
++uninstall-configbinSCRIPTS:
+ 	@$(NORMAL_UNINSTALL)
+-	@list='$(bin_SCRIPTS)'; test -n "$(bindir)" || exit 0; \
++	@list='$(configbin_SCRIPTS)'; test -n "$(configbindir)" || exit 0; \
+ 	files=`for p in $$list; do echo "$$p"; done | \
+ 	       sed -e 's,.*/,,;$(transform)'`; \
+-	dir='$(DESTDIR)$(bindir)'; $(am__uninstall_files_from_dir)
++	dir='$(DESTDIR)$(configbindir)'; $(am__uninstall_files_from_dir)
+ 
+ mostlyclean-compile:
+ 	-rm -f *.$(OBJEXT)
+@@ -1780,7 +1781,7 @@
+ 
+ installdirs: installdirs-recursive
+ installdirs-am:
+-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(cmakedir)" "$(DESTDIR)$(pkgconfigdir)"; do \
++	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(libdir)" "$(DESTDIR)$(configbindir)" "$(DESTDIR)$(cmakedir)" "$(DESTDIR)$(pkgconfigdir)"; do \
+ 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
+ 	done
+ install: install-recursive
+@@ -1893,14 +1894,14 @@
+ 
+ info-am:
+ 
+-install-data-am: install-cmakeDATA install-pkgconfigDATA
++install-data-am: install-cmakeDATA install-configbinSCRIPTS \
++	install-pkgconfigDATA
+ 
+ install-dvi: install-dvi-recursive
+ 
+ install-dvi-am:
+ 
+-install-exec-am: install-binPROGRAMS install-binSCRIPTS \
+-	install-libLTLIBRARIES
++install-exec-am: install-binPROGRAMS install-libLTLIBRARIES
+ 
+ install-html: install-html-recursive
+ 
+@@ -1996,8 +1997,8 @@
+ 
+ ps-am:
+ 
+-uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
+-	uninstall-cmakeDATA uninstall-libLTLIBRARIES \
++uninstall-am: uninstall-binPROGRAMS uninstall-cmakeDATA \
++	uninstall-configbinSCRIPTS uninstall-libLTLIBRARIES \
+ 	uninstall-pkgconfigDATA
+ 
+ .MAKE: $(am__recursive_targets) all check-am install-am install-strip
+@@ -2012,18 +2013,19 @@
+ 	distclean-compile distclean-generic distclean-hdr \
+ 	distclean-libtool distclean-tags distcleancheck distdir \
+ 	distuninstallcheck dvi dvi-am html html-am info info-am \
+-	install install-am install-binPROGRAMS install-binSCRIPTS \
+-	install-cmakeDATA install-data install-data-am install-dvi \
+-	install-dvi-am install-exec install-exec-am install-html \
+-	install-html-am install-info install-info-am \
++	install install-am install-binPROGRAMS install-cmakeDATA \
++	install-configbinSCRIPTS install-data install-data-am \
++	install-dvi install-dvi-am install-exec install-exec-am \
++	install-html install-html-am install-info install-info-am \
+ 	install-libLTLIBRARIES install-man install-pdf install-pdf-am \
+ 	install-pkgconfigDATA install-ps install-ps-am install-strip \
+ 	installcheck installcheck-am installdirs installdirs-am \
+ 	maintainer-clean maintainer-clean-generic mostlyclean \
+ 	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+ 	pdf pdf-am ps ps-am tags tags-am uninstall uninstall-am \
+-	uninstall-binPROGRAMS uninstall-binSCRIPTS uninstall-cmakeDATA \
+-	uninstall-libLTLIBRARIES uninstall-pkgconfigDATA
++	uninstall-binPROGRAMS uninstall-cmakeDATA \
++	uninstall-configbinSCRIPTS uninstall-libLTLIBRARIES \
++	uninstall-pkgconfigDATA
+ 
+ .PRECIOUS: Makefile
+ 
