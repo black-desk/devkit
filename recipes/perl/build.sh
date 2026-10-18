@@ -24,7 +24,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -45,12 +45,12 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib -Wl,-rpath,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 # Linux hints otherwise query /usr/bin/gcc and may discover host DB/crypt.
 # Set the supported discovery overrides explicitly for both compiler variants.
-PERL_LIBRARY_PATH="${PREFIX}/lib/devkit/lib ${PREFIX}/lib ${SYSROOT}/lib64"
+PERL_LIBRARY_PATH="${PREFIX}/lib/devkit/lib ${SYSROOT}/lib64"
 COMMON_CFLAGS="${CFLAGS} -I${PREFIX}/lib/devkit/include/libxcrypt-4.4.38"
 
 PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-aliasing -fstack-protector-strong -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64"
@@ -59,7 +59,7 @@ PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-ali
   -de \
   -Dprefix="${PREFIX}" \
   -Duserelocatableinc \
-  -Dinstallstyle=lib/perl5 \
+  -Dinstallstyle=lib/devkit/lib/perl5 \
   -Dinstallusrbinperl=n \
   -Dusethreads \
   -Dinc_version_list=none \
@@ -79,7 +79,7 @@ PERL_CFLAGS="${COMMON_CFLAGS} -D_REENTRANT -D_GNU_SOURCE -fwrapv -fno-strict-ali
   -Dlibpth="${PERL_LIBRARY_PATH}" \
   -Dplibpth="${PERL_LIBRARY_PATH}" \
   -Dglibpth="${PERL_LIBRARY_PATH}" \
-  -Dloclibpth="${PREFIX}/lib/devkit/lib ${PREFIX}/lib" \
+  -Dloclibpth="${PREFIX}/lib/devkit/lib" \
   -Dxlibpth=" " \
   -Dmalloctype='void *' \
   -Dfreetype=void \

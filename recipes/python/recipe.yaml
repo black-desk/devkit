@@ -21,7 +21,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -40,7 +40,7 @@ requirements:
 tests:
   # Imported upstream binaries retain their own runtime search-path policy.
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package python --skip-runpath-check
+      - python3 devkit-build/check-package.py "${PREFIX}" --package python --skip-runpath-check ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py

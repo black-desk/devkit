@@ -18,7 +18,7 @@ source:
 build:
   dynamic_linking:
     binary_relocation: false
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -35,7 +35,7 @@ requirements:
 
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package lazygit
+      - python3 devkit-build/check-package.py "${PREFIX}" --package lazygit ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py

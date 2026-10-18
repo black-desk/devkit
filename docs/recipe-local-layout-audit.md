@@ -1,5 +1,9 @@
 # Recipe-local development layout migration
 
+Historical record: the native private install-directory experiment supersedes
+the layout policy below. See [development-layout.md](development-layout.md) and
+[native-private-install-dirs.md](native-private-install-dirs.md).
+
 Work starts from `1b85f68978d6` on the isolated branch
 `experiment/recipe-local-development-layout`. Commit `1b85f68978d6` is the
 rollback reference; this experiment does not change the seed manifest. After

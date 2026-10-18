@@ -17,7 +17,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -49,7 +49,7 @@ requirements:
 
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package openssl
+      - python3 devkit-build/check-package.py "${PREFIX}" --package openssl ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -59,16 +59,16 @@ tests:
         - lib/devkit/include/openssl-${{ version }}/openssl/ssl.h
         - lib/devkit/include/openssl-${{ version }}/openssl/crypto.h
         - lib/devkit/include/openssl-${{ version }}/openssl/opensslv.h
-        - etc/ssl/openssl.cnf
+        - lib/devkit/etc/ssl/openssl.cnf
         - lib/devkit/lib/libssl.so
-        - lib/libssl.so.3
+        - lib/devkit/lib/libssl.so.3
         - lib/devkit/lib/libcrypto.so
-        - lib/libcrypto.so.3
+        - lib/devkit/lib/libcrypto.so.3
         - lib/devkit/lib/pkgconfig/openssl.pc
         - lib/devkit/lib/pkgconfig/libssl.pc
         - lib/devkit/lib/pkgconfig/libcrypto.pc
         - lib/devkit/lib/cmake/OpenSSL/OpenSSLConfig.cmake
-        - lib/ossl-modules/legacy.so
+        - lib/devkit/lib/ossl-modules/legacy.so
 
   - script:
       - >-
@@ -77,15 +77,15 @@ tests:
         "${PREFIX}/bin/openssl" version | grep -F "OpenSSL ${{ version }}"
       - >-
         test "$("${PREFIX}/bin/openssl" version -d)" =
-        "OPENSSLDIR: \"${PREFIX}/etc/ssl\""
+        "OPENSSLDIR: \"${PREFIX}/lib/devkit/etc/ssl\""
       - >-
         test "$("${PREFIX}/bin/openssl" version -m)" =
-        "MODULESDIR: \"${PREFIX}/lib/ossl-modules\""
+        "MODULESDIR: \"${PREFIX}/lib/devkit/lib/ossl-modules\""
       - >-
-        test "$(readlink "${PREFIX}/etc/ssl/cert.pem")" =
+        test "$(readlink "${PREFIX}/lib/devkit/etc/ssl/cert.pem")" =
         "certs/ca-certificates.crt"
       - >-
-        test -f "${PREFIX}/etc/ssl/certs/ca-certificates.crt"
+        test -f "${PREFIX}/lib/devkit/etc/ssl/certs/ca-certificates.crt"
       - >-
         "${PREFIX}/bin/openssl" list -providers | grep -F default
       - >-
@@ -97,20 +97,20 @@ tests:
       - cflags="${cflags% }"
       - >-
         test "$cflags" =
-        "-I$(dirname "$pc_path")/../../include/openssl-${{ version }}"
+        "-I${PREFIX}/lib/devkit/include/openssl-${{ version }}"
       - libs="$("${PREFIX}/bin/pkg-config" --libs libssl)"
       - libs="${libs% }"
-      - test "$libs" = "-L$(dirname "$pc_path")/../../lib -lssl"
+      - test "$libs" = "-L${PREFIX}/lib/devkit/lib -lssl"
       - >-
         test "$("${PREFIX}/bin/pkg-config" --modversion libssl)" =
         "${{ version }}"
       - crypto_libs="$("${PREFIX}/bin/pkg-config" --libs libcrypto)"
       - crypto_libs="${crypto_libs% }"
-      - test "$crypto_libs" = "-L$(dirname "$pc_path")/../../lib -lcrypto"
+      - test "$crypto_libs" = "-L${PREFIX}/lib/devkit/lib -lcrypto"
       - test ! -e "${PREFIX}/include/openssl"
       - test ! -e "${PREFIX}/bin/c_rehash"
       - >-
-        grep -F 'set(OPENSSL_INCLUDE_DIR "${_ossl_prefix}/include/openssl-${{
+        grep -F 'set(OPENSSL_INCLUDE_DIR "${_ossl_prefix}/lib/devkit/include/openssl-${{
         version }}")' "${PREFIX}/lib/devkit/lib/cmake/OpenSSL/OpenSSLConfig.cmake"
     requirements:
       run:

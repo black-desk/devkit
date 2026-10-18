@@ -12,21 +12,21 @@ source:
 
 build:
   noarch: generic
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
-    - mkdir -p "${PREFIX}/share/rust-toolchain"
-    - cp "${SRC_DIR}/version" "${PREFIX}/share/rust-toolchain/version"
+    - mkdir -p "${PREFIX}/lib/devkit/share/rust-toolchain"
+    - cp "${SRC_DIR}/version" "${PREFIX}/lib/devkit/share/rust-toolchain/version"
 
 requirements: {}
 
 tests:
   - package_contents:
       files:
-        - share/rust-toolchain/version
+        - lib/devkit/share/rust-toolchain/version
 
   - script:
-      - test "$(cat "${PREFIX}/share/rust-toolchain/version")" = "${{ version }}"
+      - test "$(cat "${PREFIX}/lib/devkit/share/rust-toolchain/version")" = "${{ version }}"
 
 about:
   homepage: https://rust-lang.org/

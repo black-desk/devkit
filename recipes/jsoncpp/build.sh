@@ -20,7 +20,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -41,25 +41,25 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 export LDFLAGS="${LDFLAGS} -pthread -lgcc_s"
-# Keep the shared runtime libdir public. The layout patch separately routes
-# archives and package metadata into the hidden development prefix.
 # Review R2: POST_BUILD_UNITTEST runs during compilation, independently of
 # DEVKIT_RUN_TESTS. Changing this stage behavior needs a separate decision.
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
-  -DCMAKE_INSTALL_LIBDIR=lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/jsoncpp-${LIBRARY_VERSION}" \
+  -DCMAKE_INSTALL_DATAROOTDIR=lib/devkit/share \
+  -DCMAKE_INSTALL_LIBEXECDIR=lib/devkit/libexec \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib/devkit/lib" \
+  -DCMAKE_INSTALL_LIBDIR=lib/devkit/lib -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/jsoncpp-${LIBRARY_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_C_FLAGS="${CFLAGS}" -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
-  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib/devkit/lib' \
   -DBUILD_SHARED_LIBS=ON -DBUILD_STATIC_LIBS=ON \
   -DJSONCPP_WITH_TESTS=ON -DJSONCPP_WITH_POST_BUILD_UNITTEST=ON
 cmake --build build --parallel "${CPU_COUNT}"
@@ -68,5 +68,13 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
 fi
 cmake --install build
 
-# Keep development layout handling in this recipe until channel coverage is complete.
-python3 "${RECIPE_DIR}/relocate-development.py"
+# Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
+# aliases for them; result/selfhost install exclusively in the private libdir.
+if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
+  for library in "${PREFIX}/lib/devkit/lib/"libjsoncpp.so.*; do
+    [[ -f "${library}" ]] || continue
+    soname="$(readelf -d "${library}" | sed -n 's/.*(SONAME).*\[\(.*\)\].*/\1/p')"
+    [[ -n "${soname}" && "${soname}" != */* ]] || continue
+    ln -sfn "devkit/lib/${soname}" "${PREFIX}/lib/${soname}"
+  done
+fi

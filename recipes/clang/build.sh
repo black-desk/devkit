@@ -12,24 +12,27 @@ if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
   GCC_INSTALL="${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0"
   COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${GCC_INSTALL} -O2 -fPIC --rtlib=compiler-rt"
 else
-  COMMON_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg -O2 -fPIC --rtlib=compiler-rt"
+  COMMON_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg -O2 -fPIC --rtlib=compiler-rt"
 fi
 COMMON_FLAGS="--start-no-unused-arguments ${COMMON_FLAGS} --end-no-unused-arguments"
 CXX_FLAGS="${COMMON_FLAGS}"
 if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
   CXX_FLAGS="${CXX_FLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 fi
-LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
+LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${SYSROOT}/lib64 -lgcc_s"
 
 cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
-  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib/devkit/lib' \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
+  -DCMAKE_INSTALL_DATAROOTDIR=lib/devkit/share \
+  -DCMAKE_INSTALL_LIBEXECDIR=lib/devkit/libexec \
+  -DCMAKE_INSTALL_LIBDIR=lib/devkit/lib \
   -DCMAKE_INSTALL_INCLUDEDIR=lib/devkit/include \
   -DCMAKE_INSTALL_PACKAGEDIR=lib/devkit/lib/cmake \
-  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib/devkit/lib" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_ASM_COMPILER="${CC}" \
@@ -45,6 +48,7 @@ cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
   -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
   -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
   -DCMAKE_FIND_ROOT_PATH_MODE_PACKAGE=ONLY \
+  -DLLVM_LIBDIR_SUFFIX=/devkit/lib \
   -DLLVM_ENABLE_PROJECTS="clang;lld" \
   -DLLVM_TARGETS_TO_BUILD=all \
   -DLLVM_BUILD_LLVM_DYLIB=ON \
@@ -62,7 +66,7 @@ cmake -S "${SRC_DIR}/llvm" -B build -G Ninja \
   -Dzstd_INCLUDE_DIR="${PREFIX}/lib/devkit/include/zstd-1.5.7" \
   -Dzstd_LIBRARY="${PREFIX}/lib/devkit/lib/libzstd.so" \
   -DLLVM_ENABLE_LIBXML2=FORCE_ON \
-  -DLIBXML2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/libxml2-2.15.4" \
+  -DLIBXML2_INCLUDE_DIR="${PREFIX}/lib/devkit/include/libxml2-2.15.4/libxml2" \
   -DLIBXML2_LIBRARY="${PREFIX}/lib/devkit/lib/libxml2.so" \
   -DLLVM_ENABLE_RTTI=ON \
   -DLLVM_ENABLE_BACKTRACES=ON \
@@ -86,15 +90,12 @@ cmake --install build
 source "${RECIPE_DIR}/build-runtimes.sh"
 
 # Runtime objects are owned by llvm-libgcc, not duplicated in the compiler.
-mkdir -p "${PREFIX}/lib/clang/23/lib"
-ln -s ../../../linux "${PREFIX}/lib/clang/23/lib/linux"
+mkdir -p "${PREFIX}/lib/devkit/lib/clang/23/lib"
+ln -s ../../../linux "${PREFIX}/lib/devkit/lib/clang/23/lib/linux"
 
-install -d "${PREFIX}/share/devkit"
-install -m 0644 "${RECIPE_DIR}/clang.cfg" "${PREFIX}/share/devkit/clang.cfg"
-install -m 0644 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}/share/devkit/finalize-elf.py"
+install -d "${PREFIX}/lib/devkit/share/devkit"
+install -m 0644 "${RECIPE_DIR}/clang.cfg" "${PREFIX}/lib/devkit/share/devkit/clang.cfg"
+install -m 0644 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}/lib/devkit/share/devkit/finalize-elf.py"
 for driver in clang clang++; do
   install -m 0644 "${RECIPE_DIR}/host.cfg" "${PREFIX}/bin/${driver}.cfg"
 done
-
-# Keep development layout handling in this recipe until channel coverage is complete.
-python3 "${RECIPE_DIR}/relocate-development.py"

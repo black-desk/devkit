@@ -20,7 +20,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -42,10 +42,10 @@ else
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
 # Make expands $$ once; shell quotes preserve the literal loader token.
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
-NATIVE_LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN:\$\$ORIGIN/../lib'"
+NATIVE_LDFLAGS="${LDFLAGS} -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN:\$\$ORIGIN/../lib/devkit/lib'"
 export CFLAGS="${CFLAGS} -Wall -Winline -D_FILE_OFFSET_BITS=64"
 # Build libraries/tools separately from the upstream fixture target.
 make -j"${CPU_COUNT}" CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
@@ -54,15 +54,33 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
   make test CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
     CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
 fi
-make install PREFIX="${PREFIX}" \
+make install PREFIX="${PREFIX}/lib/devkit" \
   CC="${CC}" AR="${AR}" RANLIB="${RANLIB}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
+mkdir -p "${PREFIX}/bin"
+for executable in "${PREFIX}/lib/devkit/bin/"*; do
+  mv "${executable}" "${PREFIX}/bin/"
+done
+rmdir "${PREFIX}/lib/devkit/bin"
+mkdir -p "${PREFIX}/lib/devkit/share"
+mv "${PREFIX}/lib/devkit/man" "${PREFIX}/lib/devkit/share/man"
+mkdir -p "${PREFIX}/lib/devkit/include/bzip2-${LIBRARY_VERSION}"
+mv "${PREFIX}/lib/devkit/include/bzlib.h" "${PREFIX}/lib/devkit/include/bzip2-${LIBRARY_VERSION}/"
 make -f Makefile-libbz2_so -j"${CPU_COUNT}" CC="${CC}" \
   CFLAGS="${CFLAGS}" LDFLAGS="${NATIVE_LDFLAGS}"
-cp -a libbz2.so.1.0.8 libbz2.so.1.0 "${PREFIX}/lib/"
-ln -s libbz2.so.1.0 "${PREFIX}/lib/libbz2.so"
+cp -a libbz2.so.1.0.8 libbz2.so.1.0 "${PREFIX}/lib/devkit/lib/"
+ln -s libbz2.so.1.0 "${PREFIX}/lib/devkit/lib/libbz2.so"
 # Exercise the shared-library executable before package relocation.
 ./bzip2-shared -dc sample1.bz2 >shared-result
 cmp sample1.ref shared-result
-# Stage only this package's development interfaces; preserve runtim# Keep development layout handling in this recipe until channel coverage is complete.
-python3 "${RECIPE_DIR}/relocate-development.py"
+
+# Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
+# aliases for them; result/selfhost install exclusively in the private libdir.
+if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
+  for library in "${PREFIX}/lib/devkit/lib/"libbz2.so.*; do
+    [[ -f "${library}" ]] || continue
+    soname="$(readelf -d "${library}" | sed -n 's/.*(SONAME).*\[\(.*\)\].*/\1/p')"
+    [[ -n "${soname}" && "${soname}" != */* ]] || continue
+    ln -sfn "devkit/lib/${soname}" "${PREFIX}/lib/${soname}"
+  done
+fi

@@ -83,18 +83,18 @@ class PackageAuditTests(unittest.TestCase):
         )
         result = self.check("imported", skip_runpath=True)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("runtime ELF in development prefix", result.stderr)
+        self.assertNotIn("runtime ELF in metadata directory", result.stderr)
         self.assertIn("public development interface", result.stderr)
         self.assertNotIn("DT_RPATH is forbidden", result.stderr)
 
-    def test_rejects_absolute_relative_empty_and_hidden_runpaths(self):
+    def test_rejects_nonrelocatable_and_metadata_runpaths(self):
         for value, message in (
             ("/build/temporary", "non-runtime search path"),
             ("../lib", "non-runtime search path"),
             ("$ORIGIN/../lib:", "non-runtime search path"),
             ("$ORIGIN/../../outside", "escapes prefix"),
-            ("$ORIGIN/../lib/devkit/lib", "development runtime search path"),
-            ("$ORIGIN/../lib/devkit/../devkit/lib", "development runtime search path"),
+            ("$ORIGIN/../lib/devkit/include", "metadata runtime search path"),
+            ("$ORIGIN/../lib/devkit/../devkit/share", "metadata runtime search path"),
             ("$ORIGIN/$LIB", "unsupported runtime path token"),
         ):
             with self.subTest(value=value):
@@ -103,11 +103,11 @@ class PackageAuditTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stderr)
 
-    def test_rejects_alias_to_hidden_runtime_directory(self):
+    def test_accepts_private_runtime_directory_and_its_alias(self):
         (self.prefix / "lib/devkit/lib").mkdir(parents=True)
         (self.prefix / "lib/runtime-alias").symlink_to("devkit/lib")
         self.elf(runpath="$ORIGIN/../lib/runtime-alias")
-        self.assertIn("development runtime search path", self.check().stderr)
+        self.assertEqual(self.check().returncode, 0, self.check().stderr)
 
     def test_audits_only_owned_files_and_requires_record(self):
         self.elf(runpath="$ORIGIN/../lib")
@@ -142,12 +142,12 @@ class PackageAuditTests(unittest.TestCase):
     def test_development_links_allow_dependency_targets_after_install(self):
         development = self.prefix / "lib/devkit/lib"
         development.mkdir(parents=True)
-        runtime = self.prefix / "lib/libfoo.so.1"
+        runtime = self.prefix / "lib/devkit/lib/libfoo.so.1"
         runtime.write_bytes(b"runtime")
         link = development / "libfoo.so"
-        link.symlink_to("../../libfoo.so.1")
+        link.symlink_to("libfoo.so.1")
         self.record("devel", ["lib/devkit/lib/libfoo.so"])
-        self.record("runtime", ["lib/libfoo.so.1"])
+        self.record("runtime", ["lib/devkit/lib/libfoo.so.1"])
         self.assertEqual(self.check("devel").returncode, 0)
         runtime.unlink()
         self.assertIn("broken development link", self.check("devel").stderr)
@@ -155,9 +155,31 @@ class PackageAuditTests(unittest.TestCase):
         link.symlink_to("/usr/lib/libfoo.so.1")
         self.assertIn("non-relocatable development link", self.check("devel").stderr)
 
-    def test_runtime_elf_cannot_be_hidden(self):
+    def test_runtime_elf_belongs_in_private_lib_or_libexec(self):
         self.elf("lib/devkit/lib/libfoo.so.1", runpath="$ORIGIN")
-        self.assertIn("runtime ELF in development prefix", self.check().stderr)
+        self.elf("lib/devkit/libexec/foo/bin/helper", runpath="$ORIGIN/../../../lib")
+        self.assertEqual(self.check().returncode, 0, self.check().stderr)
+        self.elf("lib/devkit/include/metadata/probe", runpath="$ORIGIN")
+        self.assertIn("runtime ELF in metadata directory", self.check().stderr)
+
+    def test_public_soname_aliases_are_only_allowed_for_dirty(self):
+        runtime = self.elf("lib/devkit/lib/libfoo.so.1", runpath="$ORIGIN")
+        alias = self.prefix / "lib/libfoo.so.1"
+        alias.symlink_to("devkit/lib/libfoo.so.1")
+        self.assertIn("public runtime library", self.check().stderr)
+        self.assertEqual(
+            AUDIT.check_prefix(self.prefix, allow_seed_runtime_aliases=True), []
+        )
+        alias.unlink()
+        shutil.copyfile(runtime, alias)
+        self.assertTrue(
+            any(
+                "public runtime library" in e
+                for e in AUDIT.check_prefix(
+                    self.prefix, allow_seed_runtime_aliases=True
+                )
+            )
+        )
 
     def test_sysroot_and_archived_inputs_do_not_exempt_runtime_payload(self):
         for name in (

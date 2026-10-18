@@ -1,5 +1,9 @@
 # Per-package development-prefix review
 
+Historical record: the native private install-directory experiment supersedes
+the layout policy below. See [development-layout.md](development-layout.md) and
+[native-private-install-dirs.md](native-private-install-dirs.md).
+
 The subsequent maintainer-style review of the remaining 46 recipes, accepted
 installation-patch tradeoffs and pending behavior changes is recorded in
 [recipe-review.md](recipe-review.md).

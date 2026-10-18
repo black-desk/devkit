@@ -14,7 +14,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 8
+  number: 9
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -45,25 +45,25 @@ requirements:
 
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package libcxx
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libcxx ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
   - package_contents:
       files:
-        - lib/libc++.so.1
-        - lib/libc++abi.so.1
+        - lib/devkit/lib/libc++.so.1
+        - lib/devkit/lib/libc++abi.so.1
         - lib/devkit/include/libcxx-${{ version }}/c++/v1/iostream
   - script:
       - >-
         "${PREFIX}/bin/clang++" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg"
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg"
         --unwindlib=none -O2 -std=c++20 -nostdlib++
         tests/runtime.cpp -lc++ -lc++abi -lgcc_s -ldl -pthread
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib"
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib"
         -o libcxx-probe
-      - readelf -d "${PREFIX}/lib/libc++.so.1" | grep -F '(RUNPATH)'
-      - readelf -d "${PREFIX}/lib/libc++abi.so.1" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libc++.so.1" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libc++abi.so.1" | grep -F '(RUNPATH)'
       - ./libcxx-probe "${PREFIX}"
     requirements:
       run:

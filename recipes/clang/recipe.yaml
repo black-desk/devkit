@@ -12,14 +12,14 @@ source:
     sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
     patches:
       - patches/compiler-rt-custom-libcxx-flags.patch
-      - patches/llvm-config-development-prefix.patch
+      - patches/llvm-config-private-helper.patch
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 8
+  number: 9
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -58,7 +58,7 @@ requirements:
 
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package clang
+      - python3 devkit-build/check-package.py "${PREFIX}" --package clang ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -76,50 +76,51 @@ tests:
       files:
         - bin/clang.cfg
         - bin/clang++.cfg
-        - lib/linux/libclang_rt.asan-x86_64.a
-        - lib/linux/libclang_rt.profile-x86_64.a
-        - lib/linux/libclang_rt.fuzzer-x86_64.a
-        - lib/linux/libclang_rt.xray-x86_64.a
-        - lib/linux/liborc_rt-x86_64.a
-        - lib/clang/23/include/sanitizer/asan_interface.h
-        - share/devkit/clang.cfg
-        - share/devkit/finalize-elf.py
+        - lib/devkit/lib/linux/libclang_rt.asan-x86_64.a
+        - lib/devkit/lib/linux/libclang_rt.profile-x86_64.a
+        - lib/devkit/lib/linux/libclang_rt.fuzzer-x86_64.a
+        - lib/devkit/lib/linux/libclang_rt.xray-x86_64.a
+        - lib/devkit/lib/linux/liborc_rt-x86_64.a
+        - lib/devkit/lib/clang/23/include/sanitizer/asan_interface.h
+        - lib/devkit/libexec/llvm/bin/llvm-config
+        - lib/devkit/share/devkit/clang.cfg
+        - lib/devkit/share/devkit/finalize-elf.py
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - readelf -d "${PREFIX}/bin/clang" | grep -F '(RUNPATH)'
       - clang --version
       - ld.lld --version
       - llvm-ar --version
-      - test "$(llvm-config --includedir)" = "${PREFIX}/lib/devkit/include"
-      - test "$(llvm-config --libdir)" = "${PREFIX}/lib/devkit/lib"
-      - test "$(llvm-config --cmakedir)" = "${PREFIX}/lib/devkit/lib/cmake/llvm"
+      - test "$("${PREFIX}/lib/devkit/libexec/llvm/bin/llvm-config" --includedir)" = "${PREFIX}/lib/devkit/include"
+      - test "$("${PREFIX}/lib/devkit/libexec/llvm/bin/llvm-config" --libdir)" = "${PREFIX}/lib/devkit/lib"
+      - test "$("${PREFIX}/lib/devkit/libexec/llvm/bin/llvm-config" --cmakedir)" = "${PREFIX}/lib/devkit/lib/cmake/llvm"
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - >-
         "${PREFIX}/bin/clang++" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
         -fsanitize=address,undefined tests/runtime.cpp -lgcc_s
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o runtime-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o runtime-probe
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
         -fsanitize=address tests/asan-error.c -lgcc_s
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o asan-error-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o asan-error-probe
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
         -stdlib=libc++ -fsanitize=fuzzer tests/fuzzer.c -lgcc_s
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o fuzzer-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o fuzzer-probe
       - >-
         "${PREFIX}/bin/clang++" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
         -fprofile-instr-generate -fcoverage-mapping tests/runtime.cpp -lgcc_s
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o profile-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o profile-probe
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" --unwindlib=none -O2 -fPIC
         -stdlib=libc++ -fxray-instrument tests/xray.c -lgcc_s
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o xray-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o xray-probe
       - ./runtime-probe
       - if ./asan-error-probe >asan.log 2>&1; then exit 1; fi
       - grep -F 'AddressSanitizer' asan.log

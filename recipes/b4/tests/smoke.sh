@@ -15,8 +15,8 @@ export UV_TOOL_BIN_DIR="${PWD}/user-bin"
 
 b4 --version | grep -F 0.16.0
 b4 --help
-"${PREFIX}/share/devkit/python-tools/b4/bin/python" -I tests/runtime.py
-uv tool list > user-tools.txt
+"${PREFIX}/lib/devkit/share/devkit/python-tools/b4/bin/python" -I tests/runtime.py
+uv tool list >user-tools.txt
 test ! -s user-tools.txt
 b4 --version
 
@@ -27,12 +27,12 @@ git config user.email 'devkit@example.invalid'
 git config commit.gpgsign false
 git config b4.attestation-policy off
 git config b4.checkmarks plain
-printf 'before\n' > example.txt
+printf 'before\n' >example.txt
 git add example.txt
 git commit --quiet -m 'Initial commit'
-printf 'after\n' > example.txt
+printf 'after\n' >example.txt
 git commit --quiet -am 'Update example'
-git format-patch -1 --stdout --add-header="Message-ID: <devkit-b4-test@example.invalid>" > ../input.mbx
+git format-patch -1 --stdout --add-header="Message-ID: <devkit-b4-test@example.invalid>" >../input.mbx
 git reset --hard HEAD~1
 # Local input and disabled network-dependent enrichments keep this test offline.
 b4 --offline-mode --no-interactive --no-stdin am --no-parent --no-cover --no-cache \

@@ -15,7 +15,7 @@ if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
   test -d "${GCC_INSTALL}"
   COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${GCC_INSTALL} -O2 -fPIC"
 else
-  COMMON_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg -O2 -fPIC"
+  COMMON_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg -O2 -fPIC"
 fi
 test -x "${CC}"
 test -x "${CXX}"
@@ -23,22 +23,16 @@ test -x "${CXX}"
 LINKER="${BUILD_PREFIX}/bin/ld.lld"
 test -x "${LINKER}"
 LINK_FLAGS="--ld-path=${LINKER} --rtlib=compiler-rt --unwindlib=none -Wl,-rpath-link,${SYSROOT}/lib64"
-if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
-  # TODO: Remove once LLVM-libgcc exports the GCC_4.3.0 versions of __eqtf2,
-  # __getf2, __letf2, __unordtf2, __extendxftf2 and __trunctfxf2. Seed GNU
-  # libstdc++ references these versions; LLVM currently exports the functions
-  # unversioned. glibc's fallback resolves them, but LLD rejects the shared
-  # library references. Limit the relaxation to this GNU-libstdc++ bootstrap;
-  # result/self-host builds and normal libc++ recipes keep the strict check.
-  LINK_FLAGS+=" -Wl,--allow-shlib-undefined"
-fi
 
 cmake -S "${SRC_DIR}/llvm-libgcc" -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_INSTALL_DATAROOTDIR=lib/devkit/share \
+  -DCMAKE_INSTALL_LIBEXECDIR=lib/devkit/libexec \
+  -DCMAKE_INSTALL_LIBDIR=lib/devkit/lib \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib/devkit/lib" \
   -DCMAKE_INSTALL_RPATH='$ORIGIN' \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
@@ -59,6 +53,8 @@ cmake -S "${SRC_DIR}/llvm-libgcc" -B build -G Ninja \
   -DCMAKE_EXE_LINKER_FLAGS="${LINK_FLAGS}" \
   -DCMAKE_SHARED_LINKER_FLAGS="${LINK_FLAGS}" \
   -DCMAKE_MODULE_LINKER_FLAGS="${LINK_FLAGS}" \
+  -DLLVM_LIBGCC_INSTALL_LIBRARY_DIR:STRING=lib/devkit/lib \
+  -DLIBUNWIND_INSTALL_LIBRARY_DIR=lib/devkit/lib \
   -DLLVM_LIBGCC_EXPLICIT_OPT_IN=Yes \
   -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF \
   -DCOMPILER_RT_DEFAULT_TARGET_ONLY=ON \
@@ -76,5 +72,10 @@ cmake --install build --component llvm-libgcc
 cmake --install build --component clang_rt.crtbegin-x86_64
 cmake --install build --component clang_rt.crtend-x86_64
 cmake --install build --component unwind-headers
-# Keep development layout handling in this recipe until channel coverage is complete.
-python3 "${RECIPE_DIR}/relocate-development.py"
+
+# Compiler-rt's CRT component uses its own resource directory, not LLVM-libgcc's
+# library-directory option. Keep these two objects beside the installed builtins.
+mkdir -p "${PREFIX}/lib/devkit/lib/linux"
+for object in clang_rt.crtbegin-x86_64.o clang_rt.crtend-x86_64.o; do
+  mv "${PREFIX}/lib/linux/${object}" "${PREFIX}/lib/devkit/lib/linux/"
+done

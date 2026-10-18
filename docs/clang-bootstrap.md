@@ -1,5 +1,10 @@
 # Clang bootstrap experiment
 
+Installation layout update: LLVM-libgcc now uses a private runtime directory.
+Seed GNU libgcc can coexist, so the dirty libgcc meta and its variant generator
+are removed. The earlier substitution rationale below is historical; see
+[development-layout.md](development-layout.md#bootstrap-compatibility).
+
 This branch is migrating the Linux toolchain to Clang. The stage driver and
 recipe scripts now use the expanded LLVM bootstrap closure. Full self-hosting
 and all ordinary package builds are still under validation; do not treat this

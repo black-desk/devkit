@@ -50,7 +50,9 @@ CONDA_PKGS_DIRS="$tmp/pkgs" mamba create --yes --prefix "$tmp/prefix" \
 bash "$ROOT/scripts/check-clang-policy.sh" "$tmp/prefix"
 bash "$ROOT/scripts/check-clang-channel.sh" "$tmp/prefix"
 python3 "$ROOT/scripts/check-glibc-baseline.py" "$tmp/prefix"
-python3 "$ROOT/scripts/check-development-layout.py" "$tmp/prefix"
+layout_args=()
+[[ "${CHANNEL##*/}" != dirty ]] || layout_args+=(--allow-seed-runtime-aliases)
+python3 "$ROOT/scripts/check-development-layout.py" "$tmp/prefix" "${layout_args[@]}"
 for executable in cmake ninja make perl pkgconf openssl; do
   case "$executable" in
     openssl) "$tmp/prefix/bin/openssl" version ;;

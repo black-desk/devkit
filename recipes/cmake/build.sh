@@ -20,7 +20,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -41,7 +41,7 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 # ncurses form.h includes <ncurses/curses.h>, while CMake also includes
@@ -53,20 +53,25 @@ export PKG_CONFIG="${BUILD_PREFIX}/bin/pkgconf"
 export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH
 # CMake itself defaults BUILD_WITH_INSTALL_RPATH to ON. Keep the build-tree
-# tools on public input libraries; native installation writes relative paths.
+# tools on private input libraries; native installation writes relative paths.
 # Use the previous-stage CMake, like the forge recipe. "System" libraries here
 # mean explicit channel host inputs, confined to PREFIX and the glibc sysroot.
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_WITH_INSTALL_RPATH=OFF \
+  -DCMAKE_DATA_DIR=share/cmake-3.31 \
+  -DCMAKE_DOC_DIR=lib/devkit/share/doc/cmake-3.31 \
+  -DCMAKE_MAN_DIR=lib/devkit/share/man \
+  -DCMAKE_INFO_DIR=lib/devkit/share/info \
+  -DCMAKE_XDGDATA_DIR=lib/devkit/share \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib/devkit/lib" \
   -DCMAKE_C_COMPILER="${CC}" -DCMAKE_CXX_COMPILER="${CXX}" \
   -DCMAKE_C_FLAGS="${CFLAGS}" -DCMAKE_CXX_FLAGS="${CXXFLAGS}" \
   -DCMAKE_AR="${AR}" -DCMAKE_RANLIB="${RANLIB}" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" \
-  '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib' \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN/../lib/devkit/lib' \
   -DCMAKE_USE_SYSTEM_LIBRARIES=ON -DCMAKE_USE_SYSTEM_LIBARCHIVE=ON \
   -DCMAKE_USE_SYSTEM_JSONCPP=ON -DCMAKE_USE_SYSTEM_CPPDAP=ON \
   -DCMake_ENABLE_DEBUGGER=ON -DBUILD_CursesDialog=ON -DBUILD_QtDialog=OFF \

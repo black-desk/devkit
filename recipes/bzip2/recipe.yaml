@@ -13,7 +13,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -42,7 +42,7 @@ requirements:
     - __glibc >=2.28
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package bzip2
+      - python3 devkit-build/check-package.py "${PREFIX}" --package bzip2 ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -56,9 +56,9 @@ tests:
         - lib/devkit/include/bzip2-${{ version }}/bzlib.h
         - lib/devkit/lib/libbz2.a
         - lib/devkit/lib/libbz2.so
-        - lib/libbz2.so.1.0
-        - lib/libbz2.so.1.0.8
-        - share/man/man1/bzip2.1
+        - lib/devkit/lib/libbz2.so.1.0
+        - lib/devkit/lib/libbz2.so.1.0.8
+        - lib/devkit/share/man/man1/bzip2.1
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - printf 'bootstrap bzip2 roundtrip\n' > original
@@ -68,7 +68,7 @@ tests:
       - cmp original restored
       - bunzip2 -c original.bz2 > restored-again
       - cmp original restored-again
-      - readelf -d "${PREFIX}/lib/libbz2.so.1.0" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/libbz2.so.1.0" | grep -F '(RUNPATH)'
       - test ! -e "${PREFIX}/include/bzlib.h"
 about:
   homepage: https://sourceware.org/bzip2/

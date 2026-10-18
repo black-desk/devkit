@@ -15,17 +15,20 @@ if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
 else
   # Building libc++ itself must not inherit clang.cfg's installed libc++
   # include path: C wrapper include_next would select the old wrappers.
-  COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-toolchain=${BUILD_PREFIX}/share/devkit/no-gcc -O2 -fPIC --rtlib=compiler-rt"
+  COMMON_FLAGS="--no-default-config --sysroot=${SYSROOT} --gcc-toolchain=${BUILD_PREFIX}/lib/devkit/share/devkit/no-gcc -O2 -fPIC --rtlib=compiler-rt"
 fi
 COMMON_FLAGS="--start-no-unused-arguments ${COMMON_FLAGS} --end-no-unused-arguments"
-LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64"
+LINK_FLAGS="--ld-path=${BUILD_PREFIX}/bin/ld.lld --unwindlib=none -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${SYSROOT}/lib64"
 
 cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_INSTALL_DATAROOTDIR=lib/devkit/share \
+  -DCMAKE_INSTALL_LIBEXECDIR=lib/devkit/libexec \
+  -DCMAKE_INSTALL_LIBDIR=lib/devkit/lib \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib/devkit/lib" \
   '-DCMAKE_INSTALL_RPATH=$ORIGIN' \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_CXX_COMPILER="${CXX}" \
@@ -44,6 +47,9 @@ cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
   -DCMAKE_MODULE_LINKER_FLAGS="${LINK_FLAGS}" \
   -DLLVM_ENABLE_RUNTIMES="libcxx;libcxxabi" \
   -DLLVM_ENABLE_PER_TARGET_RUNTIME_DIR=OFF \
+  -DLIBCXX_INSTALL_LIBRARY_DIR=lib/devkit/lib \
+  -DLIBCXX_INSTALL_MODULES_DIR=lib/devkit/share/libc++/v1 \
+  -DLIBCXXABI_INSTALL_LIBRARY_DIR=lib/devkit/lib \
   -DLIBCXX_INSTALL_INCLUDE_DIR="lib/devkit/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
   -DLIBCXXABI_INSTALL_INCLUDE_DIR="lib/devkit/include/libcxx-${LIBCXX_VERSION}/c++/v1" \
   -DLIBCXX_INCLUDE_TESTS=OFF \
@@ -58,5 +64,10 @@ cmake -S "${SRC_DIR}/runtimes" -B build -G Ninja \
 cmake --build build --parallel "${CPU_COUNT}"
 cmake --install build
 
-# Keep development layout handling in this recipe until channel coverage is complete.
-python3 "${RECIPE_DIR}/relocate-development.py"
+# Seed tools can load dirty ICU through its public SONAME alias, so its C++
+# dependencies need matching aliases until the entire dirty stage is complete.
+if [[ "${SYSROOT_TRIPLET}" == x86_64-conda-linux-gnu ]]; then
+  for library in libc++.so.1 libc++abi.so.1; do
+    ln -sfn "devkit/lib/${library}" "${PREFIX}/lib/${library}"
+  done
+fi

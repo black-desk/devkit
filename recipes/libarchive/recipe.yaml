@@ -11,7 +11,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -61,7 +61,7 @@ requirements:
     - lzo >=2.10,<3
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package libarchive
+      - python3 devkit-build/check-package.py "${PREFIX}" --package libarchive ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -74,26 +74,26 @@ tests:
       files:
         - lib/devkit/include/libarchive-${{ version }}/*.h
         - lib/devkit/lib/libarchive.so
-        - lib/libarchive.so.*
+        - lib/devkit/lib/libarchive.so.*
         - lib/devkit/lib/libarchive.a
         - lib/devkit/lib/pkgconfig/libarchive.pc
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" -O2 -fPIC
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" -O2 -fPIC
         -I"${PREFIX}/lib/devkit/include/libarchive-${{ version }}"
         tests/probe.c "${PREFIX}/lib/devkit/lib/libarchive.so"
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o library-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o library-probe
       - ./library-probe
       - export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
       - static_libs="$(pkgconf --static --libs libarchive)"
       - static_libs="${static_libs/-larchive/${PREFIX}/lib/devkit/lib/libarchive.a}"
       - >-
         "${PREFIX}/bin/clang" --no-default-config
-        --config="${PREFIX}/share/devkit/clang.cfg" -O2
+        --config="${PREFIX}/lib/devkit/share/devkit/clang.cfg" -O2
         $(pkgconf --cflags libarchive) tests/probe.c ${static_libs}
-        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib" -o static-probe
+        "-Wl,--enable-new-dtags,-rpath,${PREFIX}/lib/devkit/lib" -o static-probe
       - ./static-probe
       - >-
         if readelf -d static-probe | grep -F 'Shared library: [libarchive.so';
