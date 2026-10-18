@@ -15,7 +15,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -40,7 +40,7 @@ requirements:
     - sysroot_linux-64
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package make
+      - python3 devkit-build/check-package.py "${PREFIX}" --package make ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py

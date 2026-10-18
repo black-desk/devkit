@@ -30,7 +30,7 @@ Keep build-time Config modules and generic installer copying unchanged.
 +    if ($devkit_dir) {
 +        my $build = $ENV{BUILD_PREFIX} or die "missing BUILD_PREFIX";
 +        my $flags = $ENV{DEVKIT_FLAGS} or die "missing DEVKIT_FLAGS";
-+        my $canonical = "--no-default-config --config=$build/share/devkit/clang.cfg";
++        my $canonical = "--no-default-config --config=$build/lib/devkit/share/devkit/clang.cfg";
 +        $val =~ s/\Q$flags\E/$canonical/g;
 +        $val =~ s!/bin/clang-23!/bin/clang!g;
 +        $val =~ s!x86_64-conda-linux-gnu/sysroot!x86_64-pc-linux-gnu/sysroot!g;

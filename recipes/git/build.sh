@@ -6,7 +6,7 @@ set -euxo pipefail
 export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
 export CC="${BUILD_PREFIX}/bin/clang"
 export CXX="${BUILD_PREFIX}/bin/clang++"
-DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
 export NM="${BUILD_PREFIX}/bin/llvm-nm"
@@ -19,16 +19,16 @@ export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 export CXXFLAGS="${CFLAGS}"
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
-export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib/devkit/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib/devkit/lib"
 # Only upstream rustup/toolchain subprocesses receive this preload.
 # Installed channel applications use their linked RUNPATH instead.
 devkit_rustup() {
-  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/libgcc_s.so.1" \
+  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/devkit/lib/libgcc_s.so.1" \
     "${BUILD_PREFIX}/bin/rustup" "$@"
 }
 
@@ -44,14 +44,14 @@ test -x "${BUILD_PREFIX}/bin/make"
 test -x "${BUILD_PREFIX}/bin/perl"
 test -x "${BUILD_PREFIX}/bin/pkg-config"
 test -x "${BUILD_PREFIX}/bin/rustup"
-test -f "${BUILD_PREFIX}/share/rust-toolchain/version"
+test -f "${BUILD_PREFIX}/lib/devkit/share/rust-toolchain/version"
 
 test -d "${SYSROOT}"
 
-CURL_CONFIG="${PREFIX}/libexec/curl/bin/curl-config"
+CURL_CONFIG="${PREFIX}/lib/devkit/libexec/curl/bin/curl-config"
 test -x "${CURL_CONFIG}"
 
-RUST_TOOLCHAIN="$(cat "${BUILD_PREFIX}/share/rust-toolchain/version")"
+RUST_TOOLCHAIN="$(cat "${BUILD_PREFIX}/lib/devkit/share/rust-toolchain/version")"
 test "${RUST_TOOLCHAIN}" = 1.98.1
 
 for include in \
@@ -119,9 +119,10 @@ ${PREFIX}/lib/devkit/lib/libcrypto.so \
 cat >config.mak <<EOF
 prefix = ${PREFIX}
 bindir = ${PREFIX}/bin
-gitexecdir = libexec/git-core
-template_dir = share/git-core/templates
-sysconfdir = etc
+sharedir = ${PREFIX}/lib/devkit/share
+gitexecdir = lib/devkit/libexec/git-core
+template_dir = lib/devkit/share/git-core/templates
+sysconfdir = lib/devkit/etc
 RUNTIME_PREFIX = YesPlease
 INSTALL_SYMLINKS = YesPlease
 CC = ${CC}
@@ -130,7 +131,7 @@ STRIP = ${STRIP}
 CFLAGS = ${CFLAGS}
 # Git installs bin programs as symlink targets for their git-core aliases.
 # Select RUNPATH at link time using upstream's list of bin programs.
-DEVKIT_RUNPATH = \$(if \$(filter \$@,\$(addsuffix \$X,\$(BINDIR_PROGRAMS_NEED_X))),../lib,../../lib)
+DEVKIT_RUNPATH = \$(if \$(filter \$@,\$(addsuffix \$X,\$(BINDIR_PROGRAMS_NEED_X))),../lib/devkit/lib,../../lib)
 LDFLAGS = ${LDFLAGS}
 LDFLAGS_APPEND = -Wl,--enable-new-dtags,-rpath,'\$\$ORIGIN/\$(DEVKIT_RUNPATH)'
 PERL_PATH = ${PREFIX}/bin/perl
@@ -162,4 +163,4 @@ rustup_run_make install INSTALL_STRIP=-s \
   OPENSSL_LIBSSL="${OPENSSL_LIBSSL}" \
   LIB_4_CRYPTO="${LIB_4_CRYPTO}"
 make -C contrib/subtree -j"${CPU_COUNT}" install \
-  gitexecdir="${PREFIX}/libexec/git-core"
+  gitexecdir="${PREFIX}/lib/devkit/libexec/git-core"

@@ -11,7 +11,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -32,7 +32,7 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,-rpath,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib -Wl,-rpath,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 unset LD_LIBRARY_PATH LD_PRELOAD ICU_DATA
@@ -40,8 +40,8 @@ export CXXFLAGS="${CXXFLAGS} -std=c++17"
 # ICU runs newly built tools through its upstream loader-environment wrappers.
 # Keep build-tree library paths out of the exported linker configuration.
 export LDFLAGS="${LDFLAGS} -lgcc_s"
-cp "${BUILD_PREFIX}/share/gnuconfig/config.guess" source/config.guess
-cp "${BUILD_PREFIX}/share/gnuconfig/config.sub" source/config.sub
+cp "${BUILD_PREFIX}/lib/devkit/share/gnuconfig/config.guess" source/config.guess
+cp "${BUILD_PREFIX}/lib/devkit/share/gnuconfig/config.sub" source/config.sub
 cd source
 # Rattler-build may export a nonexistent host-prefix interpreter. With the
 # test-data patch, ordinary discovery is harmless and no Python is invoked.
@@ -49,7 +49,12 @@ unset PYTHON
 # This configuration uses the release production data, with tests disabled;
 # skip-disabled-test-data.patch prevents a Python-only test-data dependency.
 # The recipe test runtime probe covers selected APIs, not the ICU suite.
-./configure --prefix="${PREFIX}" --includedir="${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" --disable-samples --disable-extras \
+./configure --prefix="${PREFIX}" \
+  --datarootdir="${PREFIX}/lib/devkit/share" \
+  --libexecdir="${PREFIX}/lib/devkit/libexec" \
+  --sysconfdir="${PREFIX}/lib/devkit/etc" \
+  --localstatedir="${PREFIX}/lib/devkit/var" \
+  --sbindir="${PREFIX}/lib/devkit/sbin" --libdir="${PREFIX}/lib/devkit/lib" --includedir="${PREFIX}/lib/devkit/include/icu-${LIBRARY_VERSION}" --disable-samples --disable-extras \
   --disable-tests
 make -j"${CPU_COUNT}"
 make install \
@@ -59,5 +64,17 @@ make install \
 # channel dependencies without those wrappers.
 # TODO: replace with target-specific upstream install/relink support.
 python3 "${SRC_DIR}/devkit-build/finalize-elf.py" "${PREFIX}"
-# Keep development layout handling in this recipe until channel coverage is complete.
+
+# Native directory options do not cover these consumer-tool details.
 python3 "${RECIPE_DIR}/relocate-development.py"
+
+# Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
+# aliases for them; result/selfhost install exclusively in the private libdir.
+if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
+  for library in "${PREFIX}/lib/devkit/lib/"libicudata.so.* "${PREFIX}/lib/devkit/lib/"libicui18n.so.* "${PREFIX}/lib/devkit/lib/"libicuio.so.* "${PREFIX}/lib/devkit/lib/"libicutest.so.* "${PREFIX}/lib/devkit/lib/"libicutu.so.* "${PREFIX}/lib/devkit/lib/"libicuuc.so.*; do
+    [[ -f "${library}" ]] || continue
+    soname="$(readelf -d "${library}" | sed -n 's/.*(SONAME).*\[\(.*\)\].*/\1/p')"
+    [[ -n "${soname}" && "${soname}" != */* ]] || continue
+    ln -sfn "devkit/lib/${soname}" "${PREFIX}/lib/${soname}"
+  done
+fi

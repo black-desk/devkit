@@ -19,7 +19,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -70,7 +70,7 @@ requirements:
     - expat ==2.8.5
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package git
+      - python3 devkit-build/check-package.py "${PREFIX}" --package git ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -83,14 +83,14 @@ tests:
         - git-upload-archive
         - git-upload-pack
       files:
-        - libexec/git-core/git-send-email
-        - libexec/git-core/git-svn
-        - libexec/git-core/git-subtree
-        - libexec/git-core/git-remote-http
-        - libexec/git-core/git-http-fetch
-        - libexec/git-core/git-http-push
-        - share/perl5/Git.pm
-        - share/git-core/templates/hooks/pre-commit.sample
+        - lib/devkit/libexec/git-core/git-send-email
+        - lib/devkit/libexec/git-core/git-svn
+        - lib/devkit/libexec/git-core/git-subtree
+        - lib/devkit/libexec/git-core/git-remote-http
+        - lib/devkit/libexec/git-core/git-http-fetch
+        - lib/devkit/libexec/git-core/git-http-push
+        - lib/devkit/share/perl5/Git.pm
+        - lib/devkit/share/git-core/templates/hooks/pre-commit.sample
 
   - script:
       - test "$(command -v git)" = "${PREFIX}/bin/git"
@@ -98,7 +98,7 @@ tests:
       - >-
         git version --build-options |
         grep -F 'rust: enabled'
-      - test "$(git --exec-path)" = "${PREFIX}/libexec/git-core"
+      - test "$(git --exec-path)" = "${PREFIX}/lib/devkit/libexec/git-core"
       - export GIT_AUTHOR_NAME=devkit
       - export GIT_AUTHOR_EMAIL=devkit@example.invalid
       - export GIT_COMMITTER_NAME=devkit
@@ -129,7 +129,7 @@ tests:
       - >-
         if git http-fetch >http-fetch.txt 2>&1; then exit 1;
         else test "$?" -eq 129; fi
-      - git_dependencies="$(ldd "${PREFIX}/libexec/git-core/git-remote-http")"
+      - git_dependencies="$(ldd "${PREFIX}/lib/devkit/libexec/git-core/git-remote-http")"
       - >-
         echo "$git_dependencies" | grep -F 'libcurl.so.4 =>' |
         grep -F "${PREFIX}/"
@@ -142,7 +142,7 @@ tests:
       - >-
         echo "$git_dependencies" | grep -F 'libz.so.1 =>' |
         grep -F "${PREFIX}/"
-      - http_push_dependencies="$(ldd "${PREFIX}/libexec/git-core/git-http-push")"
+      - http_push_dependencies="$(ldd "${PREFIX}/lib/devkit/libexec/git-core/git-http-push")"
       - >-
         echo "$http_push_dependencies" | grep -F 'libexpat.so.1 =>' |
         grep -F "${PREFIX}/"

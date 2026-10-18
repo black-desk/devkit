@@ -3,7 +3,7 @@ set -euxo pipefail
 unset LD_LIBRARY_PATH LD_PRELOAD
 export PKG_CONFIG_LIBDIR="${PREFIX}/lib/devkit/lib/pkgconfig"
 unset PKG_CONFIG_PATH
-flags="--no-default-config --config=${PREFIX}/share/devkit/clang.cfg"
+flags="--no-default-config --config=${PREFIX}/lib/devkit/share/devkit/clang.cfg"
 for linkage in shared static; do
   static=OFF
   [[ "$linkage" != static ]] || static=ON
@@ -12,7 +12,7 @@ for linkage in shared static; do
     -DCMAKE_C_FLAGS="${flags}" \
     -DCMAKE_EXE_LINKER_FLAGS="${flags}" \
     -DCMAKE_BUILD_WITH_INSTALL_RPATH=ON \
-    -DCMAKE_INSTALL_RPATH="${PREFIX}/lib" \
+    -DCMAKE_INSTALL_RPATH="${PREFIX}/lib/devkit/lib" \
     -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
     -DPCRE2_DIR="${PREFIX}/lib/devkit/lib/cmake/pcre2" \
     -DPCRE2_USE_STATIC_LIBS="${static}"

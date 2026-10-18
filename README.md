@@ -38,10 +38,12 @@ provides the `libgcc_s.so.1` interface with LLVM sources.
 LLD 23.1.2, CMake, Ninja, gettext-tools 0.25.1, GNU runtime/development files,
 Perl 5.44.0, libxcrypt 4.4.38, and the glibc 2.28 sysroot. There is no GCC
 compiler or GNU binutils in the seed. Dirty builds prefer dirty packages and
-fall back to seed in both environments. Dirty-only libgcc and library meta
-aliases resolve the observed mixed GNU/LLVM and seed-library file overlaps.
-Rebuilding the complete tool dependency closure is intended to make result
-independent of seed.
+fall back to seed in both environments. Dirty-only runtime SONAME links keep
+seed tools working with private channel libraries. GNU libgcc stays in seed
+public lib, while LLVM-libgcc uses the private library directory; no libgcc meta
+replacement is needed. Library meta aliases retain conda-forge split-package
+dependency interfaces. Rebuilding the complete tool dependency closure is
+intended to make result independent of seed.
 
 `tzdata` is an explicitly retained data-only seed exception. Its permanent
 status or replacement remains a release decision.
@@ -103,19 +105,19 @@ interpreter and sysconfig paths, native standard library modules, virtual
 environments with pip, and offline uv tool installation.
 
 The `b4` recipe packages b4 0.16.0 as the first private Python tool environment.
-It installs offline with uv 0.12.22 under `share/devkit/python-tools/b4`, with a
-relative `bin/b4` symlink and exact Python 3.14.8 runtime dependency. Git is
-also a runtime dependency. All 15 runtime distributions and the setuptools
-84.0.0 build backend are pinned; Rattler-Build verifies each input's SHA-256
-before uv runs. Only dkimpy 1.1.8 comes from an sdist: setuptools packages its
-Python files without a native compiler. Other inputs use upstream wheels,
-including the native pygit2, PyNaCl, CFFI, and charset-normalizer extensions.
-Their bundled libraries and relative RPATHs are retained, with a glibc 2.28
-minimum. Tests cover relocated interpreter/receipt paths, dependency versions,
-native Git and signing operations, isolation from normal uv tool management, and
-an offline `git format-patch` → `b4 am` → `git am` workflow. Optional
-completion/TUI extras, OpenPGP via GnuPG, and git-bug integration are not
-included.
+It installs offline with uv 0.12.22 under
+`lib/devkit/share/devkit/python-tools/b4`, with a relative `bin/b4` symlink and
+exact Python 3.14.8 runtime dependency. Git is also a runtime dependency. All 15
+runtime distributions and the setuptools 84.0.0 build backend are pinned;
+Rattler-Build verifies each input's SHA-256 before uv runs. Only dkimpy 1.1.8
+comes from an sdist: setuptools packages its Python files without a native
+compiler. Other inputs use upstream wheels, including the native pygit2, PyNaCl,
+CFFI, and charset-normalizer extensions. Their bundled libraries and relative
+RPATHs are retained, with a glibc 2.28 minimum. Tests cover relocated
+interpreter/receipt paths, dependency versions, native Git and signing
+operations, isolation from normal uv tool management, and an offline
+`git format-patch` → `b4 am` → `git am` workflow. Optional completion/TUI
+extras, OpenPGP via GnuPG, and git-bug integration are not included.
 
 The first independent Git dependencies are packaged as ordinary C libraries with
 isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
@@ -457,9 +459,9 @@ build-local state:
 ```bash
 export CC="${BUILD_PREFIX}/bin/clang"
 export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
-export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib/devkit/lib -C link-arg=-Wl,-rpath,${PREFIX}/lib/devkit/lib"
 devkit_rustup() {
-  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/libgcc_s.so.1" \
+  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/devkit/lib/libgcc_s.so.1" \
     "${BUILD_PREFIX}/bin/rustup" "$@"
 }
 
@@ -553,7 +555,7 @@ follows this pattern:
 export UV_CACHE_DIR="${SRC_DIR}/.uv-cache"
 export UV_NO_CONFIG=1
 export UV_PYTHON_DOWNLOADS=never
-export UV_TOOL_DIR="${PREFIX}/share/devkit/python-tools"
+export UV_TOOL_DIR="${PREFIX}/lib/devkit/share/devkit/python-tools"
 export UV_TOOL_BIN_DIR="${PREFIX}/bin"
 
 uv tool install \
@@ -610,9 +612,9 @@ assumes a shared include directory, the recipe overrides the install path or
 patches that metadata. In particular:
 
 - pkg-config `Cflags` must point at the version-specific include root.
-- pkg-config `Libs` and `Libs.private` must use exact library paths, such as
-  `${libdir}/libfoo.so`, rather than exposing `${libdir}` through a broad
-  `-L${libdir}` plus an unqualified `-lfoo`.
+- Preserve upstream-generated `Libs`, `Libs.private`, `Requires` and
+  `Requires.private`. Native `-L${libdir} -lfoo` output is supported; libdir
+  points into the private installation directory.
 - pkg-config `Requires` and `Requires.private` must preserve transitive public
   header dependencies.
 - exported CMake include paths and imported-target interface directories must
@@ -630,25 +632,24 @@ from the build host or the Pixi orchestration environment.
 Corrected `foo-config` helpers install below:
 
 ```text
-${PREFIX}/libexec/<package>/bin/
+${PREFIX}/lib/devkit/libexec/<package>/bin/
 ```
 
-They must not install into `${PREFIX}/bin`. Corrections are made in upstream's
-generated-source template whenever practical—for example, an Autotools
-`foo-config.in`—so the upstream command-line interface and future options remain
-intact. The helper emits the version-specific include root and exact
-library-file paths, not a generic `-I${PREFIX}/include`, `-L${PREFIX}/lib`, or
-unqualified `-lfoo`.
+They must not install into `${PREFIX}/bin`. Use native directory options where
+available, with recipe-local installation adjustments where needed. Preserve the
+upstream command-line interface and generated dependency lists. Query output
+names the private library directory and versioned include roots.
 
 Downstream recipes do not put these helpers on the public `PATH`. A recipe that
 cannot use pkg-config refers to the helper directly—for example,
-`${PREFIX}/libexec/pcre2/bin/pcre2-config`—or prepends only that package's
-private helper directory inside its own build script. Activation scripts must
-not expose these directories globally.
+`${PREFIX}/lib/devkit/libexec/pcre2/bin/pcre2-config`—or prepends only that
+package's private helper directory inside its own build script. Activation
+scripts must not expose these directories globally.
 
-Shared objects and their unversioned development symlinks remain under the
-conventional `${PREFIX}/lib` layout with upstream SONAMEs. C library recipes
-also declare appropriate ABI `run_exports`, and downstream recipes use direct
+Shared objects, archives and their development links install together under
+`${PREFIX}/lib/devkit/lib`, preserving upstream SONAMEs. Only dirty provides
+public SONAME compatibility aliases for seed tools. C library recipes also
+declare appropriate ABI `run_exports`, and downstream recipes use direct
 dependency specifications rather than expanding a solved closure into their
 metadata.
 
@@ -665,10 +666,11 @@ The compiler's internal headers and `sysroot_linux-64` are exceptions to this
 layout: they implement the compiler/sysroot interface rather than ordinary
 channel libraries.
 
-Development archives, linker interfaces and metadata live under
-`${PREFIX}/lib/devkit`; runtime libraries and modules remain under
-`${PREFIX}/lib`. See
-[the development layout policy](docs/development-layout.md).
+All configurable directories apart from public `bin` use `lib/devkit`, including
+runtime libraries and modules. CMake modules remain in public `share/cmake-3.31`
+so CMake does not infer the private prefix as a default package search path.
+Imported sysroot and language-runtime internal layouts are deliberate
+exceptions. See [the development layout policy](docs/development-layout.md).
 
 ## Rebuild and release policy
 
@@ -983,22 +985,22 @@ that is independent of the runtime selected for its outputs.
 
 ### Explicit channel-build mode
 
-Channel recipes load `share/devkit/clang.cfg` with `--no-default-config`. It
-selects the Rocky sysroot, LLD, libc++, compiler-rt, and the LLVM unwinder. LLD
-is selected by its explicit `--ld-path`, avoiding Clang's deprecated
-absolute-path `-fuse-ld` form and failures in configure probes using `-Werror`.
-`<CFGDIR>`-relative paths make the configuration relocatable. Native recipes
-declare their compiler, LLVM tool paths and build flags directly in each
-recipe's build script. No build/test/Rust environment scripts are installed by
-the compiler package. Bootstrap recipes select the stage's compiler policy and
-sysroot variant. When preparing each fresh seed build environment, the recipe
-creates relative `clang` and `clang++` symlinks to the seed's `clang-23` and
-`clang++-23` commands, so every stage uses the same driver names. These links
-exist only in the temporary build prefix; seed archives and the seed manifest
-remain unchanged. Seed builds explicitly select target libc++ headers. Later
-native stages use the config's single libc++ header root to avoid duplicate C
-wrappers breaking include_next; both prefixes select the same libc++ package
-from the completed input channel.
+Channel recipes load `lib/devkit/share/devkit/clang.cfg` with
+`--no-default-config`. It selects the Rocky sysroot, LLD, libc++, compiler-rt,
+and the LLVM unwinder. LLD is selected by its explicit `--ld-path`, avoiding
+Clang's deprecated absolute-path `-fuse-ld` form and failures in configure
+probes using `-Werror`. `<CFGDIR>`-relative paths make the configuration
+relocatable. Native recipes declare their compiler, LLVM tool paths and build
+flags directly in each recipe's build script. No build/test/Rust environment
+scripts are installed by the compiler package. Bootstrap recipes select the
+stage's compiler policy and sysroot variant. When preparing each fresh seed
+build environment, the recipe creates relative `clang` and `clang++` symlinks to
+the seed's `clang-23` and `clang++-23` commands, so every stage uses the same
+driver names. These links exist only in the temporary build prefix; seed
+archives and the seed manifest remain unchanged. Seed builds explicitly select
+target libc++ headers. Later native stages use the config's single libc++ header
+root to avoid duplicate C wrappers breaking include_next; both prefixes select
+the same libc++ package from the completed input channel.
 
 Public C library headers remain version-isolated. Ordinary library interfaces
 are passed through exact pkg-config output or exact header/library paths. The
@@ -1057,22 +1059,10 @@ For individual experiments use `rattler-build build --no-config`, the dirty or
 result variant file, and explicit local channels. Dirty uses dirty then seed;
 result uses completed dirty only; the final rebuild uses completed result only.
 Index each output before a dependent build and avoid stale generation archives.
-For the dirty LLVM-libgcc recipe, also pass the seed-derived variant:
-
-```bash
-mkdir -p output/bootstrap
-python3 scripts/seed-libgcc-variant.py > output/bootstrap/seed-libgcc-variant.yaml
-# Add both --variant-config variants/dirty.yaml and
-# --variant-config output/bootstrap/seed-libgcc-variant.yaml to the build.
-```
-
-The bootstrap driver generates this file automatically after seed verification.
-The compatibility experiment replaces GNU libgcc with the file-free meta
-interface and retains seed GNU libstdcxx. Seed runtime probes pass, but linking
-new GNU-libstdc++ programs exposes six missing GCC_4.3.0 quad-precision symbols.
-Only the dirty LLVM-libgcc build permits those unresolved seed-library
-references; result and self-host builds retain strict linking and use channel
-libc++. The focused check is
+Seed GNU libgcc remains public while LLVM-libgcc installs privately. No
+seed-derived libgcc variant or replacement meta package is needed. Dirty
+libraries supply public SONAME compatibility links for seed tools; result and
+selfhost omit those links. The focused seed runtime check is
 `bash scripts/check-seed-llvm-runtime.sh INSTALL_PREFIX`.
 
 After installing a complete compiler/runtime/sysroot environment, run:

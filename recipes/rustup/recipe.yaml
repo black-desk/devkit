@@ -20,7 +20,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -40,7 +40,7 @@ requirements:
 tests:
   # Imported upstream binaries retain their own runtime search-path policy.
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package rustup --skip-runpath-check
+      - python3 devkit-build/check-package.py "${PREFIX}" --package rustup --skip-runpath-check ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -49,8 +49,8 @@ tests:
         - rustup
       files:
         - lib/rustup/${{ version }}/rustup-init
-        - share/rustup/LICENSE-APACHE
-        - share/rustup/LICENSE-MIT
+        - lib/devkit/share/rustup/LICENSE-APACHE
+        - lib/devkit/share/rustup/LICENSE-MIT
 
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD

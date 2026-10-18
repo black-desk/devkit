@@ -1,0 +1,48 @@
+Keep llvm-config off PATH while preserving the environment root as its prefix.
+
+LLVM_LIBDIR_SUFFIX already controls installed library queries and exports; do
+not override those generated directories. The query helper alone is installed
+in private libexec, with its own native install RUNPATH. Build-tree behavior and
+--bindir continue to describe the ordinary public LLVM tools.
+
+TODO: upstream an independent llvm-config install directory with corresponding
+prefix inference, replacing this channel-specific directory recognition.
+
+--- a/llvm/tools/llvm-config/CMakeLists.txt
++++ b/llvm/tools/llvm-config/CMakeLists.txt
+@@ -5,6 +5,10 @@
+ 
+ set(BUILDVARIABLES_SRCPATH ${CMAKE_CURRENT_SOURCE_DIR}/BuildVariables.inc.in)
+ set(BUILDVARIABLES_OBJPATH ${CMAKE_CURRENT_BINARY_DIR}/BuildVariables.inc)
++
++# Keep development queries off the default executable search path.
++set(_devkit_tools_install_dir "${LLVM_TOOLS_INSTALL_DIR}")
++set(LLVM_TOOLS_INSTALL_DIR "lib/devkit/libexec/llvm/bin")
+ 
+ # Add the llvm-config tool.
+ add_llvm_tool(llvm-config
+@@ -16,6 +20,10 @@
+   # for the native `llvm-config`!
+   DISABLE_LLVM_LINK_LLVM_DYLIB
+   )
++
++set(LLVM_TOOLS_INSTALL_DIR "${_devkit_tools_install_dir}")
++set_target_properties(llvm-config PROPERTIES
++  INSTALL_RPATH "$ORIGIN/../../../lib")
+ 
+ # Compute the substitution values for various items.
+ get_property(SUPPORT_SYSTEM_LIBS TARGET LLVMSupport PROPERTY LLVM_SYSTEM_LIBS)
+--- a/llvm/tools/llvm-config/llvm-config.cpp
++++ b/llvm/tools/llvm-config/llvm-config.cpp
+@@ -306,6 +306,11 @@
+   sys::fs::make_absolute(CurrentPath);
+   CurrentExecPrefix =
+       sys::path::parent_path(sys::path::parent_path(CurrentPath)).str();
++
++  // The installed query helper is private; other LLVM tools remain in bin.
++  if (StringRef(CurrentExecPrefix).ends_with("/lib/devkit/libexec/llvm"))
++    for (unsigned I = 0; I != 4; ++I)
++      CurrentExecPrefix = sys::path::parent_path(CurrentExecPrefix).str();
+ 
+   // Check to see if we are inside a development tree by comparing to possible
+   // locations (prefix style or CMake style).

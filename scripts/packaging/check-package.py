@@ -12,6 +12,7 @@ import sys
 PUBLIC_DEVELOPMENT = ("include", "lib/pkgconfig", "lib/cmake", "share/cmake")
 TEST_INPUTS = PurePosixPath("etc/conda/test-files")
 DEVELOPMENT = PurePosixPath("lib/devkit")
+PRIVATE_LIB = DEVELOPMENT / "lib"
 # These are unmodified target-system inputs, not channel-built runtime files.
 SYSROOTS = tuple(
     PurePosixPath(triplet) / "sysroot"
@@ -57,12 +58,18 @@ def runpath_errors(path, prefix, dynamic):
             target = (path.parent / suffix).resolve()
             if not target.is_relative_to(prefix):
                 errors.append(f"runtime search path escapes prefix in {path}: {entry}")
-            elif target.is_relative_to(prefix / str(DEVELOPMENT)):
-                errors.append(f"development runtime search path in {path}: {entry}")
+            elif target.is_relative_to(prefix / str(DEVELOPMENT)) and not (
+                target.is_relative_to(prefix / str(PRIVATE_LIB))
+                or target.is_relative_to(prefix / "lib/devkit/libexec")
+                or target.is_relative_to(prefix / "lib/devkit/sbin")
+            ):
+                errors.append(f"metadata runtime search path in {path}: {entry}")
     return errors
 
 
-def check_prefix(prefix, files=None, *, check_runpath=True):
+def check_prefix(
+    prefix, files=None, *, check_runpath=True, allow_seed_runtime_aliases=False
+):
     prefix = prefix.resolve()
     if files is None:
         files = [
@@ -94,6 +101,14 @@ def check_prefix(prefix, files=None, *, check_runpath=True):
                 relative.suffix == ".so" and path.is_symlink()
             ):
                 errors.append(f"public link-time interface: {path}")
+        if relative.parent == PurePosixPath("lib") and ".so." in relative.name:
+            compatible_alias = (
+                allow_seed_runtime_aliases
+                and path.is_symlink()
+                and path.resolve().is_relative_to(prefix / str(PRIVATE_LIB))
+            )
+            if not compatible_alias:
+                errors.append(f"public runtime library: {path}")
         if path.is_symlink():
             if relative.is_relative_to(DEVELOPMENT):
                 link = os.readlink(path)
@@ -118,8 +133,20 @@ def check_prefix(prefix, files=None, *, check_runpath=True):
         ).stdout
         if check_runpath:
             errors.extend(runpath_errors(path, prefix, dynamic))
-        if relative.is_relative_to(DEVELOPMENT) and "Dynamic section at" in dynamic:
-            errors.append(f"runtime ELF in development prefix: {path}")
+        if (
+            relative.is_relative_to(DEVELOPMENT)
+            and any(
+                relative.is_relative_to(DEVELOPMENT / directory)
+                for directory in (
+                    "include",
+                    "lib/pkgconfig",
+                    "lib/cmake",
+                    "share/cmake",
+                )
+            )
+            and "Dynamic section at" in dynamic
+        ):
+            errors.append(f"runtime ELF in metadata directory: {path}")
     return errors
 
 
@@ -132,11 +159,19 @@ def main():
         action="store_true",
         help="preserve upstream RPATH/RUNPATH for imported binaries; still check layout",
     )
+    parser.add_argument(
+        "--allow-seed-runtime-aliases",
+        action="store_true",
+        help="allow dirty-only public SONAME aliases to private libraries",
+    )
     args = parser.parse_args()
     try:
         files = package_files(args.prefix, args.package) if args.package else None
         errors = check_prefix(
-            args.prefix, files, check_runpath=not args.skip_runpath_check
+            args.prefix,
+            files,
+            check_runpath=not args.skip_runpath_check,
+            allow_seed_runtime_aliases=args.allow_seed_runtime_aliases,
         )
     except (OSError, ValueError, subprocess.CalledProcessError) as exc:
         parser.exit(1, f"package audit failed: {exc}\n")

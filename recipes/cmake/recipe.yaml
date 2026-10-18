@@ -18,7 +18,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 5
+  number: 6
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh
@@ -67,7 +67,7 @@ requirements:
     - liblzma ==5.8.3
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package cmake
+      - python3 devkit-build/check-package.py "${PREFIX}" --package cmake ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -78,7 +78,7 @@ tests:
         - ctest
         - ccmake
       files:
-        - doc/cmake-3.31/Copyright.txt
+        - lib/devkit/share/doc/cmake-3.31/Copyright.txt
 
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
@@ -91,7 +91,7 @@ tests:
       - SYSROOT="${PREFIX}/x86_64-pc-linux-gnu/sysroot"
       - test -d "${SYSROOT}"
       - >-
-        "${PREFIX}/bin/cmake" -S tests -B "${PWD}/build" -G "Unix Makefiles" -D CMAKE_C_COMPILER="${PREFIX}/bin/clang" -D CMAKE_CXX_COMPILER="${PREFIX}/bin/clang++" -D CMAKE_C_FLAGS="--no-default-config --config=${PREFIX}/share/devkit/clang.cfg --sysroot=${SYSROOT} -O2" -D CMAKE_CXX_FLAGS="--no-default-config --config=${PREFIX}/share/devkit/clang.cfg --sysroot=${SYSROOT} -O2" -D CMAKE_EXE_LINKER_FLAGS="--sysroot=${SYSROOT} -Wl,-rpath,${PREFIX}/lib -Wl,-rpath-link,${SYSROOT}/lib64" -D CMAKE_BUILD_TYPE=Release
+        "${PREFIX}/bin/cmake" -S tests -B "${PWD}/build" -G "Unix Makefiles" -D CMAKE_C_COMPILER="${PREFIX}/bin/clang" -D CMAKE_CXX_COMPILER="${PREFIX}/bin/clang++" -D CMAKE_C_FLAGS="--no-default-config --config=${PREFIX}/lib/devkit/share/devkit/clang.cfg --sysroot=${SYSROOT} -O2" -D CMAKE_CXX_FLAGS="--no-default-config --config=${PREFIX}/lib/devkit/share/devkit/clang.cfg --sysroot=${SYSROOT} -O2" -D CMAKE_EXE_LINKER_FLAGS="--sysroot=${SYSROOT} -Wl,-rpath,${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${SYSROOT}/lib64" -D CMAKE_BUILD_TYPE=Release
       - >-
         "${PREFIX}/bin/cmake" --build "${PWD}/build" --parallel "${CPU_COUNT}"
       - test "$(${PWD}/build/devkit-cmake-test)" = "hello-cmake"

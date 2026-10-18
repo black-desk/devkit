@@ -13,7 +13,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 3
+  number: 4
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -42,7 +42,7 @@ requirements:
     - __glibc >=2.28
 tests:
   - script:
-      - python3 devkit-build/check-package.py "${PREFIX}" --package rhash
+      - python3 devkit-build/check-package.py "${PREFIX}" --package rhash ${{ '--allow-seed-runtime-aliases' if sysroot_triplet | default('') == 'x86_64-conda-linux-gnu' else '' }}
     files:
       source:
         - devkit-build/check-package.py
@@ -53,7 +53,7 @@ tests:
         - lib/devkit/include/rhash-${{ version }}/rhash.h
         - lib/devkit/include/rhash-${{ version }}/rhash_torrent.h
         - lib/devkit/lib/librhash.so
-        - lib/librhash.so.1
+        - lib/devkit/lib/librhash.so.1
         - lib/devkit/lib/librhash.a
         - lib/devkit/lib/pkgconfig/librhash.pc
   - script:
@@ -61,7 +61,7 @@ tests:
       - rhash --version
       - printf abc > input
       - rhash --sha256 --simple input | grep -F ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
-      - readelf -d "${PREFIX}/lib/librhash.so.1" | grep -F '(RUNPATH)'
+      - readelf -d "${PREFIX}/lib/devkit/lib/librhash.so.1" | grep -F '(RUNPATH)'
       - test ! -e "${PREFIX}/include/rhash.h"
 about:
   homepage: https://github.com/rhash/RHash

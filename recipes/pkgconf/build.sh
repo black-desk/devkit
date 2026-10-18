@@ -24,7 +24,7 @@ if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
-  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+  DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 fi
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
@@ -45,7 +45,7 @@ else
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib -Wl,--enable-new-dtags,-rpath,\$ORIGIN/../lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib -Wl,--enable-new-dtags,-rpath,\$ORIGIN/../lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
@@ -63,7 +63,9 @@ meson setup build \
   --buildtype=release \
   --default-library=static \
   --prefix="${PREFIX}" \
-  --libdir=lib \
+  --libdir=lib/devkit/lib \
+  --includedir=lib/devkit/include --datadir=lib/devkit/share \
+  --libexecdir=lib/devkit/libexec \
   --wrap-mode=nofallback \
   -Dwith-pkg-config-dir=/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib64/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig \
   -Dwith-system-libdir=/usr/lib/x86_64-linux-gnu:/usr/lib:/usr/lib64 \

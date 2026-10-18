@@ -18,22 +18,22 @@ source:
 
 build:
   noarch: generic
-  number: 2
+  number: 3
   string: h${{ hash }}_${{ build_number }}
   script:
-    - mkdir -p "${PREFIX}/etc/ssl/certs"
-    - install -m 0644 "${SRC_DIR}/cacert.pem" "${PREFIX}/etc/ssl/certs/ca-certificates.crt"
+    - mkdir -p "${PREFIX}/lib/devkit/etc/ssl/certs"
+    - install -m 0644 "${SRC_DIR}/cacert.pem" "${PREFIX}/lib/devkit/etc/ssl/certs/ca-certificates.crt"
 
 requirements: {}
 
 tests:
   - package_contents:
       files:
-        - etc/ssl/certs/ca-certificates.crt
+        - lib/devkit/etc/ssl/certs/ca-certificates.crt
 
   - script:
-      - test "$(grep -c '^-----BEGIN CERTIFICATE-----$' "${PREFIX}/etc/ssl/certs/ca-certificates.crt")" = 121
-      - test "$(sha256sum "${PREFIX}/etc/ssl/certs/ca-certificates.crt" | cut -d' ' -f1)" = a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
+      - test "$(grep -c '^-----BEGIN CERTIFICATE-----$' "${PREFIX}/lib/devkit/etc/ssl/certs/ca-certificates.crt")" = 121
+      - test "$(sha256sum "${PREFIX}/lib/devkit/etc/ssl/certs/ca-certificates.crt" | cut -d' ' -f1)" = a41b5d356aea97a529fe27e0f7316d2f9d946d75927476cf9cf1b90637d00505
 
 about:
   homepage: https://curl.se/docs/caextract.html

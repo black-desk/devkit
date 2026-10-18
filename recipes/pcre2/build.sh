@@ -9,7 +9,7 @@ set -euxo pipefail
 export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
 export CC="${BUILD_PREFIX}/bin/clang"
 export CXX="${BUILD_PREFIX}/bin/clang++"
-DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/share/devkit/clang.cfg"
+DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
 export AR="${BUILD_PREFIX}/bin/llvm-ar"
 export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
 export NM="${BUILD_PREFIX}/bin/llvm-nm"
@@ -22,7 +22,7 @@ export PATH="${BUILD_PREFIX}/bin:${PATH}"
 export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 export CXXFLAGS="${CFLAGS}"
 export CPPFLAGS="${DEVKIT_FLAGS}"
-export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -L${PREFIX}/lib -Wl,-rpath-link,${PREFIX}/lib"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib"
 test -d "${SYSROOT}"
 test -x "${CC}"
 
@@ -31,16 +31,18 @@ test -x "${CC}"
 cmake -S . -B build -G Ninja \
   -DCMAKE_PREFIX_PATH="${PREFIX}/lib/devkit" \
   -DCMAKE_INSTALL_RPATH_USE_LINK_PATH=OFF \
-  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib' \
+  '-DCMAKE_INSTALL_RPATH=$ORIGIN:$ORIGIN/../lib/devkit/lib' \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="${PREFIX}" \
-  -DCMAKE_INSTALL_LIBDIR=lib \
+  -DCMAKE_INSTALL_DATAROOTDIR=lib/devkit/share \
+  -DCMAKE_INSTALL_LIBEXECDIR=lib/devkit/libexec \
+  -DCMAKE_INSTALL_LIBDIR=lib/devkit/lib \
   -DCMAKE_INSTALL_INCLUDEDIR="lib/devkit/include/pcre2-${PCRE2_VERSION}" \
   -DCMAKE_C_COMPILER="${CC}" \
   -DCMAKE_C_FLAGS="${CFLAGS} -O3" \
   -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS}" \
   -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS}" \
-  -DCMAKE_BUILD_RPATH="${PREFIX}/lib" \
+  -DCMAKE_BUILD_RPATH="${PREFIX}/lib/devkit/lib" \
   -DCMAKE_FIND_ROOT_PATH="${PREFIX};${SYSROOT}" \
   -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
   -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
@@ -84,13 +86,24 @@ int main(void) {
 EOF
 
 "${CC}" \
-  ${CFLAGS} ${LDFLAGS} -Wl,-rpath,"${PREFIX}/lib" \
+  ${CFLAGS} ${LDFLAGS} -Wl,-rpath,"${PREFIX}/lib/devkit/lib" \
   -I"${PREFIX}/lib/devkit/include/pcre2-${PCRE2_VERSION}" \
   "${SRC_DIR}/devkit-consumer.c" \
-  "${PREFIX}/lib/libpcre2-8.so" \
+  "${PREFIX}/lib/devkit/lib/libpcre2-8.so" \
   -o "${SRC_DIR}/devkit-consumer"
 
 env -u LD_LIBRARY_PATH -u LD_PRELOAD "${SRC_DIR}/devkit-consumer"
 
-# Keep development layout handling in this recipe until channel coverage is complete.
+# Native directory options do not cover these consumer-tool details.
 python3 "${RECIPE_DIR}/relocate-development.py"
+
+# Seed tools retain public-library RPATH. Only dirty supplies runtime SONAME
+# aliases for them; result/selfhost install exclusively in the private libdir.
+if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
+  for library in "${PREFIX}/lib/devkit/lib/"libpcre2-8.so.* "${PREFIX}/lib/devkit/lib/"libpcre2-16.so.* "${PREFIX}/lib/devkit/lib/"libpcre2-32.so.* "${PREFIX}/lib/devkit/lib/"libpcre2-posix.so.*; do
+    [[ -f "${library}" ]] || continue
+    soname="$(readelf -d "${library}" | sed -n 's/.*(SONAME).*\[\(.*\)\].*/\1/p')"
+    [[ -n "${soname}" && "${soname}" != */* ]] || continue
+    ln -sfn "devkit/lib/${soname}" "${PREFIX}/lib/${soname}"
+  done
+fi

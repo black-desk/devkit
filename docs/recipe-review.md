@@ -1,5 +1,9 @@
 # Recipe review after libuv and RHash
 
+Historical record: the native private install-directory experiment supersedes
+the layout policy below. See [development-layout.md](development-layout.md) and
+[native-private-install-dirs.md](native-private-install-dirs.md).
+
 Reviewed on 2026-10-17, continuing the maintainer's bootstrap-order review after
 RHash. All 46 remaining recipes were inspected: 31 bootstrap recipes and 15
 ordinary recipes. The earlier eight recipes retain their individual reviews.
