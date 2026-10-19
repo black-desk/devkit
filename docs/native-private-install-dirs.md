@@ -304,3 +304,30 @@ Four CMake path cases cover the standard layout and relative/absolute custom
 directories. Both dirty/result recipe renders and shell syntax/format checks
 pass. This focused host-source validation does not replace the packaged
 three-generation bootstrap.
+
+## CI follow-up: zlib installed-package test fixtures
+
+Run 39207332785 passed dirty and result, then failed zlib's upstream CTest suite
+in selfhost. The library built successfully. The `zlib_install` fixture
+installed its temporary copy using the configured private libdir, but its
+consumer configure commands supplied only the temporary installation prefix.
+CMake does not infer `lib/devkit/lib/cmake/zlib` from that prefix, so the
+positive CONFIG consumers failed to find ZLIB. The wrong-component test passed
+for the same missing-package reason instead of checking component validation.
+
+Patch the source test definitions to calculate the fixture's CONFIG directory
+from `CMAKE_INSTALL_LIBDIR` (absolute or relative) and pass it as `ZLIB_DIR` to
+the three installed-package configure tests. Two tests named `add_subdirectory`
+also incorrectly configured the `findpackage_test` source; point them at their
+already-generated add_subdirectory projects. Correct the coverage-summary
+dependency's `zlib-coverage` typo to `zlib_coverage` so parallel CTest waits for
+the coverage producer. Keep the earlier exclude-build fixture fix. Record an
+upstreaming TODO and increment both zlib output build numbers. Library feature
+options and installation rules are unchanged.
+
+Using the SHA256-verified zlib 1.3.2 release and host Clang, the private layout
+reproduces the exact original 10-of-18 failure. With both test patches applied
+without fuzz, all 18 tests pass in parallel. Logs confirm the negative component
+test finds the fixture's private CONFIG file and rejects the unsupported
+component. Both dirty/result recipe renders and formatting checks pass. Full
+selfhost and subsequent package checks remain CI's responsibility.
