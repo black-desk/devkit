@@ -12,6 +12,7 @@ source:
     sha256: d7a0654783a4da529d1bb793b7ad9c3318020af77667bcae35f95d0e42a792f3
     patches:
       - patches/cmake-test-fixture.patch
+      - patches/cmake-test-install-layout.patch
 
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
@@ -20,7 +21,7 @@ outputs:
   - package:
       name: zlib
     build:
-      number: 8
+      number: 9
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -90,7 +91,7 @@ outputs:
   - package:
       name: libzlib
     build:
-      number: 8
+      number: 9
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"
