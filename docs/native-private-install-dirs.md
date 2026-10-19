@@ -269,3 +269,38 @@ and SPNEGO. This focused temporary curl build omits unrelated optional backends;
 recipe features and its existing feature probe are unchanged. Both dirty/result
 recipe renders and shell syntax/format checks pass. The full packaged bootstrap
 remains CI's responsibility.
+
+## CI follow-up: llvm-libgcc builtins installation
+
+Run 39195039764 completed all dirty package builds, then failed the installed
+compiler check when linking with the channel compiler configuration. The
+compiler-rt builtins archive was missing from the expected private runtime
+directory. Earlier in the log, llvm-libgcc installed it under
+`lib/devkit/lib/<absolute-build-prefix>/lib/devkit/lib/linux`, and packaging
+reported that the `libgcc.a` alias had no target in the package.
+
+compiler-rt accepts an absolute `COMPILER_RT_INSTALL_LIBRARY_DIR`; its CRT
+installation uses that destination directly. However, llvm-libgcc has its own
+builtins installation rule, which strips only a leading literal `lib/` and
+appends the remainder to `LLVM_LIBGCC_INSTALL_LIBRARY_DIR`. This assumed the
+standard layout and incorrectly nested the recipe's absolute directory.
+
+Patch llvm-libgcc's source to resolve both installation directories against
+`CMAKE_INSTALL_PREFIX` and compute their relative path. Use that path for both
+the builtins destination and its `libgcc.a` alias, so the alias remains
+relocatable. Keep compiler-rt's native absolute directory override for CRT. The
+patch records an upstreaming TODO. Add early build assertions for the archive,
+its alias and both CRT objects, plus an explicit builtins archive
+package-content assertion; increment the llvm-libgcc build number.
+
+Validation uses the SHA256-verified LLVM 23.1.3 source archive and both recipe
+patches (zero fuzz), with host Clang 18 and LLD. The actual llvm-libgcc/CRT
+build and component installations pass with the recipe's private library paths.
+The installed builtins archive and both CRT objects exist, and `libgcc.a`
+resolves through the relative `linux/` alias. Using a resource-dir layout
+matching the package, Clang links a probe calling compiler-rt's `__multi3`; that
+probe runs successfully before and after renaming the whole installation prefix.
+Four CMake path cases cover the standard layout and relative/absolute custom
+directories. Both dirty/result recipe renders and shell syntax/format checks
+pass. This focused host-source validation does not replace the packaged
+three-generation bootstrap.

@@ -73,3 +73,10 @@ cmake --install build --component llvm-libgcc
 cmake --install build --component clang_rt.crtbegin-x86_64
 cmake --install build --component clang_rt.crtend-x86_64
 cmake --install build --component unwind-headers
+
+# llvm-libgcc installs builtins itself; catch a misplaced archive or dangling
+# static alias before completing the early bootstrap package.
+test -f "${PREFIX}/lib/devkit/lib/linux/libclang_rt.builtins-x86_64.a"
+test -f "${PREFIX}/lib/devkit/lib/libgcc.a"
+test -f "${PREFIX}/lib/devkit/lib/linux/clang_rt.crtbegin-x86_64.o"
+test -f "${PREFIX}/lib/devkit/lib/linux/clang_rt.crtend-x86_64.o"
