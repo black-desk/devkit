@@ -7,11 +7,13 @@ package:
 source:
   - url: https://github.com/libarchive/libarchive/archive/v${{ version }}.tar.gz
     sha256: 744346f6bca195c8f894f847bb32a16e9bcae6002624a58fadc81e80f595b3cb
+    patches:
+      - patches/native-development-install.patch
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
 build:
-  number: 5
+  number: 6
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -77,6 +79,8 @@ tests:
         - lib/devkit/lib/libarchive.so.*
         - lib/devkit/lib/libarchive.a
         - lib/devkit/lib/pkgconfig/libarchive.pc
+        - lib/devkit/share/man/man1/bsdtar.1
+        - lib/devkit/share/man/man3/archive_read.3
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - >-
