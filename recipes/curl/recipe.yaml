@@ -24,7 +24,7 @@ outputs:
   - package:
       name: curl
     build:
-      number: 9
+      number: 10
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -108,7 +108,7 @@ outputs:
           - test ! -e "${PREFIX}/bin/wcurl"
           - test ! -e "${PREFIX}/include/curl"
           - test ! -e "${PREFIX}/lib/devkit/lib/cmake/CURL"
-          - test "$(readlink "${PREFIX}/lib/devkit/lib/libcurl.so")" = "../../libcurl.so.4.8.0"
+          - test "$(readlink "${PREFIX}/lib/devkit/lib/libcurl.so")" = "libcurl.so.4.8.0"
           - >-
             test "$(readlink "${PREFIX}/lib/devkit/lib/libcurl.so.4")" =
             "libcurl.so.4.8.0"
@@ -193,15 +193,15 @@ outputs:
             then exit 1; fi
           - export PKG_CONFIG_PATH="${PREFIX}/lib/devkit/lib/pkgconfig"
           - pc_path="$("${PREFIX}/bin/pkg-config" --path libcurl)"
-          - pc_root="$(dirname "$pc_path")/../.."
+          - test "${pc_path}" = "${PREFIX}/lib/devkit/lib/pkgconfig/libcurl.pc"
           - cflags="$("${PREFIX}/bin/pkg-config" --cflags libcurl)"
           - cflags="${cflags% }"
           - >-
             printf '%s\n' $cflags |
-            grep -Fx -- "-I${pc_root}/include/curl-${{ version }}"
+            grep -Fx -- "-I${PREFIX}/lib/devkit/include/curl-${{ version }}"
           - libs="$("${PREFIX}/bin/pkg-config" --libs libcurl)"
           - libs="${libs% }"
-          - test "$libs" = "-L${pc_root}/lib -lcurl"
+          - test "$libs" = "-L${PREFIX}/lib/devkit/lib -lcurl"
           - static_libs="$("${PREFIX}/bin/pkg-config" --static --libs libcurl)"
           - static_libs="${static_libs% }"
           - printf '%s\n' "$static_libs" | grep -F -- "-lcurl"
@@ -244,7 +244,7 @@ outputs:
   - package:
       name: libcurl
     build:
-      number: 9
+      number: 10
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

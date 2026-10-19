@@ -331,3 +331,31 @@ without fuzz, all 18 tests pass in parallel. Logs confirm the negative component
 test finds the fixture's private CONFIG file and rejects the unsupported
 component. Both dirty/result recipe renders and formatting checks pass. Full
 selfhost and subsequent package checks remain CI's responsibility.
+
+## CI follow-up: curl assertions still describing the old layout
+
+Run 39237739210 completed dirty, result and selfhost. The installed-package test
+job then stopped in curl: its script still required the unversioned library link
+to target `../../libcurl.so.4.8.0`, an artifact of the previous post-install
+layout. Native installation now places the real library and both aliases in the
+same private libdir. The same test also compared pkg-config output against
+unnormalized `../..` paths from the previous rewritten metadata.
+
+Update the library-link expectation to `libcurl.so.4.8.0`. Assert that pkgconf
+selects the private libcurl.pc, then compare its include/library flags with the
+configured private directories under PREFIX. This retains the metadata and
+consumer checks without requiring the old rewriting scheme. Both curl output
+build numbers are incremented; library builds and source patches are unchanged.
+
+Validation uses this run's downloaded selfhost channel, installed into a fresh
+local prefix. All commands from the updated curl consumer test pass against the
+actual CI-built binaries, including curl-config and pkgconf shared/static
+consumers, feature checks, a file transfer and channel dependency resolution.
+The remaining packaged tests (libcurl, jsoncpp, cppdap, ninja and cmake) also
+pass locally through rattler-build. The other recipe tests were checked for the
+same old link/pkg-config path assumptions; no further instances were found. Both
+dirty/result recipe renders and formatting checks pass.
+
+The complete `scripts/check-result.sh` stage check also passes against this
+channel, including the compiler policy/runtime probes, glibc baseline, installed
+file/ELF layout and basic tool execution.
