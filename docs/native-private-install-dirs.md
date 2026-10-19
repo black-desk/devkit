@@ -213,3 +213,34 @@ both before and after renaming the complete installation directory, without
 PERL5LIB/PERLLIB or loader overrides. Relocated @INC points only to the new
 private module directories. Both dirty/result recipe renders pass. This is a
 host-source validation, not a fresh Conda bootstrap.
+
+## CI follow-up: libarchive GNUInstallDirs coverage
+
+Run 39162367760 passed Perl and OpenSSL, then failed libarchive's
+package-content check: the CMake build still installed archive.h/archive_entry.h
+in public `include`. Including GNUInstallDirs in the project did not make its
+literal installation paths respect the recipe options.
+
+The recipe now patches the source header and manpage installation rules to use
+`CMAKE_INSTALL_INCLUDEDIR` and `CMAKE_INSTALL_MANDIR`. Its pkg-config generator
+also uses the configured libdir/includedir, handling relative and absolute
+overrides while preserving the generated dependency lists. No installed-file
+moves or metadata rewrites are added. The patch has an upstreaming TODO; the
+package build number and private manpage content assertions are updated.
+
+Local validation uses the SHA256-verified pinned libarchive 3.8.9 source and
+host Clang/dependencies, with LZO from the previous local source build. The
+library and all four tools build/install successfully. Shared and static
+pkg-config consumers compile and complete the recipe's native LZO tar write/read
+probe. Headers, pc metadata and manpages use the private directories; no public
+include/manpage tree is created. The source patch applies with zero fuzz and
+both dirty/result recipe renders pass. The temporary build disables the upstream
+suite; the recipe's feature/test settings remain unchanged.
+
+The later CMake recipes libssh2, jsoncpp and cppdap were also checked against
+their pinned SHA256-verified source archives and existing patches. All three
+build/install locally and put headers plus pc/CMake metadata in their configured
+private directories. Temporary jsoncpp static objects use PIC as in the real
+recipe; cppdap's temporary build omits its test-only GTest dependency. No recipe
+changes were needed for those three packages. These host-source checks do not
+replace the full packaged bootstrap and installed tests in CI.
