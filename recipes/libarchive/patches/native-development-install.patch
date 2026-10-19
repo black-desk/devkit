@@ -1,0 +1,61 @@
+Honor GNUInstallDirs in header/manpage installation and pkg-config metadata.
+
+The project already uses GNUInstallDirs for its libraries, but these remaining
+rules use literal include/lib/share/man paths. Generate metadata and install
+files from the same directory options. Keep generated dependency lists intact.
+
+TODO: propose this consistency fix upstream.
+
+--- a/libarchive/CMakeLists.txt
++++ b/libarchive/CMakeLists.txt
+@@ -287,7 +287,7 @@
+           LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+           ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+   INSTALL_MAN(${libarchive_MANS})
+-  INSTALL(FILES ${include_HEADERS} DESTINATION include)
++  INSTALL(FILES ${include_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+ ENDIF()
+ 
+ add_subdirectory(test)
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -407,7 +407,7 @@
+   IF(ENABLE_INSTALL)
+     FOREACH (_man ${ARGV})
+       STRING(REGEX REPLACE "^.+[.]([1-9])" "\\1" _mansect ${_man})
+-      INSTALL(FILES ${_man} DESTINATION "share/man/man${_mansect}")
++      INSTALL(FILES ${_man} DESTINATION "${CMAKE_INSTALL_MANDIR}/man${_mansect}")
+     ENDFOREACH (_man)
+   ENDIF(ENABLE_INSTALL)
+ ENDMACRO (INSTALL_MAN __mans)
+@@ -2207,7 +2207,7 @@
+   #
+   IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/doc/pdf)
+     INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/doc/pdf
+-            DESTINATION share/man
++            DESTINATION "${CMAKE_INSTALL_MANDIR}"
+             FILES_MATCHING PATTERN "*.pdf"
+     )
+   ENDIF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/doc/pdf)
+--- a/build/cmake/CreatePkgConfigFile.cmake
++++ b/build/cmake/CreatePkgConfigFile.cmake
+@@ -4,8 +4,17 @@
+ # Set the required variables (we use the same input file as autotools)
+ SET(prefix ${CMAKE_INSTALL_PREFIX})
+ SET(exec_prefix \${prefix})
+-SET(libdir \${exec_prefix}/lib)
+-SET(includedir \${prefix}/include)
++# Honor GNUInstallDirs for both relative and absolute directory overrides.
++IF(IS_ABSOLUTE "${CMAKE_INSTALL_LIBDIR}")
++  SET(libdir "${CMAKE_INSTALL_LIBDIR}")
++ELSE()
++  SET(libdir "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
++ENDIF()
++IF(IS_ABSOLUTE "${CMAKE_INSTALL_INCLUDEDIR}")
++  SET(includedir "${CMAKE_INSTALL_INCLUDEDIR}")
++ELSE()
++  SET(includedir "\${prefix}/${CMAKE_INSTALL_INCLUDEDIR}")
++ENDIF()
+ # Now, this is not particularly pretty, nor is it terribly accurate...
+ # Loop over all our additional libs
+ FOREACH(mylib ${ADDITIONAL_LIBS})
