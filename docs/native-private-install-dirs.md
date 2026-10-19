@@ -244,3 +244,28 @@ private directories. Temporary jsoncpp static objects use PIC as in the real
 recipe; cppdap's temporary build omits its test-only GTest dependency. No recipe
 changes were needed for those three packages. These host-source checks do not
 replace the full packaged bootstrap and installed tests in CI.
+
+## CI follow-up: curl GSS-API dependency root
+
+Run 39182639892 passed the corrected libarchive installation and reached curl in
+dirty. curl found the Kerberos headers but failed to link its GSS-API probe.
+`--with-gssapi=${PREFIX}` made curl's `CURL_CHECK_PKGCONFIG` override the
+recipe's `PKG_CONFIG_LIBDIR` inside its lookup subprocess, searching only the
+public `${PREFIX}/lib/pkgconfig`. Its fallback also assumed a public
+`bin/krb5-config` and ultimately tried `-lgssapi` instead of MIT's
+`-lgssapi_krb5`.
+
+Pass `${PREFIX}/lib/devkit` as the GSS-API installation root instead. curl now
+checks the existing private pkg-config directory and obtains MIT's actual link
+dependencies. Keep the separate versioned header directory option. No source
+patch, installed-file rewriting or feature reduction is needed. Both curl output
+build numbers are incremented.
+
+Local validation builds/installs the pinned patched krb5 source with host Clang,
+then configures the pinned patched curl against that private installation. The
+original root reproduces the exact missing-GSS-API error; changing only the root
+makes detection succeed. The resulting curl builds and reports GSS-API, Kerberos
+and SPNEGO. This focused temporary curl build omits unrelated optional backends;
+recipe features and its existing feature probe are unchanged. Both dirty/result
+recipe renders and shell syntax/format checks pass. The full packaged bootstrap
+remains CI's responsibility.
