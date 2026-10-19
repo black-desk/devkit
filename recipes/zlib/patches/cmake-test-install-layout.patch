@@ -1,0 +1,74 @@
+Make the CMake integration tests honor custom install directories.
+
+The installed-package consumers must use the fixture's configured libdir,
+not assume that CMAKE_INSTALL_PREFIX alone will expose every layout.
+Also run the generated add_subdirectory projects instead of repeating the
+find_package project, and make coverage-summary depend on the real test name.
+
+TODO: submit these test portability/correctness fixes upstream.
+
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -107,7 +107,7 @@
+                 ${CMAKE_CURRENT_SOURCE_DIR}/infcover.c -o
+                 ${INFCOVER_DIR}/infcover.c.gcda)
+         set_tests_properties(zlib_coverage-summary PROPERTIES DEPENDS
+-                                                              zlib-coverage)
++                                                              zlib_coverage)
+         set(CMAKE_C_FLAGS
+             ${CFLAGS_OLD}
+             CACHE STRING "" FORCE)
+@@ -133,6 +133,11 @@
+ 
+ set_tests_properties(zlib_install PROPERTIES FIXTURES_SETUP zlib_install)
+ 
++# The fixture must find its own installation, including custom library dirs.
++get_filename_component(
++    ZLIB_TEST_CONFIG_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/zlib" ABSOLUTE
++    BASE_DIR "${CMAKE_CURRENT_BINARY_DIR}/test_install")
++
+ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/findpackage_test)
+ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/find_package_no_components_test)
+ file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/find_package_wrong_components_test)
+@@ -177,6 +182,7 @@
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
++        -DZLIB_DIR=${ZLIB_TEST_CONFIG_DIR}
+         -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_test)
+ 
+ add_test(
+@@ -212,6 +218,7 @@
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
++        -DZLIB_DIR=${ZLIB_TEST_CONFIG_DIR}
+         -G "${CMAKE_GENERATOR}"
+         -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_no_components_test)
+ 
+@@ -236,6 +243,7 @@
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
++        -DZLIB_DIR=${ZLIB_TEST_CONFIG_DIR}
+         -G "${CMAKE_GENERATOR}"
+         -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_wrong_components_test)
+ 
+@@ -255,7 +263,7 @@
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
+-        -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_test)
++        -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/add_subdirectory_test)
+ 
+ add_test(
+     NAME zlib_add_subdirectory_build
+@@ -290,7 +298,7 @@
+         -DCMAKE_BUILD_TYPE=$<CONFIG> -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+         -DCMAKE_C_FLAGS=${CMAKE_C_FLAGS}
+         -DCMAKE_INSTALL_PREFIX=${CMAKE_CURRENT_BINARY_DIR}/test_install --fresh
+-        -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/findpackage_test)
++        -G "${CMAKE_GENERATOR}" -S${CMAKE_CURRENT_BINARY_DIR}/add_subdirectory_exclude_test)
+ 
+ add_test(
+     NAME zlib_add_subdirectory_exclude_build
