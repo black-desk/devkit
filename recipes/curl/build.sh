@@ -43,6 +43,9 @@ export CPPFLAGS="${CPPFLAGS} -I${PREFIX}/lib/devkit/include/krb5-1.22.2"
 export LDFLAGS="${LDFLAGS} -Wl,-rpath,${SRC_DIR}/lib/.libs"
 # Match the exact seed's native features. HTTP/3, IDN2, Brotli and LDAP
 # are absent from its closure; do not discover host backends.
+# curl overrides PKG_CONFIG_LIBDIR with <gssapi-root>/lib/pkgconfig during
+# GSS-API detection. Point that root at the private library installation;
+# the versioned header directory is supplied separately below.
 CURL_CONFIG_CC='${prefix}/bin/clang' ./configure --prefix="${PREFIX}" \
   --datarootdir="${PREFIX}/lib/devkit/share" \
   --libexecdir="${PREFIX}/lib/devkit/libexec" \
@@ -52,7 +55,7 @@ CURL_CONFIG_CC='${prefix}/bin/clang' ./configure --prefix="${PREFIX}" \
   --includedir="${PREFIX}/lib/devkit/include/curl-${CURL_VERSION}" \
   --enable-shared --enable-static --enable-websockets --enable-manual \
   --with-openssl --with-zlib --with-zstd --with-libpsl \
-  --with-libssh2 --with-nghttp2 --with-gssapi="${PREFIX}" \
+  --with-libssh2 --with-nghttp2 --with-gssapi="${PREFIX}/lib/devkit" \
   --with-gssapi-includes="${PREFIX}/lib/devkit/include/krb5-1.22.2" \
   --with-ca-bundle="${PREFIX}/lib/devkit/etc/ssl/certs/ca-certificates.crt" \
   --without-ca-path --without-ca-fallback \
