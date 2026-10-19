@@ -1,0 +1,34 @@
+Resolve compiler-rt's install directory relative to the llvm-libgcc libdir.
+
+COMPILER_RT_INSTALL_LIBRARY_DIR accepts absolute paths, while llvm-libgcc
+previously stripped a literal "lib/" and appended the remainder to its own
+install directory. An absolute override therefore embedded the full prefix
+inside the installed path and left libgcc.a dangling. Relative custom libdirs
+also need a relative path calculation rather than a hard-coded prefix strip.
+
+TODO: submit this custom-install-directory fix upstream.
+
+--- a/llvm-libgcc/CMakeLists.txt
++++ b/llvm-libgcc/CMakeLists.txt
+@@ -133,13 +133,18 @@
+ #===============================================================================
+ 
+ get_compiler_rt_install_dir(${COMPILER_RT_DEFAULT_TARGET_ARCH} install_dir_builtins)
+-string(REGEX REPLACE "^lib/" "" install_dir_builtins "${install_dir_builtins}")
+ string(FIND "${install_dir_builtins}" "clang" install_path_contains_triple)
+ if(install_path_contains_triple EQUAL -1)
+   set(builtins_suffix "-${COMPILER_RT_DEFAULT_TARGET_ARCH}")
+-else()
+-  string(PREPEND install_dir_builtins "../")
+ endif()
++# Both directory options can be absolute or relative to the install prefix.
++# Use the same relative path for the installed archive and its libgcc.a alias.
++get_filename_component(builtins_install_dir "${install_dir_builtins}"
++  ABSOLUTE BASE_DIR "${CMAKE_INSTALL_PREFIX}")
++get_filename_component(libgcc_install_dir "${LLVM_LIBGCC_INSTALL_LIBRARY_DIR}"
++  ABSOLUTE BASE_DIR "${CMAKE_INSTALL_PREFIX}")
++file(RELATIVE_PATH install_dir_builtins
++  "${libgcc_install_dir}" "${builtins_install_dir}")
+ set(LLVM_LIBGCC_COMPILER_RT ${install_dir_builtins}/libclang_rt.builtins${builtins_suffix}.a)
+ 
+ add_custom_target(llvm-libgcc ALL

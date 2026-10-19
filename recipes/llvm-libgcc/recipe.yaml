@@ -12,6 +12,7 @@ source:
     sha256: c44186a7762ed28954be72e5ff6df9808e0779d4f1bf014ecc4e7e211d31ee34
     patches:
       - patches/libgcc-soname.patch
+      - patches/relative-builtins-install.patch
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 
@@ -19,7 +20,7 @@ outputs:
   - package:
       name: llvm-libgcc
     build:
-      number: 11
+      number: 12
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         # CMake installs $ORIGIN RUNPATH; automatic relinking converts it to RPATH.
@@ -54,6 +55,7 @@ outputs:
             - devkit-build/check-package.py
       - package_contents:
           files:
+            - lib/devkit/lib/linux/libclang_rt.builtins-x86_64.a
             - lib/devkit/lib/libgcc.a
             - lib/devkit/lib/libgcc_eh.a
             - lib/devkit/lib/libgcc_s.so
