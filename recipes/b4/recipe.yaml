@@ -76,7 +76,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     # Preserve auditwheel's relative RPATHs and bundled native libraries.

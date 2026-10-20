@@ -7,9 +7,9 @@ test "$(cat tests/prepared.txt)" = ready
 just --justfile tests/justfile --dry-run hello dry >dry-run.txt 2>&1
 grep -F dry dry-run.txt
 for file in \
-  share/bash-completion/completions/just \
-  share/fish/vendor_completions.d/just.fish \
-  share/zsh/site-functions/_just \
-  share/man/man1/just.1; do
+  lib/devkit/share/bash-completion/completions/just \
+  lib/devkit/share/fish/vendor_completions.d/just.fish \
+  lib/devkit/share/zsh/site-functions/_just \
+  lib/devkit/share/man/man1/just.1; do
   test -s "${PREFIX}/${file}"
 done
