@@ -13,7 +13,7 @@ import pygit2
 from nacl.signing import SigningKey
 
 prefix = Path(os.environ["PREFIX"]).resolve()
-environment = prefix / "share/devkit/python-tools/b4"
+environment = prefix / "lib/devkit/share/devkit/python-tools/b4"
 assert Path(sys.prefix).resolve() == environment
 assert Path(sys.base_prefix).resolve() == (
     prefix / "lib/uv-python/cpython-3.14.8-linux-x86_64-gnu"

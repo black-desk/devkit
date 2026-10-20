@@ -383,3 +383,28 @@ Install that newly built PCRE2 package with channel pkgconf in another prefix;
 the actual pre-Cargo PCRE2 probe block from ripgrep's build script passes there.
 The Rust application itself is not rebuilt for this assertion-only fix. Both
 recipe renders, shell syntax/format checks and documentation formatting pass.
+
+## CI follow-up: standalone just and b4 resource paths
+
+Run 39352784054 passed bootstrap, installed stage tests and PCRE2. The ordinary
+package build then stopped in just's standalone smoke test: task execution
+passed, but resource assertions still looked for completions and the manual
+under public `share/`. The build script and package-content assertions already
+used `lib/devkit/share/`.
+
+Update those four resource assertions. Audit the other separate test files,
+including Python tests, for old resource paths. This finds b4's runtime test
+still expecting its private environment under public `share/devkit/`; align it
+with the existing build script and smoke-test invocation. Increment both
+affected package build numbers. Installation rules and feature options are
+unchanged.
+
+Validation builds the SHA256-verified just 1.58.0 source with host Rust 1.97.1,
+generates real completions and the manual at the recipe's installed paths, and
+passes the complete updated smoke test. For b4, verify every recipe source and
+the Python 3.14.8 archive, then run the actual Python and b4 build scripts with
+upstream uv 0.12.22 in a temporary prefix. Its complete smoke test passes,
+including private-environment and pinned-dependency assertions, native extension
+probes and the offline email-to-git-am workflow. These focused checks use host
+build tools and Git; they do not replace the full Conda package builds. Both
+recipe renders, syntax/format checks and documentation formatting pass.
