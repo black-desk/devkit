@@ -42,7 +42,7 @@ export PCRE2_SYS_STATIC=0
 # Upstream metadata returns -L/-l flags, not an absolute shared-library filename.
 # Check both flags; installed package tests verify the actual dynamic dependency.
 read -r -a pcre2_libs <<<"$("${PKG_CONFIG}" --libs libpcre2-8)"
-printf '%s\n' "${pcre2_libs[@]}" | grep -Fx -- "-L${PREFIX}/lib/devkit/lib/pkgconfig/../../lib"
+printf '%s\n' "${pcre2_libs[@]}" | grep -Fx -- "-L${PREFIX}/lib/devkit/lib"
 printf '%s\n' "${pcre2_libs[@]}" | grep -Fx -- '-lpcre2-8'
 
 test -x "${BUILD_PREFIX}/bin/rustup"
