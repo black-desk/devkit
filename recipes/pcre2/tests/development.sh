@@ -26,5 +26,6 @@ for linkage in shared static; do
   "./build-${linkage}/probe-posix"
 done
 for width in 8 16 32; do
-  test "$(pkg-config --libs "libpcre2-${width}")" = "-L$(dirname "$(pkg-config --path "libpcre2-${width}")")/../../lib -lpcre2-${width}"
+  test "$(pkg-config --path "libpcre2-${width}")" = "${PREFIX}/lib/devkit/lib/pkgconfig/libpcre2-${width}.pc"
+  test "$(pkg-config --libs "libpcre2-${width}")" = "-L${PREFIX}/lib/devkit/lib -lpcre2-${width}"
 done
