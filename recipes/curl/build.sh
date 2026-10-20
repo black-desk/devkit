@@ -2,13 +2,15 @@
 set -euxo pipefail
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
+# Record compiler paths in the prefix relocated by Conda at installation.
+test "${BUILD_PREFIX}" = "${PREFIX}"
 export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
 export CC="${BUILD_PREFIX}/bin/clang"
 export CXX="${BUILD_PREFIX}/bin/clang++"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  # Prepare the fresh seed build environment with unversioned driver names.
-  ln -sfn clang-23 "${BUILD_PREFIX}/bin/clang"
-  ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
+  # Keep seed-owned compiler names; new aliases would become curl payload.
+  export CC="${BUILD_PREFIX}/bin/clang-23"
+  export CXX="${BUILD_PREFIX}/bin/clang++-23"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
   DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
@@ -26,9 +28,8 @@ export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
-  # clang.cfg already selects libc++ headers. Adding a second copy from the
-  # native host prefix breaks C wrapper include_next. Both prefixes select
-  # the same libc++ package from the completed input generation.
+  # clang.cfg already selects libc++ headers; adding them again breaks the
+  # C wrapper headers' include_next search.
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
@@ -46,7 +47,7 @@ export LDFLAGS="${LDFLAGS} -Wl,-rpath,${SRC_DIR}/lib/.libs"
 # curl overrides PKG_CONFIG_LIBDIR with <gssapi-root>/lib/pkgconfig during
 # GSS-API detection. Point that root at the private library installation;
 # the versioned header directory is supplied separately below.
-CURL_CONFIG_CC='${prefix}/bin/clang' ./configure --prefix="${PREFIX}" \
+./configure --prefix="${PREFIX}" \
   --datarootdir="${PREFIX}/lib/devkit/share" \
   --libexecdir="${PREFIX}/lib/devkit/libexec" \
   --sysconfdir="${PREFIX}/lib/devkit/etc" \

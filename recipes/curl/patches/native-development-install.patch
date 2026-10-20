@@ -3,7 +3,6 @@ Install the development query script independently of user programs.
 TODO: propose the build-system interface/fix upstream.
 
 Makefile.in regenerated with Automake 1.16.5.
-configure regenerated with Autoconf 2.71.
 
 --- a/Makefile.am
 +++ b/Makefile.am
@@ -145,70 +144,3 @@ configure regenerated with Autoconf 2.71.
  
  .PRECIOUS: Makefile
  
---- a/curl-config.in
-+++ b/curl-config.in
-@@ -70,11 +70,11 @@
-     ;;
- 
-   --ca)
--    echo '@CURL_CA_BUNDLE@'
-+    echo "@CURL_CA_BUNDLE@"
-     ;;
- 
-   --cc)
--    echo '@CC@'
-+    echo "@CURL_CONFIG_CC@"
-     ;;
- 
-   --prefix)
---- a/configure.ac
-+++ b/configure.ac
-@@ -5572,6 +5572,9 @@
-   dnl strip trailing spaces, duplicate spaces after colon, empty properties
-   "$SED" -e 's/ *$//g' -e 's/^Libs\.private:  */Libs.private: /' -e '/^@<:@A-Za-z.@:>@*:$/d' libcurl.pc > libcurl.pc.tmp && mv libcurl.pc.tmp libcurl.pc
- ], [SED="$SED"])
-+AC_ARG_VAR([CURL_CONFIG_CC], [Compiler command reported by curl-config --cc])
-+CURL_CONFIG_CC=${CURL_CONFIG_CC-$CC}
-+
- AC_OUTPUT
- 
- SUPPORT_PROTOCOLS_LOWER=`echo "$SUPPORT_PROTOCOLS" | tr A-Z a-z`
---- a/configure
-+++ b/configure
-@@ -943,6 +943,7 @@
- am__EXEEXT_TRUE
- LTLIBOBJS
- LIBOBJS
-+CURL_CONFIG_CC
- CURL_CPP
- SSL_BACKENDS
- SUPPORT_PROTOCOLS
-@@ -1310,7 +1311,8 @@
- LIBS
- CPPFLAGS
- CPP
--LT_SYS_LIBRARY_PATH'
-+LT_SYS_LIBRARY_PATH
-+CURL_CONFIG_CC'
- 
- 
- # Initialize some variables set by options.
-@@ -2252,6 +2254,8 @@
-   CPP         C preprocessor
-   LT_SYS_LIBRARY_PATH
-               User-defined run-time library search path.
-+  CURL_CONFIG_CC
-+              Compiler command reported by curl-config --cc
- 
- Use these variables to override the choices made by `configure' or to help
- it to find libraries and programs with nonstandard names/locations.
-@@ -49734,6 +49738,9 @@
- ac_config_files="$ac_config_files curl-config"
- 
- ac_config_files="$ac_config_files libcurl.pc"
-+
-+
-+CURL_CONFIG_CC=${CURL_CONFIG_CC-$CC}
- 
- cat >confcache <<\_ACEOF
- # This file is a shell script that caches the results of configure

@@ -216,7 +216,7 @@ retain the independent review queue.
 | libxml2             | Zlib exact linker input, source-generated exports and config helper; R1, R5, R9      |
 | clang               | Compiler/runtime ownership, explicit channel config, probe packaging; R1, R4, R5, R7 |
 | libxcrypt           | Perl source generator, disabled obsolete-ABI map correction; R1, R5                  |
-| perl                | Separate generated consumer Config files and explicit install selection; —           |
+| perl                | Merged native prefix; original Config modules use Conda text relocation; —           |
 | ca-certificates     | Pinned original data, no compiler or development staging; —                          |
 | openssl             | Native generators, public provider modules, build-only consumer; R5                  |
 | libarchive          | Channel compression/XML/crypto backends and generated metadata; R1, R3, R5           |

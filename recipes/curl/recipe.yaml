@@ -24,7 +24,9 @@ outputs:
   - package:
       name: curl
     build:
-      number: 10
+      number: 11
+      # Native compiler paths use the prefix tracked by Conda text relocation.
+      merge_build_and_host_envs: true
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -161,7 +163,7 @@ outputs:
             test "$("${curl_config}" --ca)" =
             "${PREFIX}/lib/devkit/etc/ssl/certs/ca-certificates.crt"
           - >-
-            test "$("${curl_config}" --cc)" = "${PREFIX}/bin/clang"
+            test "$("${curl_config}" --cc)" = "${PREFIX}/bin/${{ 'clang-23' if sysroot_triplet == 'x86_64-conda-linux-gnu' else 'clang' }}"
           - >-
             test "$("${curl_config}" --ssl-backends)" = "OpenSSL"
           - >-
@@ -244,7 +246,7 @@ outputs:
   - package:
       name: libcurl
     build:
-      number: 10
+      number: 11
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

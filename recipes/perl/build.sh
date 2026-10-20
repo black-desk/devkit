@@ -15,13 +15,16 @@ esac
 
 : "${BUILD_PREFIX:?}"
 : "${PREFIX:?}"
+# Keep compiler paths in the prefix tracked by Conda's text relocation.
+test "${BUILD_PREFIX}" = "${PREFIX}"
 export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
 export CC="${BUILD_PREFIX}/bin/clang"
 export CXX="${BUILD_PREFIX}/bin/clang++"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
-  # Prepare the fresh seed build environment with unversioned driver names.
-  ln -sfn clang-23 "${BUILD_PREFIX}/bin/clang"
-  ln -sfn clang++-23 "${BUILD_PREFIX}/bin/clang++"
+  # Use seed-owned names directly. New aliases in this merged prefix would be
+  # collected as Perl payload, and its recorded compiler must survive install.
+  export CC="${BUILD_PREFIX}/bin/clang-23"
+  export CXX="${BUILD_PREFIX}/bin/clang++-23"
   DEVKIT_FLAGS="--start-no-unused-arguments --no-default-config --sysroot=${SYSROOT} --gcc-install-dir=${BUILD_PREFIX}/lib/gcc/x86_64-conda-linux-gnu/16.2.0 --rtlib=compiler-rt --unwindlib=none --end-no-unused-arguments"
 else
   DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
@@ -39,9 +42,8 @@ export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
 if [[ "${SYSROOT_TRIPLET:-}" == x86_64-conda-linux-gnu ]]; then
   export CXXFLAGS="${CFLAGS} --start-no-unused-arguments -stdlib=libc++ -nostdinc++ -isystem ${PREFIX}/lib/devkit/include/libcxx-23.1.3/c++/v1 --end-no-unused-arguments"
 else
-  # clang.cfg already selects libc++ headers. Adding a second copy from the
-  # native host prefix breaks C wrapper include_next. Both prefixes select
-  # the same libc++ package from the completed input generation.
+  # clang.cfg already selects libc++ headers; adding them again breaks the
+  # C wrapper headers' include_next search.
   export CXXFLAGS="${CFLAGS}"
 fi
 export CPPFLAGS="${DEVKIT_FLAGS}"
@@ -108,13 +110,8 @@ if [[ "${DEVKIT_RUN_TESTS:-1}" == 1 ]]; then
     TEST_ARGS='op/magic.t op/tie.t ../lib/perl5db.t'
 fi
 
-# Generate consumer Config modules from the same inputs with canonical compiler
-# metadata. Keep the original modules for build-time tools and install only the
-# two explicitly selected generated consumer files.
-export DEVKIT_FLAGS
-export DEVKIT_CONFIG_DIR="${SRC_DIR}/devkit-config"
-mkdir -p "${DEVKIT_CONFIG_DIR}"
-./perl -I. -Ilib configpm
+# Install the original Config modules. The merged prefix lets rattler-build
+# record their tool paths for normal Conda prefix replacement on installation.
 make install -j"${CPU_COUNT}"
 
 # Preserve relocatable DT_RUNPATH; package tests run without loader overrides.

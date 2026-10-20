@@ -44,6 +44,22 @@ compiler paths or build-only sysroot flags. These exported commands do not add a
 Clang runtime dependency to ICU. The recipe's Clang flags and library search
 policy remain explicit when using the consumer configuration.
 
+Perl uses rattler-build's documented `merge_build_and_host_envs: true` option
+for native builds. Compiler tools and target libraries share the host prefix, so
+the original generated `Config.pm` and `Config_heavy.pl` are installed
+unchanged. Conda records and replaces their text prefixes at installation; there
+is no separate consumer configuration or interpreter-relative rewrite. Dirty
+records the seed compiler and sysroot; result/selfhost record the channel
+toolchain. Pure-Perl execution does not require a compiler; XS builds explicitly
+install the corresponding compiler, Make and sysroot packages. Dirty uses the
+seed's existing versioned compiler names, avoiding new compiler aliases being
+collected as Perl payload in the merged environment.
+
+Curl also merges its native build/host environments. Its original curl-config
+reports the configured compiler directly; Conda relocates that path at install.
+There is no separate exported compiler setting. Dirty uses the seed-owned
+versioned compiler name, while result/selfhost use the channel's clang.
+
 OpenSSL's initial option patch covers Unix installation; Windows/VMS
 installation rules remain outside its scope. LLVM CRT objects use the existing
 `COMPILER_RT_INSTALL_LIBRARY_DIR` option. bzip2 still explicitly installs the

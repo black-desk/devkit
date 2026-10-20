@@ -132,6 +132,12 @@ artifacts explicitly; neither the generic copy routine nor any installed file
 content is modified. The normal generator mode retains bootstrap settings for
 building and testing Perl. Other modules named `Config.pm` remain unchanged.
 
+This Perl implementation was subsequently removed: native builds now merge the
+build and host environments and install the original Config modules, relying on
+Conda's normal recorded text-prefix replacement. See the current policy in
+[development-layout.md](development-layout.md) and the local validation in
+[native-private-install-dirs.md](native-private-install-dirs.md).
+
 ICU uses its upstream `INVOKE`, `PKGDATA_INVOKE` and `INSTALLED_INVOKE` wrappers
 for build-time library loading. The recipe does not override them or add
 source-tree RUNPATH entries to global `LDFLAGS`. Installed ELF finalization and

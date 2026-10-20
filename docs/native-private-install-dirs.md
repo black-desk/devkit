@@ -408,3 +408,55 @@ including private-environment and pinned-dependency assertions, native extension
 probes and the offline email-to-git-am workflow. These focused checks use host
 build tools and Git; they do not replace the full Conda package builds. Both
 recipe renders, syntax/format checks and documentation formatting pass.
+
+## Perl: one native build/host environment
+
+Perl's separate consumer Config generation was compensating for compiler paths
+under BUILD_PREFIX, which ordinary host-prefix text replacement did not cover.
+Use rattler-build 0.75.0's documented `build.merge_build_and_host_envs: true`
+interface for this native recipe instead. It jointly solves build/host
+requirements into one prefix, with `BUILD_PREFIX == PREFIX`. This does not
+introduce separate channel priorities for the two requirement lists or change
+the bootstrap channel ordering.
+
+Remove `development-install.patch` entirely and install upstream's original
+`Config.pm` and `Config_heavy.pl`. Both are automatically recorded as text files
+requiring prefix replacement. Dirty retains the real seed compiler names and
+flags; result/selfhost retain the channel configuration. Do not add unowned
+compiler symlinks to the merged prefix: they would become Perl package payload.
+Pure-Perl execution retains only the libxcrypt and glibc runtime dependencies.
+The installed-package tests now build and load a small XS module using
+ExtUtils::MakeMaker and explicitly installed compiler/Make/sysroot packages.
+
+Local validation builds the actual Perl recipe twice: the dirty variant uses the
+prior successful CI dirty channel plus the pinned seed; the result variant uses
+that CI run's selfhost channel. Both pass the selected upstream tests, package
+layout/ELF checks and all installed-package tests, including the XS consumer.
+Installing each new package with mamba into another prefix also replaces the
+recorded compiler/sysroot/library paths correctly and builds and loads the XS
+module. Archive inspection confirms text-prefix records for both original Config
+modules, no compiler payload and no added compiler runtime dependency. This is a
+targeted Perl validation, not another full bootstrap run.
+
+## Curl: original exported compiler configuration
+
+Merge the native build/host environments and let upstream curl-config report the
+actual configured CC. Remove CURL_CONFIG_CC and all associated configure and
+curl-config template changes. Keep the independent helper install-directory
+patch. Normal Conda text-prefix replacement updates the installed compiler path,
+CA bundle and private include/library directories. Dirty uses the seed-owned
+clang-23 name; result/selfhost use clang. No compiler aliases are created in the
+merged prefix, and both curl output build numbers are incremented.
+
+Solving both dirty and result merged environments confirms neither installs an
+existing curl package. ICU cannot assume that property: clang depends on
+libxml2, which depends on ICU. Its proposed environment merge is paused pending
+a decision on staging installation and explicitly collecting rebuilt files.
+
+The actual curl recipe builds with both variants against the prior successful CI
+dirty/selfhost channels and the pinned seed. Both curl and its libcurl meta
+output pass all package tests, including private layout/ELF checks, shared and
+static helper/pkg-config consumers, feature checks and offline file transfers.
+Archive inspection confirms recorded text-prefix replacement for curl-config, no
+compiler payload and unchanged runtime dependency requirements. The remaining
+source patch applies to the pristine pinned release with zero fuzz.
