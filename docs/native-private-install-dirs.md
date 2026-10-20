@@ -359,3 +359,27 @@ dirty/result recipe renders and formatting checks pass.
 The complete `scripts/check-result.sh` stage check also passes against this
 channel, including the compiler policy/runtime probes, glibc baseline, installed
 file/ELF layout and basic tool execution.
+
+## CI follow-up: standalone PCRE2 metadata assertions
+
+Run 39286117833 passed bootstrap and its installed stage tests, then stopped in
+the ordinary PCRE2 package's standalone `tests/development.sh`. The shared and
+static CMake consumers passed for all widths; the final pkg-config assertion
+still required the old rewritten `pkgconfig/../../lib` spelling. The previous
+curl follow-up checked recipe YAML but missed this separately sourced script.
+
+Update the standalone test to require the configured private library directory
+and explicitly verify each width's private pc-file location. Audit all recipe
+files, including separate build/test scripts, for the same relative metadata
+assumptions. This also finds and corrects ripgrep's pre-Cargo PCRE2 link-flags
+assertion. Increment both affected package build numbers. No library source,
+feature or link behavior changes are required.
+
+Validation performs a complete local PCRE2 recipe build using the CI run's
+selfhost channel as the only dependency channel. Its four upstream CTests and
+all installed-package tests pass, including layout/ELF checks, feature probes,
+8/16/32-bit shared/static CMake consumers and private metadata assertions.
+Install that newly built PCRE2 package with channel pkgconf in another prefix;
+the actual pre-Cargo PCRE2 probe block from ripgrep's build script passes there.
+The Rust application itself is not rebuilt for this assertion-only fix. Both
+recipe renders, shell syntax/format checks and documentation formatting pass.
