@@ -59,7 +59,15 @@ The LuaJIT unwind patch belongs to its own recipe. It registers the FDE rather
 than the initial CIE with LLVM libunwind, matching LuaJIT's existing Darwin
 registration convention and preserving JIT and protected-error behavior.
 
-Python, Node.js, Ruby and Perl remote-plugin providers need their corresponding
+Install the channel's `pynvim` package alongside `neovim` to enable the Python
+remote-plugin provider. It includes an isolated Python environment and exposes
+the upstream `pynvim-python` discovery command on PATH; Neovim detects it
+without a `g:python3_host_prog` setting. The package tests exercise both
+embedded RPC and `:python3` buffer operations. See
+[the package notes](channel-tools.md) for its dependency pins and installation
+scope.
+
+Node.js, Ruby and Perl remote-plugin providers need their corresponding
 interpreter and client packages separately. Clipboard helpers, language servers
 and additional parsers are external integrations. Unibilium reads the host
 terminfo databases; `TERMINFO` and `TERMINFO_DIRS` can select other databases.

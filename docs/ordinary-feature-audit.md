@@ -120,3 +120,13 @@ independent recipes; the editor uses shared channel libraries and parser runtime
 packages. Neovim-pinned upstream LuaJIT differs from forge's OpenResty fork;
 full fork-specific compatibility is not established. This addition is outside
 the original 12-recipe snapshot above.
+
+## Additional channel tools
+
+The [gh, pynvim, Typst and chezmoi audit](channel-tools.md#feature-baseline)
+compares these additions against fixed conda-forge feedstock revisions and
+upstream build options. Both Go applications keep the no-cgo baseline and shell
+completions. Typst retains default features, embedded fonts and dynamic OpenSSL.
+Pynvim includes both native dependencies in its private environment and the
+upstream Neovim provider discovery command. These additions are outside the
+original 12-recipe snapshot.
