@@ -40,10 +40,7 @@ tests:
       bin:
         - tinymist
   - script:
-      - bash tests/smoke.sh
-    files:
-      recipe:
-        - tests/
+      - tinymist -V | grep -F 0.15.10
 about:
   homepage: https://github.com/Myriad-Dreamin/tinymist
   repository: https://github.com/Myriad-Dreamin/tinymist

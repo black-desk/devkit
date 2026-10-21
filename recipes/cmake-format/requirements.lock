@@ -1,5 +1,5 @@
-cmakelang==0.6.13
-jinja2==3.1.6
-markupsafe==3.0.4
-pyyaml==6.0.3
-six==1.17.0
+cmakelang==0.6.13 --hash=sha256:764b9467195c7c36453d60a829f30229720d26c7dffd41cb516b99bd9c7daf4e
+jinja2==3.1.6 --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
+markupsafe==3.0.4 --hash=sha256:a8e9f292fcda89b324f2f5c91d13f1424a153e40fc2756f38ee23b15835ff300
+pyyaml==6.0.3 --hash=sha256:c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5
+six==1.17.0 --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274

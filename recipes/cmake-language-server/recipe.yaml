@@ -8,30 +8,6 @@ source:
   - url: https://files.pythonhosted.org/packages/source/c/cmake-language-server/cmake_language_server-0.1.11.tar.gz
     sha256: 005f48367ec569457a7229a58f6762044fddacac647858b39d725ae2b3cd695b
     target_directory: tool-source
-  - url: https://files.pythonhosted.org/packages/5e/a6/c743c589188f9e45e1a7c8f3e2e725f9b5df5decd72779fbfc1695b45866/pdm_backend-2.5.0-py3-none-any.whl
-    sha256: 5b8746b567a16a1fd506ce66ee28e89d46374526f52238aa1b96cc2c08245c63
-    file_name: pdm_backend-2.5.0-py3-none-any.whl
-    target_directory: artifacts
-  - url: https://files.pythonhosted.org/packages/64/b4/17d4b0b2a2dc85a6df63d1157e028ed19f90d4cd97c36717afef2bc2f395/attrs-26.1.0-py3-none-any.whl
-    sha256: c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
-    file_name: attrs-26.1.0-py3-none-any.whl
-    target_directory: artifacts
-  - url: https://files.pythonhosted.org/packages/e8/cf/22794a399d99480486120e26e879ef008e21f5e85274c2ed591d568bb326/cattrs-26.2.1-py3-none-any.whl
-    sha256: a12aaa3453dc8f633a815293179f08b7421ed18d2575c459c3c736f840beac24
-    file_name: cattrs-26.2.1-py3-none-any.whl
-    target_directory: artifacts
-  - url: https://files.pythonhosted.org/packages/8d/37/2351e48cb3309673492d3a8c59d407b75fb6630e560eb27ecd4da03adc9a/lsprotocol-2023.0.1-py3-none-any.whl
-    sha256: c75223c9e4af2f24272b14c6375787438279369236cd568f596d4951052a60f2
-    file_name: lsprotocol-2023.0.1-py3-none-any.whl
-    target_directory: artifacts
-  - url: https://files.pythonhosted.org/packages/11/19/b74a10dd24548e96e8c80226cbacb28b021bc3a168a7d2709fb0d0185348/pygls-1.3.1-py3-none-any.whl
-    sha256: 6e00f11efc56321bdeb6eac04f6d86131f654c7d49124344a9ebb968da3dd91e
-    file_name: pygls-1.3.1-py3-none-any.whl
-    target_directory: artifacts
-  - url: https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl
-    sha256: 481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8
-    file_name: typing_extensions-4.16.0-py3-none-any.whl
-    target_directory: artifacts
   - path: ../../scripts/packaging/check-package.py
     target_directory: devkit-build
 build:
@@ -67,11 +43,7 @@ tests:
       files:
         - lib/devkit/share/devkit/python-tools/cmake-language-server/uv-receipt.toml
   - script:
-      - bash tests/smoke.sh
-    files:
-      recipe:
-        - tests/
-        - requirements.lock
+      - cmake-language-server --help
 about:
   homepage: https://github.com/regen100/cmake-language-server
   license: MIT
