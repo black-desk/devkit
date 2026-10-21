@@ -1,0 +1,24 @@
+# Keep the upstream optional C++ helper inside its existing fallback boundary.
+# TODO: submit to public-inbox; generated with Python difflib for 2.0.0.
+--- a/lib/PublicInbox/LEI.pm
++++ b/lib/PublicInbox/LEI.pm
+@@ -31,7 +31,6 @@
+ use PublicInbox::IPC;
+ use PublicInbox::Search;
+ use PublicInbox::IO qw(poll_in);
+-use PublicInbox::XapHelperCxx;
+ use Time::HiRes qw(stat); # ctime comparisons for config cache
+ use File::Path ();
+ use File::Spec;
+@@ -1359,7 +1358,10 @@
+ 	local ($errors_log, $listener, $PublicInbox::Search::XHC);
+ 
+ 	# no point in using xap_helper w/o C++ features for local clients
+-	my $xh_cmd = eval { PublicInbox::XapHelperCxx::cmd() };
++	my $xh_cmd = eval {
++		require PublicInbox::XapHelperCxx;
++		PublicInbox::XapHelperCxx::cmd()
++	};
+ 	$PublicInbox::Search::XHC = $xh_cmd ? undef : 0;
+ 	if ($xh_cmd) {
+ 		require PublicInbox::XapClient;

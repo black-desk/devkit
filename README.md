@@ -119,6 +119,13 @@ operations, isolation from normal uv tool management, and an offline
 `git format-patch` → `b4 am` → `git am` workflow. Optional completion/TUI
 extras, OpenPGP via GnuPG, and git-bug integration are not included.
 
+The [mail tools](docs/mail-tools.md) recipes add notmuch 0.39, aerc 0.21.0 with
+its notmuch backend, lei from public-inbox 2.0.0, and lieer 1.6 (`gmi`). Their
+ordinary dependency closure includes GLib, GMime, Xapian, talloc and GPGME;
+Python and Perl modules are isolated in private tool environments. The seed
+manifest is unchanged. See the mail-tools document for installation scope,
+external GnuPG requirements and offline functional tests.
+
 The first independent Git dependencies are packaged as ordinary C libraries with
 isolated headers: `zlib`, `pcre2`, `expat`, and `openssl`. The pinned Mozilla CA
 bundle is packaged separately as `ca-certificates` for HTTPS support. OpenSSL's
@@ -233,6 +240,19 @@ recipes/
   pkgconf/               pkg-config-compatible metadata query tool
   rustup/                Official Rust toolchain manager binary repack
   b4/                    Mailing-list patch tools in a private uv environment
+  notmuch/               Mail indexer and shared C API
+  aerc/                  Terminal mail client with the notmuch backend
+  lei/                   Local email interface with private CPAN dependencies
+  lieer/                 Gmail/notmuch synchronization in a private uv environment
+  libffi/                Foreign function interface library
+  glib/                  GLib, GObject and GIO libraries
+  talloc/                Hierarchical allocator
+  xapian/                Full-text search engine
+  libgpg-error/          GnuPG error/runtime library
+  libassuan/             GnuPG IPC library
+  gpgme/                 GnuPG engine interface
+  gmime/                 MIME parser and message library
+  scdoc/                 Manual generator for aerc
   python/                CPython standalone distribution installed by uv
   uv/                    Python package, tool, and interpreter manager
   zlib/                  General-purpose compression library
