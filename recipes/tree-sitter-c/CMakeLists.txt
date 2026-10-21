@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(parser C)
+file(GLOB c_sources "src/*.c")
+add_library(c MODULE ${c_sources})
+target_include_directories(c PRIVATE "src")
+set_target_properties(c PROPERTIES PREFIX "")
+install(TARGETS c LIBRARY DESTINATION lib/devkit/lib/nvim/parser)

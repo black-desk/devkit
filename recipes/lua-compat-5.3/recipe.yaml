@@ -1,0 +1,27 @@
+schema_version: 1
+context:
+  version: "0.13"
+package:
+  name: lua-compat-5.3
+  version: ${{ version }}
+source:
+  - url: https://github.com/lunarmodules/lua-compat-5.3/archive/v0.13.tar.gz
+    sha256: f5dc30e7b1fda856ee4d392be457642c1f0c259264a9b9bfbcb680302ce88fc2
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  script:
+    file: build.sh
+  noarch: generic
+requirements: {}
+tests:
+  - package_contents:
+      files:
+        - lib/devkit/include/lua-compat-5.3-0.13/c-api/compat-5.3.h
+        - lib/devkit/include/lua-compat-5.3-0.13/c-api/compat-5.3.c
+about:
+  homepage: https://github.com/lunarmodules/lua-compat-5.3
+  license: MIT
+  license_file:
+    - LICENSE
+  summary: Lua 5.3 compatibility headers for Lua 5.1

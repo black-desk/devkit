@@ -119,6 +119,12 @@ operations, isolation from normal uv tool management, and an offline
 `git format-patch` → `b4 am` → `git am` workflow. Optional completion/TUI
 extras, OpenPGP via GnuPG, and git-bug integration are not included.
 
+The [Neovim recipe](docs/neovim.md) builds Neovim 0.12.6 as `neovim`, with
+`nvim` on PATH, LuaJIT, Tree-sitter and all upstream default parsers, runtime
+files, help, man page and translations. Its libraries and parsers use
+independent channel recipes, with shared LuaJIT, luv, LPeg, unibilium, utf8proc
+and Tree-sitter alongside the existing libuv and libiconv packages.
+
 The [mail tools](docs/mail-tools.md) recipes add notmuch 0.39, aerc 0.21.0 with
 its notmuch backend, lei from public-inbox 2.0.0, and lieer 1.6 (`gmi`). Their
 ordinary dependency closure includes GLib, GMime, Xapian, talloc and GPGME;
@@ -240,6 +246,20 @@ recipes/
   pkgconf/               pkg-config-compatible metadata query tool
   rustup/                Official Rust toolchain manager binary repack
   b4/                    Mailing-list patch tools in a private uv environment
+  neovim/                Text editor using channel LuaJIT and Tree-sitter
+  luajit/                LuaJIT interpreter, shared library and JIT modules
+  lua-lpeg/              LPeg shared library and Lua module
+  luv/                   Shared libuv Lua bindings and Lua module
+  lua-compat-5.3/        Lua compatibility headers used to build luv
+  unibilium/             Terminfo parsing library
+  libutf8proc/           Unicode processing library
+  libtree-sitter/        Incremental parser runtime
+  tree-sitter-c/         C parser module
+  tree-sitter-lua/       Lua parser module
+  tree-sitter-vim/       Vim parser module
+  tree-sitter-vimdoc/    Vimdoc parser module
+  tree-sitter-query/     Query parser module
+  tree-sitter-markdown/  Markdown and inline Markdown parser modules
   notmuch/               Mail indexer and shared C API
   aerc/                  Terminal mail client with the notmuch backend
   lei/                   Local email interface with private CPAN dependencies

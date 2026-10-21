@@ -1,0 +1,84 @@
+schema_version: 1
+context:
+  version: 0.12.6
+package:
+  name: neovim
+  version: ${{ version }}
+source:
+  - url: https://github.com/neovim/neovim/archive/v${{ version }}.tar.gz
+    sha256: 8629fdc5eb951daf89a76f68cad12f2f1e03fab0d539150ba3fe6d177d254b7f
+    patches:
+      - patches/private-runtime.patch
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+requirements:
+  build:
+    - clang ==23.1.3
+    - sysroot_linux-64 ==2.28
+    - cmake ==3.31.8
+    - ninja ==1.13.2
+    - make ==4.4.1
+    - pkgconf ==3.0.7
+    - gettext-tools ==0.25.1
+    - luajit ==2.1.1774638290
+  host:
+    - llvm-libgcc ==23.1.3
+    - libuv ==1.52.1
+    - libiconv ==1.18
+    - luajit ==2.1.1774638290
+    - unibilium ==2.1.2
+    - luv ==1.52.1
+    - lua-lpeg ==1.1.0
+    - libutf8proc ==2.11.3
+    - libtree-sitter ==0.26.13
+  run:
+    - __glibc >=2.28
+    - llvm-libgcc ==23.1.3
+    - libuv ==1.52.1
+    - libiconv ==1.18
+    - luajit ==2.1.1774638290
+    - unibilium ==2.1.2
+    - luv ==1.52.1
+    - lua-lpeg ==1.1.0
+    - libutf8proc ==2.11.3
+    - libtree-sitter ==0.26.13
+    - tree-sitter-c ==0.24.1
+    - tree-sitter-lua ==0.5.0
+    - tree-sitter-vim ==0.8.1
+    - tree-sitter-vimdoc ==4.1.0
+    - tree-sitter-query ==0.8.0
+    - tree-sitter-markdown ==0.5.3
+tests:
+  - package_contents:
+      bin:
+        - nvim
+      files:
+        - lib/devkit/share/nvim/runtime/doc/help.txt
+        - lib/devkit/share/man/man1/nvim.1
+        - lib/devkit/share/locale/fr/LC_MESSAGES/nvim.mo
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package neovim
+    files:
+      source:
+        - devkit-build/check-package.py
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+about:
+  homepage: https://neovim.io/
+  repository: https://github.com/neovim/neovim
+  documentation: https://neovim.io/doc/
+  license: Apache-2.0 AND Vim AND MIT AND BSD-2-Clause
+  license_file:
+    - LICENSE.txt
+  summary: Extensible Vim-based text editor with LuaJIT and Tree-sitter

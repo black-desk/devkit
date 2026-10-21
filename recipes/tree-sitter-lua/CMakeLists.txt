@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(parser C)
+file(GLOB lua_sources "src/*.c")
+add_library(lua MODULE ${lua_sources})
+target_include_directories(lua PRIVATE "src")
+set_target_properties(lua PROPERTIES PREFIX "")
+install(TARGETS lua LIBRARY DESTINATION lib/devkit/lib/nvim/parser)

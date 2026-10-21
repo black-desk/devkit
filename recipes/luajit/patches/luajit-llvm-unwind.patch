@@ -1,0 +1,11 @@
+--- a/src/lj_err.c
++++ b/src/lj_err.c
+@@ -592,7 +592,7 @@
+ #define ERR_FRAME_JIT_OFS_HANDLER	0x12
+ #define ERR_FRAME_JIT_OFS_FDE		(LJ_64 ? 0x20 : 0x18)
+ #define ERR_FRAME_JIT_OFS_CODE_SIZE	(LJ_64 ? 0x2c : 0x24)
+-#if LJ_TARGET_OSX
++#if LJ_TARGET_OSX || defined(DEVKIT_LLVM_UNWIND)
+ #define ERR_FRAME_JIT_OFS_REGISTER	ERR_FRAME_JIT_OFS_FDE
+ #else
+ #define ERR_FRAME_JIT_OFS_REGISTER	0

@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.16)
+project(parser C)
+file(GLOB vim_sources "src/*.c")
+add_library(vim MODULE ${vim_sources})
+target_include_directories(vim PRIVATE "src")
+set_target_properties(vim PROPERTIES PREFIX "")
+install(TARGETS vim LIBRARY DESTINATION lib/devkit/lib/nvim/parser)

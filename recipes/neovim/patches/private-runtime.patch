@@ -1,0 +1,22 @@
+--- a/src/nvim/os/env.c
++++ b/src/nvim/os/env.c
+@@ -987,7 +987,7 @@
+     // Find runtime path relative to the nvim binary: ../share/nvim/runtime
+     if (vim_path == NULL) {
+       vim_get_prefix_from_exepath(exe_name);
+-      if (append_path(exe_name, "share/nvim/runtime/", MAXPATHL) == OK) {
++      if (append_path(exe_name, "lib/devkit/share/nvim/runtime/", MAXPATHL) == OK) {
+         vim_path = exe_name;
+       }
+     }
+--- a/src/nvim/runtime.c
++++ b/src/nvim/runtime.c
+@@ -1807,7 +1807,7 @@
+   // Find library path relative to the nvim binary: ../lib/nvim/
+   char exe_name[MAXPATHL];
+   vim_get_prefix_from_exepath(exe_name);
+-  if (append_path(exe_name, "lib/nvim", MAXPATHL) == OK) {
++  if (append_path(exe_name, "lib/devkit/lib/nvim", MAXPATHL) == OK) {
+     return xstrdup(exe_name);
+   }
+   return NULL;
