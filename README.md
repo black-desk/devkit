@@ -92,6 +92,13 @@ to load workspaces; it depends on the channel's Go 1.27 series. Offline tests
 check symbol definitions and diagnostics in a local module. Build and test
 telemetry is disabled, without changing user telemetry settings.
 
+The ordinary [Clang tools recipe](docs/clang-tools.md) provides `clangd` and
+`clang-tidy` 23.1.3, including clangd's integrated linter and clang-tidy's
+automatic-fix helpers. Both depend on the matching channel Clang for shared
+libraries and resource headers. Their shared staging build does not change the
+seed, bootstrap membership or compiler recipe. Installed tests exercise LSP
+definitions/diagnostics, static analysis and automatic fixes.
+
 The `uv` recipe builds uv 0.12.22 and its `uvx` launcher from source, with Bash,
 Fish, and Zsh completions. It uses the locked Rust toolchain and local
 Clang/LLVM/Make/sysroot for its native dependencies. The release build keeps the
@@ -206,6 +213,7 @@ retired-packages.json    Explicitly retired package outputs
 
 recipes/
   clang/                Clang, LLVM tools, LLD, compiler-rt, build helpers
+  clang-tools/          Ordinary clangd and clang-tidy with shared staging
   libcxx/               libc++ and libc++abi, with isolated headers
   llvm-libgcc/          LLVM unwinder and compiler-rt runtime interfaces
   cmake/                CMake/ccmake using external channel libraries
