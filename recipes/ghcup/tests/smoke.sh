@@ -1,17 +1,19 @@
 #!/usr/bin/env bash
 set -euxo pipefail
-export GHCUP_USE_XDG_DIRS=1
-export XDG_DATA_HOME="${PWD}/ghcup-state/data"
-export XDG_CACHE_HOME="${PWD}/ghcup-state/cache"
-export XDG_CONFIG_HOME="${PWD}/ghcup-state/config"
-export XDG_BIN_HOME="${PWD}/ghcup-state/bin"
+unset GHCUP_USE_XDG_DIRS
+export GHCUP_INSTALL_BASE_PREFIX="${PWD}/ghcup-state"
 export GHCUP_SKIP_UPDATE_CHECK=1
-mkdir -p "${XDG_DATA_HOME}"
+mkdir -p "${GHCUP_INSTALL_BASE_PREFIX}"
 test "$(ghcup --numeric-version)" = 0.2.6.2
 ghcup --offline --help >help.txt
 grep -F 'GHC/cabal/HLS/stack' help.txt
-test ! -e "${XDG_DATA_HOME}/ghcup/ghc"
-python3 -c 'import json, os; from pathlib import Path; d=json.loads((Path(os.environ["PREFIX"])/"etc/conda/env_vars.d/ghcup.json").read_text()); assert d == {"GHCUP_USE_XDG_DIRS":"1", "GHCUP_SKIP_UPDATE_CHECK":"1"}'
+# Empty local metadata lets debug-info run offline without downloading a catalog.
+mkdir -p "${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/cache"
+printf 'toolRequirements: {}\nghcupDownloads: {}\n' >"${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/cache/ghcup-0.1.0.yaml"
+ghcup --offline debug-info >directories.txt
+grep -F "${GHCUP_INSTALL_BASE_PREFIX}/.ghcup" directories.txt
+test -z "$(find "${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/ghc" -mindepth 1 -print -quit)"
+test ! -e "${PREFIX}/etc/conda/env_vars.d/ghcup.json"
 # The imported upstream Linux manager must not acquire host GNU runtimes.
 readelf -d "${PREFIX}/bin/ghcup" >dynamic.txt
 grep -F 'There is no dynamic section' dynamic.txt

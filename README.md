@@ -144,8 +144,9 @@ The [language tools](docs/language-tools.md) add EFM, LuaLS, CMake Language
 Server, Tinymist, Black, cmake-format, shfmt, ShellCheck and typstyle, plus
 Pandoc and the GHCup Haskell toolchain manager. Node.js-based tools are
 deferred. Pandoc PDF tests use Typst; no LaTeX distribution is included. GHCup
-uses XDG state directories through environment-variable metadata and installs no
-Haskell toolchain by default.
+follows the rustup model: Haskell source builds can use a private compiler via
+build-local `GHCUP_INSTALL_BASE_PREFIX` and PATH settings; no GHC package or
+activation variables are installed.
 
 The [mail tools](docs/mail-tools.md) recipes add notmuch 0.39, aerc 0.21.0 with
 its notmuch backend, lei from public-inbox 2.0.0, and lieer 1.6 (`gmi`). Their
