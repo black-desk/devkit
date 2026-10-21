@@ -1,0 +1,31 @@
+--- a/config/config.go
++++ b/config/config.go
+@@ -5,6 +5,7 @@
+ 	"fmt"
+ 	"os"
+ 	"path"
++	"path/filepath"
+ 	"slices"
+ 	"strings"
+ 
+@@ -37,6 +38,20 @@
+ 	// Trim null chars inserted post-build by systems like Conda
+ 	shareDir := strings.TrimRight(shareDir, "\x00")
+ 	libexecDir := strings.TrimRight(libexecDir, "\x00")
++
++	// Resolve recipe-selected relative directories beside the installed binary.
++	if exe, err := os.Executable(); err == nil {
++		if real, err := filepath.EvalSymlinks(exe); err == nil {
++			exe = real
++		}
++		prefix := filepath.Dir(filepath.Dir(exe))
++		if !filepath.IsAbs(shareDir) {
++			shareDir = filepath.Join(prefix, shareDir)
++		}
++		if !filepath.IsAbs(libexecDir) {
++			libexecDir = filepath.Join(prefix, libexecDir)
++		}
++	}
+ 
+ 	// Add custom buildtime dirs
+ 	if libexecDir != "" && libexecDir != "/usr/local/libexec/aerc" {

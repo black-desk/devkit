@@ -1,0 +1,21 @@
+# Retain upstream defaults and expose the desktop-file install directory.
+# TODO: submit upstream; generated with Python difflib against aerc 0.21.0.
+--- a/GNUmakefile
++++ b/GNUmakefile
+@@ -14,6 +14,7 @@
+ SHAREDIR ?= $(PREFIX)/share/aerc
+ LIBEXECDIR ?= $(PREFIX)/libexec/aerc
+ MANDIR ?= $(PREFIX)/share/man
++DESKTOPDIR ?= $(PREFIX)/share/applications
+ GO ?= go
+ INSTALL ?= install
+ CP ?= cp
+@@ -211,7 +212,7 @@
+ 	$(eval $(call install_file,$s,644,$(DESTDIR)$(SHAREDIR)/stylesets)))
+ $(foreach t,$(wildcard templates/*),\
+ 	$(eval $(call install_file,$t,644,$(DESTDIR)$(SHAREDIR)/templates)))
+-$(eval $(call install_file,contrib/aerc.desktop,644,$(DESTDIR)$(PREFIX)/share/applications))
++$(eval $(call install_file,contrib/aerc.desktop,644,$(DESTDIR)$(DESKTOPDIR)))
+ $(eval $(call install_file,aerc,755,$(DESTDIR)$(BINDIR)))
+ $(eval $(call install_file,contrib/carddav-query,755,$(DESTDIR)$(BINDIR)))
+ 

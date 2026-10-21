@@ -1,0 +1,68 @@
+schema_version: 1
+
+context:
+  version: "1.4.32"
+
+package:
+  name: xapian
+  version: ${{ version }}
+
+source:
+  - url: https://oligarchy.co.uk/xapian/1.4.32/xapian-core-1.4.32.tar.xz
+    sha256: c4fd64e81127311756adf5579268d14a79f285ce8ac4ead0930c96195897aece
+    patches:
+      - patches/clang-driver-link-policy.patch
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - clang ==23.1.3
+    - sysroot_linux-64 ==2.28
+    - make ==4.4.1
+    - perl ==5.44.0
+    - pkgconf ==3.0.7
+    - python ==3.14.8
+  host:
+    - libcxx ==23.1.3
+    - llvm-libgcc ==23.1.3
+    - zlib ==1.3.2
+  run:
+    - zlib >=1.3.2,<2
+    - libcxx ==23.1.3
+    - llvm-libgcc ==23.1.3
+    - __glibc >=2.28
+
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package xapian
+    files:
+      source:
+        - devkit-build/check-package.py
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/smoke.sh
+        - tests/probe.cpp
+    requirements:
+      run:
+        - clang ==23.1.3
+        - sysroot_linux-64 ==2.28
+        - pkgconf ==3.0.7
+
+about:
+  homepage: https://xapian.org/
+  license: GPL-2.0-or-later
+  license_file: COPYING
+  summary: Full-text search engine and database utilities

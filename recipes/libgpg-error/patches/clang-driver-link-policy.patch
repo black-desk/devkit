@@ -1,0 +1,12 @@
+# Preserve explicit channel Clang policy in Libtool shared-library links.
+# TODO: submit Clang config/runtime/linker flag support to GNU Libtool.
+--- a/build-aux/ltmain.sh
++++ b/build-aux/ltmain.sh
+@@ -7564,6 +7564,7 @@
+       # -static-*            direct GCC to link specific libraries statically
+       # -fcilkplus           Cilk Plus language extension features for C/C++
+       # -Wa,*                Pass flags directly to the assembler
++      --config=*|--no-default-config|--ld-path=*|--rtlib=*|--unwindlib=*|\
+       -64|-mips[0-9]|-r[0-9][0-9]*|-xarch=*|-xtarget=*|+DA*|+DD*|-q*|-m*| \
+       -t[45]*|-txscale*|-p|-pg|--coverage|-fprofile-*|-F*|@*|-tp=*|--sysroot=*| \
+       -O*|-g*|-flto*|-fwhopr*|-fuse-linker-plugin|-fstack-protector*|-stdlib=*| \

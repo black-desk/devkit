@@ -1,0 +1,12 @@
+# Preserve explicit channel Clang policy in Libtool shared-library links.
+# TODO: submit Clang config/runtime/linker flag support to GNU Libtool.
+--- a/ltmain.sh
++++ b/ltmain.sh
+@@ -7722,6 +7722,7 @@
+       # -f{file|debug|macro|profile}-prefix-map=* needed for lto linking
+       # -Wa,*                Pass flags directly to the assembler
+       # -Werror, -Werror=*   Report (specified) warnings as errors
++      --config=*|--no-default-config|--ld-path=*|--rtlib=*|--unwindlib=*|\
+       -64|-mips[0-9]|-r[0-9][0-9]*|-xarch=*|-xtarget=*|+DA*|+DD*|-q*|-m*| \
+       -t[45]*|-txscale*|-p|-pg|--coverage|-fprofile-*|-F*|@*|-tp=*|--sysroot=*| \
+       -O*|-g*|-flto*|-fwhopr*|-fuse-linker-plugin|-fstack-protector*|-no-canonical-prefixes| \

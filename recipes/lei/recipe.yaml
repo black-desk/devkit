@@ -1,0 +1,94 @@
+schema_version: 1
+
+context:
+  version: "2.0.0"
+
+package:
+  name: lei
+  version: ${{ version }}
+
+source:
+  - url: https://public-inbox.org/public-inbox.git/snapshot/public-inbox-2.0.0.tar.gz
+    sha256: 7b59c9962d479812856d1f90523b1a0b688a3ad3c0157a5c7d69e80bc616807b
+    patches:
+      - patches/lazy-optional-cxx-helper.patch
+  - url: https://cpan.metacpan.org/authors/id/H/HM/HMBRAND/DBI-1.656.tgz
+    sha256: ab5f2b9aef00951ed4598723d6131a00b03e68193478dd5e5f211015520a6ef0
+    target_directory: cpan/DBI
+  - url: https://cpan.metacpan.org/authors/id/I/IS/ISHIGAKI/DBD-SQLite-1.78.tar.gz
+    sha256: efbad7794bafaa4e7476c07445a33bbfe1040e380baa3395a02635eebe3859d5
+    target_directory: cpan/DBD-SQLite
+  - url: https://cpan.metacpan.org/authors/id/O/OL/OLLY/Search-Xapian-1.2.25.7.tar.gz
+    sha256: 849b138710a9eaec7e1a07af1dfc06559b20d289ff1976c6ea30143374d99d09
+    target_directory: cpan/Search-Xapian
+  - url: https://cpan.metacpan.org/authors/id/O/OA/OALDERS/URI-5.40.tar.gz
+    sha256: ef5d2ef099a1a24a6e83ffe543de73337805d3d39c00b84fa205d725ad1a1b63
+    target_directory: cpan/URI
+  - url: https://cpan.metacpan.org/authors/id/P/PA/PALI/Email-Address-XS-1.05.tar.gz
+    sha256: 1510b7f10d67201037cd50d22c9d6b26eeca55ededa4cdb46bbca27e59a4ea16
+    target_directory: cpan/Email-Address-XS
+  - url: https://cpan.metacpan.org/authors/id/F/FE/FELIPE/Socket-MsgHdr-0.06.tar.gz
+    sha256: 7912a9716799793cab9eea1fc239a52afb932df2a4cf30c4025432edf08a0600
+    target_directory: cpan/Socket-MsgHdr
+  - url: https://cpan.metacpan.org/authors/id/R/RE/REHSACK/MIME-Base32-1.303.tar.gz
+    sha256: ab21fa99130e33a0aff6cdb596f647e5e565d207d634ba2ef06bdbef50424e99
+    target_directory: cpan/MIME-Base32
+  - url: https://cpan.metacpan.org/authors/id/H/HA/HAARG/Test-Needs-0.002010.tar.gz
+    sha256: 923ffdc78fcba96609753e4bae26b0ba0186893de4a63cd5236e012c7c90e208
+    target_directory: cpan/Test-Needs
+  - url: https://cpan.metacpan.org/authors/id/E/ET/ETHER/Test-Warnings-0.038.tar.gz
+    sha256: 3da27e003a3c3cafed3c09b42be05cf9bdbff0bee5c8590a731b02853880a273
+    target_directory: cpan/Test-Warnings
+  - url: https://cpan.metacpan.org/authors/id/N/NI/NI-S/Devel-Leak-0.03.tar.gz
+    sha256: 6f42c34f11e2b4e3ea2e0e6b9416a88a685add447910caf4d91dd2c178177252
+    target_directory: cpan/Devel-Leak
+  - path: ../../scripts/packaging/finalize-elf.py
+    target_directory: devkit-build
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+  merge_build_and_host_envs: true
+
+requirements:
+  build:
+    - clang ==23.1.3
+    - sysroot_linux-64 ==2.28
+    - make ==4.4.1
+    - pkgconf ==3.0.7
+    - python ==3.14.8
+    - perl ==5.44.0
+  host:
+    - xapian ==1.4.32
+  run:
+    - perl ==5.44.0
+    - xapian >=1.4.32,<1.5
+    - git >=2.56.0,<3
+    - curl >=8.22.0,<9
+    - libcxx ==23.1.3
+    - llvm-libgcc ==23.1.3
+    - __glibc >=2.28
+
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package lei
+    files:
+      source:
+        - devkit-build/check-package.py
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/smoke.sh
+
+about:
+  homepage: https://public-inbox.org/lei.html
+  license: AGPL-3.0-or-later
+  license_file: licenses/**
+  summary: Local email interface from public-inbox with private pinned CPAN modules

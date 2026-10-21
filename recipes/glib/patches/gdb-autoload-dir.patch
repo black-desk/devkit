@@ -1,0 +1,25 @@
+# Retain upstream defaults while allowing relocatable adjacent GDB loaders.
+# TODO: upstream this install-directory option; generated with Python difflib.
+--- a/meson.options
++++ b/meson.options
+@@ -156,3 +156,6 @@
+        choices : ['auto', 'inotify', 'kqueue', 'libinotify-kqueue', 'win32'],
+        value : 'auto',
+        description : 'The name of the system API to use as a GFileMonitor backend')
++
++option('gdb_autoload_dir', type : 'string', value : '',
++       description : 'Override the GDB auto-load script installation directory')
+--- a/glib/meson.build
++++ b/glib/meson.build
+@@ -540,7 +540,10 @@
+ 
+ # XXX: We add a leading './' because glib_libdir is an absolute path and we
+ # need it to be a relative path so that join_paths appends it to the end.
+-gdb_install_dir = join_paths(glib_datadir, 'gdb', 'auto-load', './' + glib_libdir)
++gdb_install_dir = get_option('gdb_autoload_dir')
++if gdb_install_dir == ''
++  gdb_install_dir = join_paths(glib_datadir, 'gdb', 'auto-load', './' + glib_libdir)
++endif
+ 
+ configure_file(
+   input: 'libglib-gdb.py.in',
