@@ -110,3 +110,13 @@ Yazi external-tool availability is outside the current package promise. No full
 bootstrap was restarted locally. Focused validation uses a previously completed
 channel and does not establish final-generation self-hosting; CI owns that
 check.
+
+## Neovim addition
+
+The subsequent [Neovim 0.12.6 audit](neovim.md#feature-baseline) compares the
+editor against a fixed conda-forge `nvim` revision. LuaJIT, translations and all
+default Tree-sitter parsers remain enabled. Libraries and parsers now have
+independent recipes; the editor uses shared channel libraries and parser runtime
+packages. Neovim-pinned upstream LuaJIT differs from forge's OpenResty fork;
+full fork-specific compatibility is not established. This addition is outside
+the original 12-recipe snapshot above.

@@ -1,0 +1,11 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -4,7 +4,7 @@
+ file(GLOB SRC_FILES ${PROJECT_SOURCE_DIR}/*.c)
+ add_library(unibilium ${SRC_FILES})
+ set_target_properties(unibilium PROPERTIES PUBLIC_HEADER ${PROJECT_SOURCE_DIR}/unibilium.h
+-  VERSION "${VERSION_MAJOR}.${VERSION_MINOR}")
++  VERSION "${PROJECT_VERSION}" SOVERSION 4)
+
+ if(NOT WIN32)
+   execute_process(COMMAND sh -c "ncursesw6-config --terminfo-dirs 2>/dev/null || \

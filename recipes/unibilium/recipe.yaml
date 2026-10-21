@@ -1,0 +1,49 @@
+schema_version: 1
+context:
+  version: 2.1.2
+package:
+  name: unibilium
+  version: ${{ version }}
+source:
+  - url: https://github.com/neovim/unibilium/archive/v2.1.2.tar.gz
+    sha256: 370ecb07fbbc20d91d1b350c55f1c806b06bf86797e164081ccc977fc9b3af7a
+    patches:
+      - patches/unibilium-soname.patch
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+requirements:
+  build:
+    - clang ==23.1.3
+    - sysroot_linux-64 ==2.28
+    - cmake ==3.31.8
+    - ninja ==1.13.2
+  run:
+    - __glibc >=2.28
+    - llvm-libgcc ==23.1.3
+  run_exports:
+    strong:
+      - unibilium ==2.1.2
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package unibilium
+    files:
+      source:
+        - devkit-build/check-package.py
+  - script:
+      - python3 -c "import ctypes, os; lib=ctypes.CDLL(os.environ['PREFIX']+'/lib/devkit/lib/libunibilium.so'); lib.unibi_dummy.restype=ctypes.c_void_p; p=lib.unibi_dummy(); assert(p); lib.unibi_destroy.argtypes=[ctypes.c_void_p]; lib.unibi_destroy(p)"
+about:
+  homepage: https://github.com/neovim/unibilium
+  license: LGPL-3.0-or-later
+  license_file:
+    - LICENSE
+    - LGPLv3
+    - GPLv3
+  summary: Terminfo parsing library

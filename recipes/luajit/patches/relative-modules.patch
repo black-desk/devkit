@@ -1,0 +1,46 @@
+--- a/src/lib_package.c
++++ b/src/lib_package.c
+@@ -35,6 +35,25 @@
+ #if LJ_TARGET_DLOPEN
+
+ #include <dlfcn.h>
++#if LJ_TARGET_LINUX
++#include <limits.h>
++#undef setprogdir
++/* Anchor defaults to the shared library, including when embedded in an editor. */
++static void setprogdir(lua_State *L)
++{
++  Dl_info info;
++  char path[PATH_MAX];
++  char *slash;
++  if (!dladdr((void *)luaopen_package, &info) ||
++      !realpath(info.dli_fname, path) || !(slash = strrchr(path, '/'))) {
++    luaL_error(L, "cannot locate LuaJIT shared library");
++    return;
++  }
++  *slash = '\0';
++  luaL_gsub(L, lua_tostring(L, -1), LUA_EXECDIR, path);
++  lua_remove(L, -2);
++}
++#endif
+
+ static void ll_unloadlib(void *lib)
+ {
+--- a/src/luaconf.h
++++ b/src/luaconf.h
+@@ -60,8 +60,13 @@
+ #define LUA_LCPATH1	";" LUA_LCDIR "?.so"
+ #define LUA_LCPATH2	";" LUA_LCDIR "loadall.so"
+
+-#define LUA_PATH_DEFAULT	"./?.lua" LUA_JPATH LUA_LLPATH LUA_RLPATH
+-#define LUA_CPATH_DEFAULT	"./?.so" LUA_LCPATH1 LUA_RCPATH LUA_LCPATH2
++#if defined(__linux__)
++#define LUA_PATH_DEFAULT "./?.lua;!/../share/luajit-2.1/?.lua;!/../share/lua/5.1/?.lua;!/../share/lua/5.1/?/init.lua"
++#define LUA_CPATH_DEFAULT "./?.so;!/lua/5.1/?.so"
++#else
++#define LUA_PATH_DEFAULT "./?.lua" LUA_JPATH LUA_LLPATH LUA_RLPATH
++#define LUA_CPATH_DEFAULT "./?.so" LUA_LCPATH1 LUA_RCPATH LUA_LCPATH2
++#endif
+ #endif
+
+ /* Environment variable names for path overrides and initialization code. */
