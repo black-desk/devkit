@@ -1,0 +1,44 @@
+schema_version: 1
+context:
+  version: 3.14.1
+package:
+  name: shfmt
+  version: ${{ version }}
+source:
+  - url: https://codeload.github.com/mvdan/sh/tar.gz/refs/tags/v3.14.1
+    sha256: ec4bdb88ab6c95686be3a4eeb4ad77d2b49d33d2ed7b0a65035cd52d2d87c443
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+requirements:
+  build:
+    - go ==1.27.1
+    - scdoc ==1.11.3
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package shfmt
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - shfmt
+        - gosh
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+about:
+  homepage: https://github.com/mvdan/sh
+  repository: https://github.com/mvdan/sh
+  license: BSD-3-Clause
+  license_file: LICENSE
+  summary: Shell formatter and Go shell interpreter

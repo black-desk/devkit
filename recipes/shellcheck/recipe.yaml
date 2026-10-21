@@ -1,0 +1,40 @@
+schema_version: 1
+context:
+  version: 0.11.0
+package:
+  name: shellcheck
+  version: ${{ version }}
+source:
+  - url: https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz
+    sha256: 8c3be12b05d5c177a04c29e3c78ce89ac86f1595681cab149b65b97c4e227198
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+requirements: {}
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package shellcheck
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - shellcheck
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+about:
+  homepage: https://github.com/koalaman/shellcheck
+  repository: https://github.com/koalaman/shellcheck
+  license: GPL-3.0-only
+  license_file: LICENSE.txt
+  summary: Static analysis for shell scripts

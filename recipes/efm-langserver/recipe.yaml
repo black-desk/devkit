@@ -1,0 +1,42 @@
+schema_version: 1
+context:
+  version: 0.0.57
+package:
+  name: efm-langserver
+  version: ${{ version }}
+source:
+  - url: https://codeload.github.com/mattn/efm-langserver/tar.gz/refs/tags/v0.0.57
+    sha256: 5a00742ab59c146514f652cc1d8cd34df1b0b1c692706261e4a97131f9cbe935
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+requirements:
+  build:
+    - go ==1.27.1
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package efm-langserver
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - efm-langserver
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+about:
+  homepage: https://github.com/mattn/efm-langserver
+  repository: https://github.com/mattn/efm-langserver
+  license: MIT
+  license_file: LICENSE
+  summary: General-purpose language server for external linters and formatters

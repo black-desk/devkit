@@ -140,6 +140,13 @@ files, help, man page and translations. Its libraries and parsers use
 independent channel recipes, with shared LuaJIT, luv, LPeg, unibilium, utf8proc
 and Tree-sitter alongside the existing libuv and libiconv packages.
 
+The [language tools](docs/language-tools.md) add EFM, LuaLS, CMake Language
+Server, Tinymist, Black, cmake-format, shfmt, ShellCheck and typstyle, plus
+Pandoc and the GHCup Haskell toolchain manager. Node.js-based tools are
+deferred. Pandoc PDF tests use Typst; no LaTeX distribution is included. GHCup
+uses XDG state directories through environment-variable metadata and installs no
+Haskell toolchain by default.
+
 The [mail tools](docs/mail-tools.md) recipes add notmuch 0.39, aerc 0.21.0 with
 its notmuch backend, lei from public-inbox 2.0.0, and lieer 1.6 (`gmi`). Their
 ordinary dependency closure includes GLib, GMime, Xapian, talloc and GPGME;
@@ -254,6 +261,17 @@ recipes/
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
   gopls/                 Go language server
+  efm-langserver/        General-purpose external-tool language server
+  shfmt/                 Shell formatter and gosh interpreter
+  lua-language-server/   LuaLS with embedded Lua and channel libc++
+  tinymist/              Typst language service, preview and export
+  typstyle/              Typst source formatter
+  black/                 Python formatter in a private environment
+  cmake-language-server/ CMake language server in a private environment
+  cmake-format/          CMake formatting, linting and annotation tools
+  shellcheck/            Upstream static shell analyzer
+  pandoc/                Upstream static document converter
+  ghcup/                 Upstream static Haskell toolchain manager
   gh/                    GitHub CLI with completions and manual pages
   chezmoi/               Dotfile manager with shell completions
   typst/                 Typesetting CLI with embedded fonts and OpenSSL

@@ -1,0 +1,74 @@
+schema_version: 1
+context:
+  version: 0.6.13
+package:
+  name: cmake-format
+  version: ${{ version }}
+source:
+  - url: https://files.pythonhosted.org/packages/86/a8/c4676cac062d133c6b909d7def80a3194162597968953a3291b309878721/cmakelang-0.6.13-py3-none-any.whl
+    sha256: 764b9467195c7c36453d60a829f30229720d26c7dffd41cb516b99bd9c7daf4e
+    file_name: cmakelang-0.6.13-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/62/a1/3d680cbfd5f4b8f15abc1d571870c5fc3e594bb582bc3b64ea099db13e56/jinja2-3.1.6-py3-none-any.whl
+    sha256: 85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
+    file_name: jinja2-3.1.6-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/8f/db/d7282caf7ab03af44d5d6fdbaa019b35c7d7f1c90588b839c07cba640d6a/markupsafe-3.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+    sha256: a8e9f292fcda89b324f2f5c91d13f1424a153e40fc2756f38ee23b15835ff300
+    file_name: markupsafe-3.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/88/f9/16491d7ed2a919954993e48aa941b200f38040928474c9e85ea9e64222c3/pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+    sha256: c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5
+    file_name: pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl
+    sha256: 4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274
+    file_name: six-1.17.0-py2.py3-none-any.whl
+    target_directory: artifacts
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    env:
+      TOOL_DISTRIBUTION: cmakelang
+      TOOL_COMMANDS: cmake-format cmake-lint cmake-annotate cmake-genparsers ctest-to
+    file: build.sh
+requirements:
+  build:
+    - uv ==0.12.22
+  host:
+    - python ==3.14.8
+  run:
+    - python ==3.14.8
+    - __glibc >=2.28
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package cmake-format
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - cmake-format
+        - cmake-lint
+        - cmake-annotate
+        - cmake-genparsers
+        - ctest-to
+      files:
+        - lib/devkit/share/devkit/python-tools/cmakelang/uv-receipt.toml
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+        - requirements.lock
+about:
+  homepage: https://cmake-format.readthedocs.io/
+  license: GPL-3.0-only
+  license_file: licenses/**
+  summary: CMake formatting, linting and annotation tools in a private environment
