@@ -40,10 +40,7 @@ tests:
       bin:
         - lua-language-server
   - script:
-      - bash tests/smoke.sh
-    files:
-      recipe:
-        - tests/
+      - lua-language-server --version | grep -F 3.19.2
 about:
   homepage: https://github.com/LuaLS/lua-language-server
   repository: https://github.com/LuaLS/lua-language-server

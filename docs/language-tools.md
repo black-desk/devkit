@@ -49,13 +49,16 @@ does not install every formatter or linter its configuration might reference.
 ## Python isolation
 
 The three Python tools use the channel's exact CPython 3.14.8 and uv 0.12.22 at
-build time. Every downloaded runtime artifact has an explicit URL and SHA-256 in
-its recipe; `requirements.lock` pins the complete environment. Installation is
-offline, with builds and interpreter downloads disabled. Update the lock and
-source list together. Recipe-local installation scripts verify the environments,
-retain dependency license notices and create relative public entrypoints.
-Keeping these inputs inside each recipe lets the affected-build planner select
-only the new ordinary packages.
+build time. `uv tool install` downloads tools and dependencies directly from
+PyPI into private environments. Recipe-local `requirements.lock` files pin
+versions and SHA-256 hashes rather than listing every dependency wheel in the
+recipe. Because uv 0.12.22's tool installer does not enforce requirements
+hashes, `uv pip sync --require-hashes --reinstall` checks the downloads using
+the same build-local cache and keeps only the locked packages. The hash lock
+preserves the pure-Python Black wheel and the existing native dependency wheels.
+Interpreter downloads and source builds are disabled during tool installation.
+Recipe-local scripts verify the environments, retain dependency license notices
+and create relative public entrypoints.
 
 Environments live below `lib/devkit/share/devkit/python-tools/`, named after the
 Python distribution (`black`, `cmake-language-server`, `cmakelang`). They are
@@ -66,9 +69,10 @@ compatible with glibc 2.28; Black uses the pure-Python implementation.
 CMake Language Server's upstream dependency declaration does not exclude PyGLS
 2, but that release changes the API it uses. The lock retains PyGLS 1.3.1 and
 the matching lsprotocol, as the conda-forge baseline does. The old release wheel
-also caps Python below 3.14. We rebuild its pinned sdist offline with
-pdm-backend 2.5.0 and widen that declaration to include 3.14; installed LSP and
-formatting tests validate that compatibility. CMake and cmake-format are
+also caps Python below 3.14. We rebuild its pinned sdist with pdm-backend 2.5.0,
+locked separately in `build-requirements.lock`, and widen that declaration to
+include 3.14. uv downloads the build backend and runtime dependencies; only the
+source requiring this patch remains in the recipe. CMake and cmake-format are
 explicit runtime dependencies for workspace inspection and formatting.
 
 The cmake-format package also exposes `cmake-lint`, `cmake-annotate`,
@@ -134,20 +138,20 @@ metadata. The Python packages retain the base functionality and entrypoints
 above. License aggregation and cargo-auditable metadata differ from forge; this
 comparison does not claim exhaustive behavioral equivalence.
 
-Package tests cover Go shell execution and formatting, LSP initialization and
-document opening, Lua formatting, Typst compilation, formatter idempotence,
-ShellCheck diagnostics, Pandoc HTML/DOCX/Lua-filter conversion and Typst PDF
-output, and GHCup's isolated offline manager operation. Tests exercise installed
-packages after prefix relocation. This is ordinary-package validation against an
-existing channel generation, not a new bootstrap fixed point.
+Package tests use version or help output for the language servers, plus simple
+formatting checks for formatters. Other checks exercise ShellCheck diagnostics,
+Pandoc conversion and GHCup's isolated offline manager operation. Package-layout
+checks validate installed files after prefix relocation. This is
+ordinary-package validation against an existing channel generation, not a new
+bootstrap fixed point.
 
-Local validation completed full rattler-build package tests for ten recipes.
-Tinymist was source-built and its installed payload passed PDF compilation and
-LSP smoke tests after correcting the version probe to `-V`; the corrected test
-files were rerun against that payload without repeating the Rust build. All 11
-ELF payloads meet the glibc 2.28 baseline, and the eleven packages have no
-mutually overlapping payload paths. The dependency planner selects only these
-eleven ordinary recipes.
+The original local validation completed full rattler-build package tests for ten
+recipes; Tinymist was source-built and its installed payload passed corrected
+smoke tests without repeating the Rust build. All 11 ELF payloads met the glibc
+2.28 baseline, and the eleven packages had no mutually overlapping payload
+paths. All three revised Python recipes passed package builds and tests after
+switching downloads to uv. The dependency planner selects only these eleven
+ordinary recipes.
 
 Baseline revisions inspected on 2026-10-21; package validation continued on
 2026-10-22:

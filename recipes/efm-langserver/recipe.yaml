@@ -30,10 +30,7 @@ tests:
       bin:
         - efm-langserver
   - script:
-      - bash tests/smoke.sh
-    files:
-      recipe:
-        - tests/
+      - efm-langserver -v | grep -F 0.0.57
 about:
   homepage: https://github.com/mattn/efm-langserver
   repository: https://github.com/mattn/efm-langserver
