@@ -91,28 +91,40 @@ The package does not depend on a PDF engine. To generate PDFs with the channel's
 Typst, install `typst` and pass `--pdf-engine=typst`. Tests exercise this route.
 LaTeX engines are neither installed nor selected by package configuration.
 
-GHCup manages GHC, Cabal, HLS and Stack on demand. Installation of the package
-runs no bootstrap script, downloads no toolchain and edits no shell profiles.
-Conda environment-variable metadata sets:
+GHCup follows the rustup model: the channel packages the manager, while recipes
+that compile Haskell install an exact GHC version as a build-local input. No GHC
+runtime package is added. Installing GHCup runs no bootstrap script, downloads
+no toolchain, edits no shell profiles and sets no activation variables.
 
-```text
-GHCUP_USE_XDG_DIRS=1
-GHCUP_SKIP_UPDATE_CHECK=1
+A Haskell source-build recipe should select its version explicitly and confine
+manager state to the source directory:
+
+```sh
+unset GHCUP_USE_XDG_DIRS
+export GHCUP_INSTALL_BASE_PREFIX="${SRC_DIR}/.ghcup-build"
+export GHCUP_SKIP_UPDATE_CHECK=1
+"${BUILD_PREFIX}/bin/ghcup" install ghc "${GHC_VERSION:?}" --set
+export PATH="${GHCUP_INSTALL_BASE_PREFIX}/.ghcup/bin:${PATH}"
 ```
 
-This keeps mutable toolchains and cache state in user XDG directories and
-suppresses update checks for the conda-owned manager. The usual `XDG_DATA_HOME`,
-`XDG_CACHE_HOME`, `XDG_CONFIG_HOME` and `XDG_BIN_HOME` overrides control their
-locations. Explicit `ghcup upgrade` remains an upstream command; update the
-packaged manager with conda. Shell sessions must expose the chosen XDG bin
-directory on PATH for downloaded tools. Tests set every XDG directory to a
-temporary location and perform no toolchain downloads.
+On Linux GHCup appends `.ghcup` to the prefix. The selected GHC is usable
+through the build-local PATH; GHC, manager state and caches are not installed
+into the output package. After the recipe exits, a regular `ghcup` command
+without these variables returns to its upstream `~/.ghcup` location and does not
+manage the recipe's private compiler. Any defined `GHCUP_USE_XDG_DIRS` value,
+including `0`, enables XDG mode and overrides `GHCUP_INSTALL_BASE_PREFIX`, so
+recipes must unset it rather than set it to zero. This package's tests use a
+temporary dedicated prefix and local empty metadata to check reported
+directories offline.
 
-GHCup depends on channel curl and CA certificates. GHC installation and use may
-add host requirements such as Make, tar/xz, GMP, libffi and terminal libraries,
-depending on the selected GHC bindist. Optional GPG verification needs GnuPG.
-Those downloaded toolchains remain outside the channel's LLVM runtime policy.
-The manager package does not assert a self-contained GHC development closure.
+GHCup depends on channel curl and CA certificates. A future Haskell source-build
+recipe must also pin its GHC bindist and declare the actual build requirements
+(e.g. Make, tar/xz, GMP, libffi and terminal libraries); the manager alone does
+not supply that closure. Downloaded compiler host dependencies must be resolved
+for the build environment, and the resulting application's runtime dependencies
+must be checked separately. Optional GPG verification needs GnuPG. The current
+ShellCheck and Pandoc recipes use upstream static executables, so neither recipe
+requires a GHC build input.
 
 ## Feature baseline and validation
 
