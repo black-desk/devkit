@@ -1,0 +1,46 @@
+schema_version: 1
+context:
+  version: 3.12.1
+package:
+  name: pandoc
+  version: ${{ version }}
+source:
+  - url: https://github.com/jgm/pandoc/releases/download/3.12.1/pandoc-3.12.1-linux-amd64.tar.gz
+    sha256: d0c90410e90204c9ca83b8539fac5c7aed01fd537207e4585849f8abc5df20b8
+  - url: https://raw.githubusercontent.com/jgm/pandoc/3.12.1/COPYING.md
+    sha256: 3ebfbf9235b049d384cdba5a66a1a3434bb544391e720b76faa8e1b3ee61a4e5
+    file_name: LICENSE.upstream
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+requirements: {}
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package pandoc
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - pandoc
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+    requirements:
+      run:
+        - typst ==0.15.1
+about:
+  homepage: https://github.com/jgm/pandoc
+  repository: https://github.com/jgm/pandoc
+  license: GPL-2.0-or-later
+  license_file: LICENSE.upstream
+  summary: Universal document converter

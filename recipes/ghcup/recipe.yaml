@@ -1,0 +1,47 @@
+schema_version: 1
+context:
+  version: 0.2.6.2
+package:
+  name: ghcup
+  version: ${{ version }}
+source:
+  - url: https://github.com/haskell/ghcup-hs/releases/download/v0.2.6.2/x86_64-linux-ghcup-0.2.6.2
+    sha256: 9ed5da5449b48043a0d17e767c05d2ef585e25a639bb934329496c6d2fad9cf8
+    file_name: ghcup
+  - url: https://raw.githubusercontent.com/haskell/ghcup-hs/v0.2.6.2/LICENSE
+    sha256: f3834b4a6b6e7c112207c84a11e87d4255bee0310b90338b5aaccd849fab1afb
+    file_name: LICENSE.upstream
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+requirements:
+  run:
+    - curl >=8.22.0
+    - ca-certificates
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package ghcup
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - ghcup
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+about:
+  homepage: https://github.com/haskell/ghcup-hs
+  repository: https://github.com/haskell/ghcup-hs
+  license: LGPL-3.0-only
+  license_file: LICENSE.upstream
+  summary: Haskell toolchain installer and version manager

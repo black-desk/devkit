@@ -1,0 +1,79 @@
+schema_version: 1
+context:
+  version: 26.10.1
+package:
+  name: black
+  version: ${{ version }}
+source:
+  - url: https://files.pythonhosted.org/packages/b1/28/9dd29175c1db777e6189e2a0bb5f37101adf19c3e509b236c8920f778d0b/black-26.10.1-py3-none-any.whl
+    sha256: 28842f9a8207cc1df6eb983a35a14c5a0dfcd603d214fe82d84bef552afd2e3a
+    file_name: black-26.10.1-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/58/50/6c0d534c5f134586a8e1ba4e330569e32f057e33372ae556463212fb4cd3/click-8.5.0-py3-none-any.whl
+    sha256: 255bc9599cf7748b4b1a446ccc735421bd08a2ae529a8b88597d3de5664ee360
+    file_name: click-8.5.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/79/7b/2c79738432f5c924bef5071f933bcc9efd0473bac3b4aa584a6f7c1c8df8/mypy_extensions-1.1.0-py3-none-any.whl
+    sha256: 1be4cccdb0f2482337c4743e60421de3a356cd97508abadd57d47403e94f5505
+    file_name: mypy_extensions-1.1.0-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/63/34/ba1c580383c9eada3711951fef0795c80b829a078d72188184bcab9dd527/packaging-26.3-py3-none-any.whl
+    sha256: d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
+    file_name: packaging-26.3-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/f1/d9/7fb5aa316bc299258e68c73ba3bddbc499654a07f151cba08f6153988714/pathspec-1.1.1-py3-none-any.whl
+    sha256: a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189
+    file_name: pathspec-1.1.1-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/6c/8a/1d8cb3842909dc193a73835adedf412e32e18f8ffd59f43983949622fe6f/platformdirs-4.13.5-py3-none-any.whl
+    sha256: 53d3ec4280b815c1e0b02edad7f9ee8fda1ba9c0865dd9c2e6e63849ce82fc1e
+    file_name: platformdirs-4.13.5-py3-none-any.whl
+    target_directory: artifacts
+  - url: https://files.pythonhosted.org/packages/c6/78/397db326746f0a342855b81216ae1f0a32965deccfd7c830a2dbc66d2483/pytokens-0.4.1-py3-none-any.whl
+    sha256: 26cef14744a8385f35d0e095dc8b3a7583f6c953c2e3d269c7f82484bf5ad2de
+    file_name: pytokens-0.4.1-py3-none-any.whl
+    target_directory: artifacts
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  skip: not linux or not x86_64
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    env:
+      TOOL_DISTRIBUTION: black
+      TOOL_COMMANDS: black blackd
+    file: build.sh
+requirements:
+  build:
+    - uv ==0.12.22
+  host:
+    - python ==3.14.8
+  run:
+    - python ==3.14.8
+    - __glibc >=2.28
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package black
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - black
+        - blackd
+      files:
+        - lib/devkit/share/devkit/python-tools/black/uv-receipt.toml
+  - script:
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/
+        - requirements.lock
+about:
+  homepage: https://black.readthedocs.io/
+  license: MIT
+  license_file: licenses/**
+  summary: Python code formatter in a private environment
