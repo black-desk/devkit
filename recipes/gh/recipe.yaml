@@ -1,0 +1,59 @@
+schema_version: 1
+
+context:
+  version: "2.102.1"
+
+package:
+  name: gh
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/cli/cli/archive/refs/tags/v${{ version }}.tar.gz
+    sha256: 6a6959d4da3302d95812d8ba1a96ffb3e21874badb0dc25f2819184c372157fd
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - go ==1.27.1
+  run:
+    - git >=2.56.0,<3
+
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package gh
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - gh
+      files:
+        - lib/devkit/share/bash-completion/completions/gh
+        - lib/devkit/share/fish/vendor_completions.d/gh.fish
+        - lib/devkit/share/zsh/site-functions/_gh
+        - lib/devkit/share/man/man1/gh.1
+        - lib/devkit/share/man/man1/gh-pr-create.1
+  - script:
+      - gh --version | head -n 1 | grep -F 'gh version ${{ version }}'
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/smoke.sh
+
+about:
+  homepage: https://cli.github.com/
+  license: MIT
+  license_file: LICENSE
+  summary: GitHub command-line interface
+  description: GitHub CLI built from pinned upstream source and verified Go modules, with shell completions and manual pages.
+  repository: https://github.com/cli/cli
+  documentation: https://cli.github.com/manual/

@@ -62,6 +62,14 @@ packages.
 
 `difftastic` is also built from the locked Rust toolchain input.
 
+The [additional channel tools](docs/channel-tools.md) are GitHub CLI `gh`
+2.102.1, dotfile manager `chezmoi` 2.73.3, Typst 0.15.1, and the Neovim Python
+client/provider `pynvim` 0.6.0. The Go applications and Typst build from pinned
+source with completions; Typst retains embedded fonts and channel OpenSSL.
+Pynvim exposes `pynvim-python` from a private Python environment, with its
+greenlet and MessagePack extensions built against the channel C/C++ toolchain.
+These ordinary recipes do not change the seed or bootstrap membership.
+
 The `yazi` recipe builds Yazi 26.9.1 and its `ya` companion with embedded Lua,
 Bash/Fish/Zsh completions, and the glibc 2.28 sysroot. Git, fd, and ripgrep are
 runtime dependencies for plugin management and search. Additional preview and
@@ -238,6 +246,9 @@ recipes/
   go/                    Official Go linux-amd64 distribution repack
   lazygit/               Terminal UI for Git commands
   gopls/                 Go language server
+  gh/                    GitHub CLI with completions and manual pages
+  chezmoi/               Dotfile manager with shell completions
+  typst/                 Typesetting CLI with embedded fonts and OpenSSL
   yazi/                  Terminal file manager and ya companion
   just/                  Project command runner
   fd/                    Fast filesystem search tool
@@ -247,6 +258,7 @@ recipes/
   rustup/                Official Rust toolchain manager binary repack
   b4/                    Mailing-list patch tools in a private uv environment
   neovim/                Text editor using channel LuaJIT and Tree-sitter
+  pynvim/                Neovim Python client/provider in a private environment
   luajit/                LuaJIT interpreter, shared library and JIT modules
   lua-lpeg/              LPeg shared library and Lua module
   luv/                   Shared libuv Lua bindings and Lua module

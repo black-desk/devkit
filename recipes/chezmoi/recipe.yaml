@@ -1,0 +1,57 @@
+schema_version: 1
+
+context:
+  version: "2.73.3"
+
+package:
+  name: chezmoi
+  version: ${{ version }}
+
+source:
+  - url: https://github.com/twpayne/chezmoi/archive/refs/tags/v${{ version }}.tar.gz
+    sha256: 5bee6b243331b9c02a7f25ca1696bbde30cb3909c8bccb91108f2718931e4fc7
+  - path: ../../scripts/packaging/check-package.py
+    target_directory: devkit-build
+
+build:
+  number: 0
+  string: h${{ hash }}_${{ build_number }}
+  dynamic_linking:
+    binary_relocation: false
+  script:
+    file: build.sh
+
+requirements:
+  build:
+    - go ==1.27.1
+  run:
+    - git >=2.56.0,<3
+
+tests:
+  - script:
+      - python3 devkit-build/check-package.py "${PREFIX}" --package chezmoi
+    files:
+      source:
+        - devkit-build/check-package.py
+  - package_contents:
+      bin:
+        - chezmoi
+      files:
+        - lib/devkit/share/bash-completion/completions/chezmoi
+        - lib/devkit/share/fish/vendor_completions.d/chezmoi.fish
+        - lib/devkit/share/zsh/site-functions/_chezmoi
+  - script:
+      - chezmoi --version | grep -F 'chezmoi version v${{ version }}'
+      - bash tests/smoke.sh
+    files:
+      recipe:
+        - tests/smoke.sh
+
+about:
+  homepage: https://www.chezmoi.io/
+  license: MIT
+  license_file: LICENSE
+  summary: Manage dotfiles across multiple machines securely
+  description: Dotfile manager built from pinned upstream source and verified Go modules, with Bash, Fish and Zsh completions.
+  repository: https://github.com/twpayne/chezmoi
+  documentation: https://www.chezmoi.io/user-guide/command-overview/
