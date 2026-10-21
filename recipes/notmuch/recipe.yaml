@@ -10,6 +10,8 @@ package:
 source:
   - url: https://notmuchmail.org/releases/notmuch-0.39.tar.xz
     sha256: b88bb02a76c46bad8d313fd2bb4f8e39298b51f66fcbeb304d9f80c3eef704e3
+    patches:
+      - patches/configure-gmime-ldflags.patch
   - path: ../../scripts/packaging/finalize-elf.py
     target_directory: devkit-build
   - path: ../../scripts/packaging/check-package.py

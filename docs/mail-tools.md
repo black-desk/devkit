@@ -31,9 +31,12 @@ GMime enables its GPGME crypto interface. GPGME invokes an external GnuPG
 installation for PGP/S/MIME operations; GnuPG, secret keys, agents and pinentry
 are not bundled. Building notmuch also needs the build host's `gpg` and `gpgsm`
 for its upstream configure-time crypto checks. aerc can also use its built-in Go
-crypto provider. Optional user filters may need external programs. No account
-configuration, credentials, mail store or synchronization job is installed
-automatically.
+crypto provider. The notmuch configure patch passes caller `LDFLAGS` to all four
+GMime runtime probes so they load the host-prefix libraries. It preserves the
+crypto checks; TODO: submit upstream. The patch was generated with Python
+`difflib` against notmuch 0.39. Optional user filters may need external
+programs. No account configuration, credentials, mail store or synchronization
+job is installed automatically.
 
 lei's private modules are DBI 1.656, DBD::SQLite 1.78 (with its upstream-bundled
 SQLite), Search::Xapian 1.2.25.7, URI 5.40, Email::Address::XS 1.05,
