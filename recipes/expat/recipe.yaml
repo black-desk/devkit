@@ -21,7 +21,7 @@ outputs:
   - package:
       name: expat
     build:
-      number: 8
+      number: 9
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -129,7 +129,7 @@ outputs:
   - package:
       name: libexpat
     build:
-      number: 8
+      number: 9
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

@@ -19,7 +19,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 6
+  number: 7
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

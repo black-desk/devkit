@@ -18,7 +18,7 @@ source:
 build:
   dynamic_linking:
     binary_relocation: false
-  number: 4
+  number: 5
   string: h${{ hash }}_${{ build_number }}
   script:
     file: build.sh

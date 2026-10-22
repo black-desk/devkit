@@ -20,7 +20,7 @@ outputs:
   - package:
       name: llvm-libgcc
     build:
-      number: 12
+      number: 13
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         # CMake installs $ORIGIN RUNPATH; automatic relinking converts it to RPATH.

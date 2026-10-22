@@ -57,7 +57,7 @@ for mode in narrow wide; do
     --without-debug --without-ada --with-shared --disable-pkg-ldflags \
     --with-pkg-config --with-pkg-config-libdir="${PREFIX}/lib/devkit/lib/pkgconfig" \
     --disable-overwrite --enable-symlinks --enable-termcap --enable-pc-files \
-    --with-termlib --with-versioned-syms --disable-mixed-case \
+    --with-termlib --with-versioned-syms --enable-mixed-case \
     --enable-relative-terminfo "${wide_option}"
   make -j"${CPU_COUNT}"
   make install CONFIG_BINDIR="${PREFIX}/lib/devkit/libexec/ncurses/bin"
