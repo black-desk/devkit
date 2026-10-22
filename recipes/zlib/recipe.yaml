@@ -21,7 +21,7 @@ outputs:
   - package:
       name: zlib
     build:
-      number: 9
+      number: 10
       string: h${{ hash }}_${{ build_number }}
       script:
         file: build.sh
@@ -91,7 +91,7 @@ outputs:
   - package:
       name: libzlib
     build:
-      number: 9
+      number: 10
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

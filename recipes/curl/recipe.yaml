@@ -24,7 +24,7 @@ outputs:
   - package:
       name: curl
     build:
-      number: 11
+      number: 12
       # Native compiler paths use the prefix tracked by Conda text relocation.
       merge_build_and_host_envs: true
       string: h${{ hash }}_${{ build_number }}
@@ -246,7 +246,7 @@ outputs:
   - package:
       name: libcurl
     build:
-      number: 11
+      number: 12
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

@@ -14,7 +14,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 0
+  number: 1
   skip: not linux or not x86_64
   dynamic_linking:
     binary_relocation: false

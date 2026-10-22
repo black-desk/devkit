@@ -18,7 +18,7 @@ outputs:
   - package:
       name: gettext
     build:
-      number: 5
+      number: 6
       string: h${{ hash }}_${{ build_number }}
       dynamic_linking:
         binary_relocation: false
@@ -88,7 +88,7 @@ outputs:
   - package:
       name: gettext-tools
     build:
-      number: 5
+      number: 6
       string: meta_h${{ hash }}_${{ build_number }}
       noarch: generic
       script: "true"

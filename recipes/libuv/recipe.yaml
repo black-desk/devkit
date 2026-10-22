@@ -11,7 +11,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 6
+  number: 7
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false

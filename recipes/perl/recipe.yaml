@@ -19,7 +19,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 7
+  number: 8
   string: h${{ hash }}_${{ build_number }}
   # Native builds record compiler and library paths under one relocatable prefix.
   merge_build_and_host_envs: true

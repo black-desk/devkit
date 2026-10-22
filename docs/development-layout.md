@@ -36,6 +36,13 @@ from the configured includedir. ncurses uses its existing
 library dependencies; its source installation rules create the private terminfo
 compatibility link directly.
 
+The Linux-only ncurses recipe enables mixed-case filenames, so both `tic` and
+the libraries use letter subdirectories such as `x/xterm` rather than hex
+subdirectories such as `78/xterm`. This matches typical Linux host databases and
+lets `TERMINFO` select host-provided entries such as Ghostty's `xterm-ghostty`.
+The package retains its bundled database; its tests also compile and read a
+separate host-style database through `TERMINFO`.
+
 ICU keeps the build-time `pkgdata.inc` intact. Source installation rules
 generate a separate consumer version through the same native generator, with
 explicit `ICU_CONFIG_*` compiler/flag settings. Both installed `icu-config` and

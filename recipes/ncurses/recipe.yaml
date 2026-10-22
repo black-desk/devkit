@@ -16,7 +16,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 7
+  number: 8
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -54,6 +54,13 @@ tests:
   - script:
       - unset LD_LIBRARY_PATH LD_PRELOAD
       - infocmp -A "${PREFIX}/lib/devkit/share/terminfo" xterm
+      - test -f "${PREFIX}/lib/devkit/share/terminfo/x/xterm"
+      - >-
+        printf 'xterm-devkit-host|Devkit external terminal fixture,\n\tclear=\\E[H\\E[2J,\n' > host.terminfo
+      - tic -x -o "${PWD}/host-terminfo" host.terminfo
+      - test -f host-terminfo/x/xterm-devkit-host
+      - TERMINFO="${PWD}/host-terminfo" TERM=xterm-devkit-host clear > clear-output
+      - test -s clear-output
       - test -f "${PREFIX}/lib/devkit/include/ncurses-${{ version }}/ncursesw/curses.h"
       - test -d "$("${PREFIX}/lib/devkit/libexec/ncurses/bin/ncursesw6-config" --includedir)"
       - '! "${PREFIX}/lib/devkit/libexec/ncurses/bin/ncursesw6-config" --libs | grep -E "build_env|gcc-install-dir|undefined-version"'
