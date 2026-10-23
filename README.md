@@ -148,7 +148,7 @@ source builds can use a private compiler via build-local
 `GHCUP_INSTALL_BASE_PREFIX` and PATH settings; no GHC package or activation
 variables are installed.
 
-The [mail tools](docs/mail-tools.md) recipes add notmuch 0.39, aerc 0.21.0 with
+The [mail tools](docs/mail-tools.md) recipes add notmuch 0.39, aerc 0.22.0 with
 its notmuch backend, lei from public-inbox 2.0.0, and lieer 1.6 (`gmi`). Their
 ordinary dependency closure includes GLib, GMime, Xapian, talloc and GPGME;
 Python and Perl modules are isolated in private tool environments. The seed

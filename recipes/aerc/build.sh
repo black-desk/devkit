@@ -28,10 +28,11 @@ go mod download
 go mod verify
 # Date is the timestamp of the pinned upstream release archive.
 make_args=(
-  VERSION="${PKG_VERSION}" DATE=2025-08-28
+  VERSION="${PKG_VERSION}" DATE=2026-07-29
   PREFIX="${PREFIX}" SHAREDIR="${PREFIX}/lib/devkit/share/aerc"
   LIBEXECDIR="${PREFIX}/lib/devkit/libexec/aerc"
   MANDIR="${PREFIX}/lib/devkit/share/man"
+  ICONDIR="${PREFIX}/lib/devkit/share/icons/hicolor/scalable/apps"
   DESKTOPDIR="${PREFIX}/lib/devkit/share/applications"
   GO_EXTRA_LDFLAGS="-X git.sr.ht/~rjarry/aerc/config.shareDir=lib/devkit/share/aerc -X git.sr.ht/~rjarry/aerc/config.libexecDir=lib/devkit/libexec/aerc"
 )

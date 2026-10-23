@@ -1,15 +1,15 @@
 schema_version: 1
 
 context:
-  version: "0.21.0"
+  version: "0.22.0"
 
 package:
   name: aerc
   version: ${{ version }}
 
 source:
-  - url: https://git.sr.ht/~rjarry/aerc/archive/0.21.0.tar.gz
-    sha256: 3f1469bbaea982fc58352f2682932ecc2fb50c705994d96b2343e771747745a7
+  - url: https://git.sr.ht/~rjarry/aerc/archive/0.22.0.tar.gz
+    sha256: f1cd5e358fd836051d4d88c189ecaa025a108b729281985525b45b13bc49e70f
     patches:
       - patches/relative-resource-dirs.patch
       - patches/desktop-install-dir.patch
@@ -19,7 +19,7 @@ source:
     target_directory: devkit-build
 
 build:
-  number: 1
+  number: 0
   string: h${{ hash }}_${{ build_number }}
   dynamic_linking:
     binary_relocation: false
@@ -53,6 +53,7 @@ tests:
     files:
       recipe:
         - tests/smoke.sh
+        - tests/notmuch.py
 
 about:
   homepage: https://aerc-mail.org/

@@ -2,8 +2,9 @@
 set -euxo pipefail
 
 carddav-query --help
-aerc -v | grep -F 0.21.0
+aerc -v | grep -F 0.22.0
 test -f "${PREFIX}/lib/devkit/share/aerc/aerc.conf"
+test -f "${PREFIX}/lib/devkit/share/icons/hicolor/scalable/apps/aerc.svg"
 test -f "${PREFIX}/lib/devkit/share/man/man5/aerc-notmuch.5"
 test -x "${PREFIX}/lib/devkit/libexec/aerc/filters/colorize"
 # The enabled backend must remain linked to this environment after relocation.
@@ -23,3 +24,5 @@ if aerc -A "${missing_accounts}" >startup.log 2>&1; then
 fi
 cmp "${XDG_CONFIG_HOME}/aerc/aerc.conf" "${PREFIX}/lib/devkit/share/aerc/aerc.conf"
 grep -F "${missing_accounts}" startup.log
+
+python3 tests/notmuch.py
