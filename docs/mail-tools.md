@@ -1,6 +1,6 @@
 # Mail tools
 
-The ordinary recipes add notmuch 0.39, aerc 0.21.0, lei (public-inbox 2.0.0) and
+The ordinary recipes add notmuch 0.39, aerc 0.22.0, lei (public-inbox 2.0.0) and
 lieer 1.6. They use the channel toolchain and its private installation layout.
 They do not add packages to the bootstrap seed. The rendered dependency graph
 orders the new libraries and applications automatically.
@@ -70,14 +70,23 @@ the installed executable. This avoids embedding a build prefix in Go string
 headers, which cannot safely be shortened by ordinary binary prefix
 substitution. It preserves upstream absolute-directory behavior. TODO: offer
 this relative-directory support upstream; patch generated with Python's
-standard-library `difflib` against aerc 0.21.0. A second
-upstream-default-preserving patch adds the desktop-file install directory
-option; its output also stays under the private data directory.
+standard-library `difflib` against aerc 0.22.0. A second
+upstream-default-preserving patch adds desktop-file and icon install directory
+options; their outputs also stay under the private data directory.
+
+aerc 0.22.0 discovers the notmuch database and mail root through libnotmuch. Use
+`source = notmuch://` for the default profile, or `notmuch://PROFILE` for a
+named profile. Discovery follows `NOTMUCH_CONFIG`, `NOTMUCH_DATABASE`,
+`NOTMUCH_PROFILE` and the standard notmuch configuration locations. The older
+`maildir-store` option is replaced by `enable-maildir` (default: true). This
+supports configurations written for automatic discovery; aerc 0.21.0 instead
+required an explicit database path in the source URL.
 
 Package tests compile installed C/C++ consumers for all eight libraries, render
 a manual with scdoc, index/search/tag a local message with notmuch, check aerc's
-installed resources and notmuch linkage, import/query a local message with lei,
-and import lieer's Google client dependencies and exercise notmuch2 database
-creation and tags. These tests use installed prefixes and no live mail accounts.
-Interactive terminal behavior, OAuth consent and remote Gmail/IMAP services
-remain outside offline smoke coverage.
+installed resources and notmuch linkage, open a terminal to verify automatic
+notmuch discovery and display of a local message, import/query a local message
+with lei, and import lieer's Google client dependencies and exercise notmuch2
+database creation and tags. These tests use installed prefixes and no live mail
+accounts. Broader interactive terminal behavior, OAuth consent and remote
+Gmail/IMAP services remain outside offline smoke coverage.
