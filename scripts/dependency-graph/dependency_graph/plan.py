@@ -154,10 +154,18 @@ def repository_plan(options: RenderOptions, base: str) -> dict[str, Any]:
     changed = set()
     full = False
     for path in filter(None, paths):
+        # The planner and its tests schedule builds; they do not produce package
+        # payloads. Their own CI tests validate changes without a channel rebuild.
+        if path.startswith("scripts/dependency-graph/"):
+            continue
+        # Only the recipe's root README is documentation by convention. A README
+        # under source/ or tests/ can be a real build or test input.
+        parts = path.split("/")
+        if len(parts) == 3 and parts[0] == "recipes" and parts[2] == "README.md":
+            continue
         if path in GLOBAL_INPUTS or path.startswith(("variants/", "scripts/")):
             full = True
         if path.startswith("recipes/"):
-            parts = path.split("/")
             if len(parts) < 3:
                 raise RenderError(f"unexpected file directly below recipes/: {path}")
             changed.add("/".join(parts[:2]))

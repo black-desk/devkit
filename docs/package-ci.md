@@ -28,6 +28,12 @@ selfhost channel, then the public channel. Conda-forge is never a target
 fallback. A plan with no ordinary selection skips ordinary. A plan with no
 selected outputs skips all five execution jobs and publishing.
 
+Recipe-root `README.md` files and the scheduling tool under
+`scripts/dependency-graph/` do not select package builds. Source/patch/test
+inputs, including nested Markdown files, retain their normal rebuild and
+revision checks. Changes to the planner still run dependency-graph tests in the
+Checks workflow.
+
 Ordinary and publication use explicit conditions that permit planned dependency
 skips. Failure/cancellation of a required predecessor cannot enable a downstream
 job. packages-pass checks each execution job against the plan: expected skips
