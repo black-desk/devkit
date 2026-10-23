@@ -48,6 +48,8 @@ for mode in narrow wide; do
   [[ "$mode" == narrow ]] || wide_option=--enable-widec
   header_subdir=ncurses
   [[ "$mode" == narrow ]] || header_subdir=ncursesw
+  # Mixed-case terminfo uses x/xterm rather than 78/xterm, matching Linux host
+  # databases so TERMINFO can select host entries such as xterm-ghostty.
   ./configure --prefix="${PREFIX}" \
     --datarootdir="${PREFIX}/lib/devkit/share" \
     --libexecdir="${PREFIX}/lib/devkit/libexec" \

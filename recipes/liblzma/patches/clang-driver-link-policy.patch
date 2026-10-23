@@ -1,4 +1,8 @@
 # Preserve explicit Clang driver policy in shared-library links.
+# Libtool otherwise drops --config/--no-default-config/--ld-path and reloads
+# Clang's host defaults. An affected build linked against host glibc 2.32/2.34
+# despite compiling against the channel's 2.28 sysroot; successful tests on a
+# newer host did not detect that ABI leak. Retain the explicit policy at link.
 # TODO: submit this flag support to GNU libtool upstream.
 --- a/build-aux/ltmain.sh
 +++ b/build-aux/ltmain.sh

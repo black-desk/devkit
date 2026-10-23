@@ -28,56 +28,17 @@ to compensate. Keep patches recipe-owned, retain upstream defaults and record
 upstreaming TODOs and generator versions. Do not introduce a shared staging
 abstraction before channel coverage is complete.
 
-Examples include OpenSSL's Unix `--includedir`, bzip2's independent Makefile
-directory variables, and the separate development-query script directories for
-curl, libxml2, PCRE2, krb5, ncurses and ICU. Expat and PCRE2 generate metadata
-from the configured includedir. ncurses uses its existing
-`--disable-pkg-ldflags` option to omit build-only linker flags while preserving
-library dependencies; its source installation rules create the private terminfo
-compatibility link directly.
+Header directories retain upstream internal hierarchy beneath their versioned
+root. Consumers obtain the exact include path from generated metadata rather
+than adding a broad include directory. Preserve upstream `Libs`, `Libs.private`,
+`Requires` and `Requires.private`, including transitive public header
+requirements; do not replace generated dependencies with a manual list.
 
-The Linux-only ncurses recipe enables mixed-case filenames, so both `tic` and
-the libraries use letter subdirectories such as `x/xterm` rather than hex
-subdirectories such as `78/xterm`. This matches typical Linux host databases and
-lets `TERMINFO` select host-provided entries such as Ghostty's `xterm-ghostty`.
-The package retains its bundled database; its tests also compile and read a
-separate host-style database through `TERMINFO`.
-
-ICU keeps the build-time `pkgdata.inc` intact. Source installation rules
-generate a separate consumer version through the same native generator, with
-explicit `ICU_CONFIG_*` compiler/flag settings. Both installed `icu-config` and
-the consumer make configuration use those settings. They contain no build-prefix
-compiler paths or build-only sysroot flags. These exported commands do not add a
-Clang runtime dependency to ICU. The recipe's Clang flags and library search
-policy remain explicit when using the consumer configuration.
-
-Perl uses rattler-build's documented `merge_build_and_host_envs: true` option
-for native builds. Compiler tools and target libraries share the host prefix, so
-the original generated `Config.pm` and `Config_heavy.pl` are installed
-unchanged. Conda records and replaces their text prefixes at installation; there
-is no separate consumer configuration or interpreter-relative rewrite. Dirty
-records the seed compiler and sysroot; result/selfhost record the channel
-toolchain. Pure-Perl execution does not require a compiler; XS builds explicitly
-install the corresponding compiler, Make and sysroot packages. Dirty uses the
-seed's existing versioned compiler names, avoiding new compiler aliases being
-collected as Perl payload in the merged environment.
-
-Curl also merges its native build/host environments. Its original curl-config
-reports the configured compiler directly; Conda relocates that path at install.
-There is no separate exported compiler setting. Dirty uses the seed-owned
-versioned compiler name, while result/selfhost use the channel's clang.
-
-OpenSSL's initial option patch covers Unix installation; Windows/VMS
-installation rules remain outside its scope. LLVM CRT objects use the existing
-`COMPILER_RT_INSTALL_LIBRARY_DIR` option. bzip2 still explicitly installs the
-shared outputs from its separate shared-library Makefile, which provides no
-install target. Imported toolchain trees, dirty runtime aliases and documented
-ELF finalization are separate from development-file placement.
-
-Versioned header directories retain each project's native internal hierarchy.
-For example, libxml2 installs `libxml2-2.15.4/libxml2/libxml/*.h`; its generated
-metadata supplies the nested include path. Recipes with hand-written include
-flags must follow it.
+Libraries declare ABI `run_exports`. Consumers declare direct requirements
+rather than expanding a solved dependency closure into recipe metadata. Compiler
+resource headers, imported sysroots and language-runtime internal trees serve
+their own interfaces and are deliberate exceptions to ordinary header isolation.
+Recipe-specific directory constraints belong with the recipe.
 
 ## Default tools use the host
 
@@ -86,16 +47,11 @@ libraries. CMake derives public search prefixes from PATH, and those prefixes
 contain no public development interfaces. pkgconf retains an explicit list of
 host pkg-config directories instead of its own prefix-based defaults.
 
-CMake's own modules remain in `share/cmake-3.31`. Its Unix platform module
-derives a system search prefix from `CMAKE_ROOT`; putting those resources under
-the private prefix would make other channel packages discoverable by default.
-CMake's documentation and other configurable resources remain private. No patch
-to CMake's package-search implementation is required.
-
-Development query helpers (`curl-config`, `krb5-config`, `xml2-config`, ncurses,
-PCRE2 and LLVM helpers) live in private libexec directories, off PATH. Recipes
-use their explicit paths when needed. LLVM's helper retains a small patch for
-its separate install directory, prefix inference and native install RUNPATH.
+Development query helpers live in private libexec directories, off PATH.
+Consumers use explicit paths or build-local PATH additions; activation must not
+expose them globally. Preserve upstream query interfaces and generated
+dependency lists. CMake's own public module-directory exception is explained
+[beside its recipe](../recipes/cmake/README.md).
 
 Channel builds opt in with `CMAKE_PREFIX_PATH=<prefix>/lib/devkit`,
 `PKG_CONFIG_LIBDIR=<prefix>/lib/devkit/lib/pkgconfig`, and the explicit compiler
@@ -138,9 +94,8 @@ may load dirty C++ dependencies through a public runtime alias. Never alias
 LLVM's `libgcc_s.so.1` over seed GNU libgcc. Result/selfhost omit these
 compatibility aliases and contain no GNU libgcc/libstdcxx package.
 
-The seed manifest itself is unchanged. Imported sysroot/tzdata and imported
-language toolchain internal trees keep their purposeful upstream layouts. These
-exceptions do not expose ordinary channel C/C++ development interfaces.
+Imported sysroot/data and language toolchain trees keep their upstream layouts
+without exposing ordinary channel C/C++ development interfaces.
 
 ## Validation
 
@@ -154,10 +109,6 @@ binaries retain their existing `--skip-runpath-check` exceptions.
 Bootstrap recipes are built with package tests skipped. Run all installed recipe
 tests after selfhost completes; earlier stages receive stage closure and runtime
 smoke checks. Ordinary packages run their installed tests immediately. Test
-actual pkg-config/CMake consumers, host-default discovery, and relative RUNPATH
-after installation at a different prefix. Unit and render checks alone do not
-establish that the whole bootstrap works.
-
-See [native-private-install-dirs.md](native-private-install-dirs.md) for this
-experiment's investigation and validation record. Earlier policies and their
-results remain historical records in the other layout audit documents.
+actual pkg-config/CMake consumers with channel pkgconf, host-default discovery,
+and relative RUNPATH after installation at a different prefix. Unit and render
+checks alone do not establish that the whole bootstrap works.
