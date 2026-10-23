@@ -180,6 +180,62 @@ class PlanTests(unittest.TestCase):
                 with self.assertRaisesRegex(RenderError, "render requested"):
                     repository_plan(options, "base")
 
+    def test_documentation_and_planner_changes_do_not_render_packages(self):
+        options = RenderOptions(
+            "/fixture",
+            "linux-64",
+            (),
+            "/fixture/variants/result.yaml",
+            frozenset(),
+            "rattler-build",
+        )
+        for tracked, untracked in (
+            ("recipes/clang/README.md", "recipes/icu/README.md"),
+            ("README.md\0docs/usage.md", "recipes/tool/README.md"),
+            (
+                "scripts/dependency-graph/dependency_graph/plan.py",
+                "scripts/dependency-graph/tests/test_plan.py",
+            ),
+        ):
+            with self.subTest(tracked=tracked, untracked=untracked), patch(
+                "dependency_graph.plan.git", side_effect=["base", tracked, untracked]
+            ), patch("dependency_graph.plan.render_outputs") as render:
+                report = repository_plan(options, "base")
+                self.assertTrue(report["valid"])
+                self.assertFalse(report["global_change"])
+                self.assertEqual(report["changed_recipes"], [])
+                self.assertEqual(report["selected"], [])
+                render.assert_not_called()
+
+    def test_documentation_does_not_hide_real_recipe_or_global_inputs(self):
+        options = RenderOptions(
+            "/fixture",
+            "linux-64",
+            (),
+            "/fixture/variants/result.yaml",
+            frozenset(),
+            "rattler-build",
+        )
+        for path in (
+            "recipes/tool/recipe.yaml",
+            "recipes/tool/build.sh",
+            "recipes/tool/patches/fix.patch",
+            "recipes/tool/source/README.md",
+            "recipes/tool/tests/README.md",
+            "recipes/tool/fixture.md",
+            "scripts/bootstrap.sh",
+            "variants/result.yaml",
+        ):
+            with self.subTest(path=path), patch(
+                "dependency_graph.plan.git",
+                side_effect=["base", "recipes/tool/README.md", path],
+            ), patch(
+                "dependency_graph.plan.render_outputs",
+                side_effect=RenderError("render requested"),
+            ):
+                with self.assertRaisesRegex(RenderError, "render requested"):
+                    repository_plan(options, "base")
+
     @unittest.skipUnless(
         shutil.which("rattler-build") and shutil.which("rattler-index"),
         "rattler tools are needed",
@@ -302,6 +358,12 @@ class PlanTests(unittest.TestCase):
                 "chain",
             )
             base = git("rev-parse", "HEAD")
+            # Documentation in a tracked recipe and an untracked recipe README
+            # must not select unchanged outputs or require revision bumps.
+            (root / "recipes/lib/README.md").write_text("Design rationale\n")
+            git("add", "recipes/lib/README.md")
+            (root / "recipes/tool/README.md").write_text("Usage\n")
+            self.assertEqual(repository_plan(options, base)["selected"], [])
             (root / "recipes/lib/helper.sh").write_text("echo changed\n")
             report = repository_plan(options, base)
             self.assertFalse(report["valid"])
