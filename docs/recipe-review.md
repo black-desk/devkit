@@ -47,10 +47,9 @@ concurrency setting is changed by this review.
 
 ## Historical CMake bootstrap patch
 
-`bootstrap-exclude-ghs-generator.patch` guards an include under
-`CMAKE_BOOTSTRAP`. The current recipe configures with previous-stage CMake, so
-that guard does not affect its normal build. Decide whether to remove the
-historical patch or retain it for an explicitly supported bootstrap path.
+Decide whether to remove the unused patch or support its alternate bootstrap
+path; the current behavior and rationale are recorded
+[beside the CMake recipe](../recipes/cmake/README.md#historical-bootstrap-patch).
 
 ## Config-helper override consistency
 

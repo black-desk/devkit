@@ -14,7 +14,9 @@ main pushes publish only after every required build and test succeeds.
 | smoke    | Plan and selfhost-channel                              | Independent package tests, compiler/runtime policy and glibc baseline checks                 | Job success; input artifact unchanged |
 | ordinary | Plan, optional tested selfhost-channel, public channel | Build selected ordinary recipes in dependency order; upstream/package tests                  | ordinary-channel                      |
 
-Dirty and result skip upstream suites and independent package tests. Selfhost
+Dirty and result are intended to skip upstream suites and independent package
+tests. JsonCpp still runs post-build unit tests in these stages; see the
+[unresolved test-gating finding](recipe-review.md#stage-test-gating). Selfhost
 retains all upstream workloads, including the full zstd fuzzer. Its packaged
 recipe tests run in smoke after the complete selfhost channel is available.
 Dirty/result retain existing channel closure/compiler/runtime checks. Selfhost
@@ -28,18 +30,66 @@ selfhost channel, then the public channel. Conda-forge is never a target
 fallback. A plan with no ordinary selection skips ordinary. A plan with no
 selected outputs skips all five execution jobs and publishing.
 
-Recipe-root `README.md` files and the scheduling tool under
-`scripts/dependency-graph/` do not select package builds. Source/patch/test
-inputs, including nested Markdown files, retain their normal rebuild and
-revision checks. Changes to the planner still run dependency-graph tests in the
-Checks workflow.
-
 Ordinary and publication use explicit conditions that permit planned dependency
 skips. Failure/cancellation of a required predecessor cannot enable a downstream
 job. packages-pass checks each execution job against the plan: expected skips
 are accepted, failure/cancellation or unexpected skips fail the gate.
 Publication depends on packages-pass succeeding and uses plan only to read
 build/artifact selection controls; it cannot start before the final gate passes.
+
+## Affected-build planning
+
+The planner derives package-output nodes and dependency edges from rendered
+recipes, as described in the
+[graph tooling guide](../README.md#dependency-graph-tooling). It selects all
+outputs of a changed recipe and their direct and transitive build-time, runtime
+and constraint consumers. Providers build before consumers; sibling outputs
+build together. Bootstrap members form one generation: selecting one selects the
+complete generation and its ordinary consumers.
+
+The path classifier distinguishes package inputs from documentation and
+scheduling tools:
+
+- A recipe's root `README.md` does not select package builds. Other files under
+  `recipes/`, including nested Markdown files in source/test trees, select that
+  recipe.
+- The planner and its tests under `scripts/dependency-graph/` do not select
+  builds. Changes still run dependency-graph tests in the Checks workflow.
+- Global inputs select every recipe: `bootstrap-order.json`,
+  `seed-packages.tsv`, `retired-packages.json`, `pixi.toml`, `pixi.lock`,
+  `.gitignore`, `.gitmodules`, `.github/workflows/packages.yml`, all variants
+  and other repository scripts. This includes the stage test runner and
+  build-output cleanup helper. Pixi is an orchestration layer, but tool changes
+  can alter package output, so its manifest and lock require the same deliberate
+  recipe revisions.
+- Top-level documentation and other workflow changes do not select builds.
+
+CI pins Pixi and the setup-pixi action revision. With `pixi.lock` present, that
+action defaults to `pixi install --locked`, rejecting a stale lockfile.
+
+The planner accepts removal of outputs explicitly listed in
+`retired-packages.json`. A whole recipe may be removed only when all its outputs
+are retired. Unlisted removal or rename is rejected; remote channel retirement
+and publication semantics remain future work.
+
+A single PR can introduce a provider and its consumers without a published copy
+of that provider. Each completed recipe is indexed into the local output channel
+before consumers are solved, with strict priority over the published baseline.
+If a consumer's constraint excludes the new local provider, the build fails;
+update the constraint with the provider. Dependencies may use names or
+compatibility ranges; exact pins remain appropriate for toolchain, ABI or
+private Python environment requirements and are revised deliberately.
+
+Impact analysis conservatively matches local providers by name, regardless of
+version constraints. It does not expand the published channel's solved closure
+or external run exports. External channel changes alone do not trigger builds.
+Multiple variants of one package name remain unsupported. Revision checks
+compare against Git rather than reserving published filenames; concurrent PRs
+must be brought up to date before merge.
+
+The `h<hash>` part of a build string identifies variant parameters, rather than
+source contents or the complete resolved dependency set. Changing a dependency
+constraint need not change that hash and does not replace a build-number bump.
 
 ## Portable handoffs
 
@@ -96,7 +146,11 @@ unit. The key `bootstrap-v1-linux-64-<SHA256>` includes:
 - Git ignore/submodule configuration and retired package policy when present.
 
 Names, executable bits and file bytes contribute to the hash. Commit IDs,
-ordinary recipe contents, documentation and ignored generated output do not.
+ordinary recipe contents, the top-level README, `docs/` and ignored generated
+output do not, unless referenced as local sources. Documentation inside a
+bootstrap recipe directory, including its root `README.md`, does contribute.
+This differs from build selection: a recipe README change alone selects no
+build, but can invalidate the cache when a later change selects bootstrap.
 Script changes are deliberately conservative: even changes to orchestration
 checks invalidate the cache. New non-ignored inputs count before being
 committed, matching local planner behavior. Unsupported templated local paths,

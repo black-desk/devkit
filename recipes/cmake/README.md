@@ -19,7 +19,10 @@ newly linked cmake/ctest to miss their input libraries before installation.
 `CMAKE_BUILD_WITH_INSTALL_RPATH=OFF` keeps build and installation paths
 separate; the native installer still writes relative RUNPATH.
 
+## Historical bootstrap patch
+
 The retained `bootstrap-exclude-ghs-generator.patch` only affects
-`CMAKE_BOOTSTRAP`, while this recipe configures with previous-stage CMake.
-Whether to remove it or support that alternate bootstrap path remains an
-[open review item](../../docs/recipe-review.md#historical-cmake-bootstrap-patch).
+`CMAKE_BOOTSTRAP`, while this recipe configures with previous-stage CMake. It
+guards a generator include during that alternate bootstrap path and does not
+affect the normal recipe build. Whether to remove it or explicitly support the
+alternate path remains unresolved.
