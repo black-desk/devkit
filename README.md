@@ -228,90 +228,11 @@ a second hand-maintained graph source.
 
 ### Calculating the affected rebuild set
 
-The affected-build scheduler uses the same flat recipe namespace as the
-repository. It computes affected Linux builds and constructs a directed graph
-before scheduling:
-
-1. Discover every `recipes/*/recipe.yaml`.
-2. Load the explicit bootstrap membership manifest and set those recipes aside
-   as the bootstrap generation supernode.
-3. Render all recipes without solving, using their intended variant
-   configuration.
-4. Make every rendered package output a graph node. A multi-output recipe
-   contributes multiple nodes; its directory name is not a package node.
-5. Add an edge from a dependency provider to each direct consumer. Build and
-   host requirements create build-time edges; run requirements create runtime
-   edges. Rendered `run_constrained` specifications are initially treated as
-   conservative interface edges as well.
-6. Treat a `noarch` output as shared by all target platforms.
-7. Reject strongly connected components outside the explicit bootstrap set.
-
-The initial rebuild roots are the package outputs changed by a commit. A change
-under a recipe directory, except its root `README.md`, initially selects all
-outputs of that recipe. Changes to explicit global bootstrap inputs select every
-recipe; workflow and documentation changes do not schedule package builds.
-Refinement to individual outputs can be added only when the mapping is explicit
-and auditable. The completed-stage test runner and shared build-output cleanup
-helper are global bootstrap inputs as well.
-
-The scheduler traverses reverse dependency edges from those roots. Every direct
-and transitive build-time, runtime, and constraint consumer will be selected.
-The selected set will be topologically scheduled with providers before
-consumers.
-
-Bootstrap changes are checked and scheduled as part of this graph. A change to
-the seed manifest, bootstrap membership, bootstrap stage ordering, or a
-bootstrap recipe selects the complete bootstrap generation and its ordinary
-consumers before any build starts. After revision validation, the complete
-generation is rebuilt. Bootstrap cycles are permitted only inside that explicit
-generation supernode.
-
-The pull-request path classifier is deliberately explicit. A recipe's root
-`README.md` contains design or usage notes and does not select package builds.
-Other files under `recipes/`, including Markdown files in source/test trees,
-select that recipe. The dependency-graph planner and its tests under
-`scripts/dependency-graph/` also do not select builds: they control scheduling
-and are validated by repository tests rather than becoming target payloads.
-Changes to global inputs, including `bootstrap-order.json`, `variants/`,
-`seed-packages.tsv`, the Pixi manifest/lock, the package workflow and other
-repository scripts, select every recipe. Recipe deletion or rename is not
-supported yet and must be rejected rather than silently treated as a no-op.
-
-The locked Pixi environment is an orchestration layer rather than a target
-package dependency. Its manifest and lock nevertheless count as global planner
-inputs because tool changes can alter package output; pair those changes with
-the required recipe version/build-number updates.
-
-A single PR can introduce a new dependency and its consumers. Planning needs no
-published copy of that dependency. Each completed recipe is indexed into the
-local result channel before its consumers are solved, with strict priority over
-the published baseline. If a consumer's version constraint excludes the new
-local provider, the build fails; update the constraint together with the
-provider.
-
-Dependencies may use names or compatibility ranges; exact version/build pins are
-not required by the planner. Retain exact pins where the toolchain, ABI, or a
-private Python environment requires them. Existing recipe pins are not relaxed
-automatically; revise them deliberately when updating their providers.
-
-The graph conservatively matches local providers by package name, regardless of
-version constraints. It does not expand the published channel's solved
-dependency closure or external run exports. Changes only in external channel
-contents do not trigger rebuilding. Multiple variants of the same package name
-remain unsupported. Revision checks are relative to Git, not a reservation of
-filenames in the published channel; concurrent PRs must be brought up to date
-before merge.
-
-The `h<hash>` portion of a build string identifies variant parameters, not
-source contents or the complete resolved dependency set. Changing a literal
-dependency constraint need not change that hash. It does not replace the
-build-number bump.
-
-For example, a `go` change selects every package with a direct or transitive
-build edge to `go`. A `python` runtime change selects Python tools through
-runtime edges and then selects their consumers through the merged reverse graph.
-A leaf change to `ripgrep` selects `ripgrep` alone unless another recipe depends
-on it.
+Use the [dependency graph commands](#dependency-graph-tooling) to calculate the
+closure and check required revisions before preparing a PR. The
+[package planning rules](docs/package-ci.md#affected-build-planning) define
+which paths trigger builds, explicit retirement, dependency constraints and
+current planner limits.
 
 Reproducibility is a later design phase, not a prerequisite for the initial
 scheduler. If reliable logical reproducibility is achieved, result comparison
@@ -484,7 +405,6 @@ and [usage notes](docs/usage.md#compiler-modes) for invocation examples.
   local package.
 - Replace current Rocky Linux mirror URLs with immutable vault URLs if archive
   stability requires it.
-- Pin Pixi in CI and run the workflow in locked mode.
 - Complete LLVM self-hosting and ordinary-package runtime audits, including
   execution on hosts with older system runtimes.
 - Define and test the oldest supported host glibc baseline.
