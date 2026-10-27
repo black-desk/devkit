@@ -99,6 +99,14 @@ older `maildir-store` option.
 
 ## Optional integrations
 
+For Tree-sitter grammar development or Neovim plugins that generate parsers,
+install `tree-sitter-cli` to provide the `tree-sitter` command. Grammar
+generation defaults to Node.js. To use the experimental embedded JavaScript
+engine instead, run `tree-sitter generate --js-runtime native` or set
+`TREE_SITTER_JS_RUNTIME=native`. Compiling generated native parsers also
+requires a C compiler, such as `clang`, and host development files. Plugins that
+explicitly invoke Node.js still need their own Node.js installation.
+
 Yazi previews and openers need the corresponding external tools, such as FFmpeg,
 Poppler or ImageMagick. Neovim clipboard helpers, language servers and
 non-Python remote-plugin providers need separate setup. Unibilium uses host

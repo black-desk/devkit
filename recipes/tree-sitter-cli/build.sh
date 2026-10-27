@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euxo pipefail
+
+: "${BUILD_PREFIX:?}"
+: "${PREFIX:?}"
+export SYSROOT="${BUILD_PREFIX}/${SYSROOT_TRIPLET:-x86_64-pc-linux-gnu}/sysroot"
+export CC="${BUILD_PREFIX}/bin/clang"
+export CXX="${BUILD_PREFIX}/bin/clang++"
+DEVKIT_FLAGS="--no-default-config --config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg"
+export AR="${BUILD_PREFIX}/bin/llvm-ar"
+export RANLIB="${BUILD_PREFIX}/bin/llvm-ranlib"
+export NM="${BUILD_PREFIX}/bin/llvm-nm"
+export STRIP="${BUILD_PREFIX}/bin/llvm-strip"
+export OBJCOPY="${BUILD_PREFIX}/bin/llvm-objcopy"
+export OBJDUMP="${BUILD_PREFIX}/bin/llvm-objdump"
+export READELF="${BUILD_PREFIX}/bin/llvm-readelf"
+export LD="${BUILD_PREFIX}/bin/ld.lld"
+export PATH="${BUILD_PREFIX}/bin:${PATH}"
+export CFLAGS="${DEVKIT_FLAGS} -O2 -fPIC"
+export CXXFLAGS="${CFLAGS}"
+export CPPFLAGS="${DEVKIT_FLAGS}"
+export LDFLAGS="${DEVKIT_FLAGS} --ld-path=${BUILD_PREFIX}/bin/ld.lld -L${PREFIX}/lib/devkit/lib -Wl,-rpath-link,${PREFIX}/lib/devkit/lib -Wl,-rpath,${PREFIX}/lib/devkit/lib"
+test -d "${SYSROOT}"
+test -x "${CC}"
+
+export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER="${CC}"
+export RUSTFLAGS="-C link-arg=--no-default-config -C link-arg=--config=${BUILD_PREFIX}/lib/devkit/share/devkit/clang.cfg -C link-arg=-L${PREFIX}/lib/devkit/lib -C link-arg=-Wl,-rpath-link,${PREFIX}/lib/devkit/lib -C link-arg=-Wl,--enable-new-dtags,-rpath,\$ORIGIN/../lib/devkit/lib"
+# Only upstream rustup/toolchain subprocesses receive this preload.
+# Installed channel applications use their linked RUNPATH instead.
+devkit_rustup() {
+  env -u LD_LIBRARY_PATH LD_PRELOAD="${BUILD_PREFIX}/lib/devkit/lib/libgcc_s.so.1" \
+    "${BUILD_PREFIX}/bin/rustup" "$@"
+}
+
+test -x "${BUILD_PREFIX}/bin/rustup"
+test -f "${BUILD_PREFIX}/lib/devkit/share/rust-toolchain/version"
+
+RUST_TOOLCHAIN="$(cat "${BUILD_PREFIX}/lib/devkit/share/rust-toolchain/version")"
+test "${RUST_TOOLCHAIN}" = 1.98.1
+
+export RUSTUP_HOME="${SRC_DIR}/.rustup"
+export CARGO_HOME="${SRC_DIR}/.cargo"
+export CARGO_TARGET_DIR="${SRC_DIR}/target"
+export GIT_CEILING_DIRECTORIES="$(dirname "${SRC_DIR}")"
+export CARGO_BUILD_JOBS="${CARGO_BUILD_JOBS:-2}"
+# The embedded QuickJS runtime generates its bindings with channel libclang.
+export LIBCLANG_PATH="${BUILD_PREFIX}/lib/devkit/lib"
+export BINDGEN_EXTRA_CLANG_ARGS="${DEVKIT_FLAGS}"
+
+mkdir -p \
+  "${RUSTUP_HOME}" \
+  "${CARGO_HOME}" \
+  "${CARGO_TARGET_DIR}" \
+  "${PREFIX}/bin" \
+  "${PREFIX}/lib/devkit/share/bash-completion/completions" \
+  "${PREFIX}/lib/devkit/share/fish/vendor_completions.d" \
+  "${PREFIX}/lib/devkit/share/zsh/site-functions"
+
+devkit_rustup toolchain install "${RUST_TOOLCHAIN}" \
+  --profile minimal \
+  --no-self-update
+
+# Cargo must not depend on rustup shims installed on the build host.
+export RUSTC="$(devkit_rustup which --toolchain "${RUST_TOOLCHAIN}" rustc)"
+export RUSTDOC="$(devkit_rustup which --toolchain "${RUST_TOOLCHAIN}" rustdoc)"
+
+# Keep upstream's default embedded JavaScript runtime feature so users can
+# generate with --js-runtime native. Cargo builds the matching C runtime too.
+devkit_rustup run "${RUST_TOOLCHAIN}" cargo build \
+  --locked --release --package tree-sitter-cli --bin tree-sitter
+
+install -m 0755 "${CARGO_TARGET_DIR}/release/tree-sitter" "${PREFIX}/bin/tree-sitter"
+"${PREFIX}/bin/tree-sitter" complete --shell bash >"${PREFIX}/lib/devkit/share/bash-completion/completions/tree-sitter"
+"${PREFIX}/bin/tree-sitter" complete --shell fish >"${PREFIX}/lib/devkit/share/fish/vendor_completions.d/tree-sitter.fish"
+"${PREFIX}/bin/tree-sitter" complete --shell zsh >"${PREFIX}/lib/devkit/share/zsh/site-functions/_tree-sitter"
